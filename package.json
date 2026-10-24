@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "tsx scripts/lives-test.ts && tsx scripts/playtest.ts"
+    "test": "tsx scripts/lives-test.ts && tsx scripts/progress-test.ts && tsx scripts/playtest.ts"
   },
   "repository": {
     "type": "git",

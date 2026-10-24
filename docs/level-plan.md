@@ -266,7 +266,7 @@ optional challenge at least once in 24 runs. Park 1 to 6 required challenges: at
 | 9 | Pyroclastic Dash | ★ Ride both loops | ★ Land an 8-trick combo | Finish without losing a life |
 | 10 | Into the Crater | ★ Clear the crater gap | ★ Backflip and grab in the same air over the crater gap | Score 60,000 with no lives lost |
 
-**Bonus levels** (never required): half pipes: "Air of 2 metres", "Land 5 different
+**Bonus levels** (never required): half pipes: "Air of 1.5 metres" (1.6 m is about the most a pipe gives), "Land 5 different
 tricks", "Score par". Mega ramps: "Clear the gap on all 3 drops", "A trick on both airs of
 one drop", "Score par".
 

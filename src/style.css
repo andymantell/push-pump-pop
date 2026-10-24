@@ -244,3 +244,40 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 #whatsnew section.fresh { background: rgba(125, 255, 154, 0.14); }
 #whatsnew h3 { font-size: 15px; opacity: 0.85; }
 #whatsnew h3 em { font-style: normal; color: #1d2b3a; background: #7dff9a; border-radius: 6px; padding: 1px 6px; text-shadow: none; }
+
+/* Challenges: the list on the pre-run card and the results, and the ticks in the HUD. */
+.chal-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 420px; }
+.chal-list:empty { display: none; }
+.chal-list li {
+  display: flex; align-items: center; gap: 10px; text-align: left; font-weight: 800; font-size: 17px;
+  background: rgba(10, 20, 35, 0.45); border-radius: 12px; padding: 8px 12px;
+}
+.chal-list .ic { font-size: 22px; width: 28px; text-align: center; text-shadow: none; }
+.chal-list .tx { flex: 1; }
+.chal-list .tick { font-size: 22px; color: rgba(255, 255, 255, 0.35); }
+.chal-list li.got .tick { color: #7dff9a; }
+.chal-list li.got .tx { opacity: 0.8; }
+.chal-list .need { font-size: 11px; letter-spacing: 1px; background: #ff7a2f; border-radius: 6px; padding: 2px 6px; text-shadow: none; }
+.chal-list .new { font-size: 11px; letter-spacing: 1px; background: #ffe066; color: #1d2b3a; border-radius: 6px; padding: 2px 6px; text-shadow: none; }
+#c-world { font-size: 16px; font-weight: 800; opacity: 0.85; margin-top: -10px; }
+#chal { display: flex; gap: 6px; margin-top: 6px; font-size: 16px; }
+#chal span { display: flex; align-items: center; gap: 2px; background: rgba(10, 20, 35, 0.4); border-radius: 8px; padding: 2px 5px; text-shadow: none; }
+#chal span b { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
+#chal span.got { background: rgba(60, 170, 90, 0.75); }
+#chal span.got b { color: #fff; }
+#chal span.pop { animation: hit 0.6s ease-out; }
+.popup.challenge { color: #7dff9a; font-size: 34px; }
+#r-best b.unlocked { color: #7dff9a; }
+#r-best .todo { color: #ffe066; }
+
+/* Level select: locks and stars. */
+.biome-head i { font-style: normal; font-size: 13px; font-weight: 800; color: #ffe066; }
+.biome.locked { opacity: 0.7; }
+.biome .tracks button.locked { background: #5b6675; box-shadow: 0 4px 0 #353d48; }
+.biome .tracks button .stars { color: #ffe066; letter-spacing: 1px; }
+#toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(16px, env(safe-area-inset-bottom)) + 16px);
+  max-width: min(420px, calc(100vw - 32px)); background: #2f8fd8; box-shadow: 0 4px 0 #1e5f94;
+  border-radius: 14px; padding: 10px 16px; font-weight: 800; font-size: 16px; text-align: center; z-index: 5;
+}
+#toast.hidden { display: none; }

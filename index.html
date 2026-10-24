@@ -12,7 +12,7 @@
   <canvas id="game"></canvas>
   <div id="hud">
     <div class="top">
-      <div class="score"><span id="score">0</span><small>SCORE</small><div id="lives"></div></div>
+      <div class="score"><span id="score">0</span><small>SCORE</small><div id="lives"></div><div id="chal"></div></div>
       <div class="time"><span id="time">0.0</span><small>TIME</small></div>
     </div>
     <div id="trackname"></div>
@@ -66,6 +66,13 @@
     <div id="tracklist"></div>
     <button id="back" class="small">BACK</button>
   </div>
+  <div id="card" class="panel hidden">
+    <h2 id="c-name"></h2>
+    <div id="c-world"></div>
+    <ul id="c-list" class="chal-list"></ul>
+    <button id="go">GO!</button>
+    <button id="cardback" class="small alt">BACK</button>
+  </div>
   <div id="results" class="panel hidden">
     <h2 id="r-title">FINISHED!</h2>
     <div id="r-track"></div>
@@ -74,6 +81,7 @@
       <div><small>TIME</small><b id="r-time">0</b></div>
       <div><small>BEST COMBO</small><b id="r-combo">0</b></div>
     </div>
+    <ul id="r-chal" class="chal-list"></ul>
     <div id="r-best"></div>
     <div class="buttons">
       <button id="next">NEXT TRACK</button>
@@ -82,6 +90,7 @@
       <button id="tracks" class="alt">ALL TRACKS</button>
     </div>
   </div>
+  <div id="toast" class="hidden"></div>
   <button id="menu" class="hidden" aria-label="Tracks">&#9776;</button>
   <button id="replaychip" class="hidden">&#9654; REPLAY</button>
   <div id="replay" class="hidden">

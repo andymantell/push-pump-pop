@@ -54,6 +54,22 @@ export function railY(r: Rail, x: number): number {
   return r.y0 + (r.y1 - r.y0) * (x - r.x0) / (r.x1 - r.x0);
 }
 
+/**
+ * A named place on the track that challenges can point at: 'kicker' lips, roller 'crest's,
+ * valley 'lip's (the far edge you ride out over), and any tag a level adds with sign-like
+ * `spot()` calls, such as 'bigair'.
+ */
+export interface Spot {
+  x: number;
+  tag: string;
+}
+
+/** A low flat box to manual along, from x0 to x1 on its top. */
+export interface Pad {
+  x0: number;
+  x1: number;
+}
+
 export interface Prop {
   kind: PropKind;
   x: number;
@@ -75,8 +91,12 @@ export class Track {
   readonly rails: Rail[];
   readonly stairs: Stairs[];
   readonly loops: Loop[];
+  readonly spots: Spot[];
+  readonly pads: Pad[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = []) {
+    this.spots = spots;
+    this.pads = pads;
     this.pits = pits;
     this.rails = rails;
     this.stairs = stairs;
@@ -147,6 +167,8 @@ export class TrackBuilder {
   rails: Rail[] = [];
   stairSets: Stairs[] = [];
   loops: Loop[] = [];
+  spots: Spot[] = [];
+  pads: Pad[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -173,18 +195,34 @@ export class TrackBuilder {
 
   /** Concave ramp that gets steeper towards the lip. */
   kicker(len: number, height: number, power = 2.2): this {
-    return this.run(len, (t) => height * Math.pow(t, power));
+    this.run(len, (t) => height * Math.pow(t, power));
+    return this.spot('kicker');
   }
 
   /** Smooth bumps for pumping. */
   rollers(count: number, len: number, amp: number): this {
-    for (let i = 0; i < count; i++) this.run(len, (t) => amp * (1 - Math.cos(2 * Math.PI * t)) / 2);
+    for (let i = 0; i < count; i++) {
+      this.spots.push({ x: this.x + len / 2, tag: 'crest' });
+      this.run(len, (t) => amp * (1 - Math.cos(2 * Math.PI * t)) / 2);
+    }
     return this;
   }
 
   /** A dip that rises back to the same height. */
   valley(len: number, depth: number): this {
-    return this.run(len, (t) => -depth * (1 - Math.cos(2 * Math.PI * t)) / 2);
+    this.run(len, (t) => -depth * (1 - Math.cos(2 * Math.PI * t)) / 2);
+    return this.spot('lip');
+  }
+
+  /**
+   * A low box to manual along: `len` of flat top, `height` up. The edges are long ramps so
+   * riding onto it at speed doesn't throw you into the air (where a tilt would be a flip).
+   */
+  pad(len: number, height = 0.35): this {
+    const edge = 10 * height;
+    this.ease(edge, height);
+    this.pads.push({ x0: this.x, x1: this.x + len });
+    return this.flat(len).ease(edge, -height);
   }
 
   /** Near vertical drop (a lip edge). */
@@ -256,12 +294,18 @@ export class TrackBuilder {
     return this;
   }
 
+  /** Mark this place for challenges (see Spot). */
+  spot(tag: string): this {
+    this.spots.push({ x: this.x, tag });
+    return this;
+  }
+
   sign(text: string): this {
     this.signs.push({ x: this.x, text });
     return this;
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads);
   }
 }

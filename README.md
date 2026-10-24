@@ -56,9 +56,27 @@ moves to the commit that changed it and shows up as new.
 ## Tracks and biomes
 
 - `src/biomes.ts`: look and feel of each biome (sky, surfaces, scenery, friction).
-- `src/tracks.ts`: track layouts as chains of shapes (`flat`, `ease`, `kicker`, `rollers`, `valley`, `drop`, `pit`, `rail`, `ledge`, `stairs`, `loop`, `sign`), see `TrackBuilder` in `src/track.ts`. Rails, ledges and stair handrails are grindable: ollie on and you lock into a 50-50; the playtest bot aims for each one and fails a track if no run manages to grind one. Loops (`loop(radius)`) need about 15 m/s to get round, so put a long downhill and rollers before them and keep them for later tracks; fall off and you lose a life and pick up past the loop. The playtest needs 95% of loop attempts to make it round.
+- `src/tracks.ts` and `src/levels/` (one file per world, tracks in play order): track layouts as chains of shapes (`flat`, `ease`, `kicker`, `rollers`, `valley`, `drop`, `pit`, `rail`, `ledge`, `stairs`, `loop`, `pad`, `sign`, `spot`), see `TrackBuilder` in `src/track.ts`. Rails, ledges and stair handrails are grindable: ollie on and you lock into a 50-50; the playtest bot aims for each one and fails a track if no run manages to grind one. Loops (`loop(radius)`) need about 15 m/s to get round, so put a long downhill and rollers before them and keep them for later tracks; fall off and you lose a life and pick up past the loop. The playtest needs 95% of loop attempts to make it round.
 
 Keep rollers long (12 m or more) so there's time to tap on each downslope.
+
+The plan for all 70 tracks is `docs/level-plan.md`.
+
+### Challenges and unlocking
+
+Every track has three `challenges` (see `src/challenges.ts` for the kinds). Each one done is
+a star, saved the moment it's done. A track is complete once it's finished and its required
+challenges are done (challenge 1 in the first two worlds, 1 and 2 after that); completing a
+track opens the next one, track 3 opens the world's bonus level, and track 5 opens the next
+world (`src/progress.ts`). Hold the title for two seconds to open every track.
+
+Challenges point at places on the track with `spot(tag)` (kickers, roller crests and valley
+lips are tagged for you) and at manual pads made with `pad()`. The playtest has a bot go
+for each challenge the way a player would: every required challenge must be done in half
+its tries (90% for Sunny Park 1 to 6), and every optional one at least once. Tracks of
+difficulty 3 or less without gaps must also be finished by the pump-only bot without losing
+a life. Each track's line shows `p75`, the bot's 75th percentile score, which is what `par`
+is set to.
 
 ## Models
 
