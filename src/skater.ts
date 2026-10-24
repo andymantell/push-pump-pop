@@ -159,6 +159,7 @@ export class Skater {
 
   private crouch = 0.15;
   private flipLift = 0;
+  private shiftyS = 0;
   private lift = 0;
   private armRaise = 0.5;
   private pumpAnim = 0;
@@ -324,7 +325,9 @@ export class Skater {
     if (trick && trick.axis === 'spin') this.boardPivot.rotation.y = r.boardYaw + prog * Math.PI;
     // Shifty: twist the board across and back, feet still strapped to it.
     // A boardslide turns the board across the rail, the deck resting on it.
-    const shifty = (trick && trick.axis === 'shifty' ? trick.dir * Math.sin(prog * Math.PI) * 1.1 : 0) + this.slideW * Math.PI / 2;
+    // Smoothed like flipLift, so a shifty that lands at 80% round doesn't snap the feet back.
+    this.shiftyS += ((trick && trick.axis === 'shifty' ? trick.dir * Math.sin(prog * Math.PI) * 1.1 : 0) - this.shiftyS) * k;
+    const shifty = this.shiftyS + this.slideW * Math.PI / 2;
     this.boardPivot.rotation.y += shifty;
     const slideDrop = this.slideW * (this.snow ? 0.02 : 0.09);
     this.boardPivot.position.y -= slideDrop;

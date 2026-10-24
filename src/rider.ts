@@ -24,11 +24,15 @@ const TAKEOFF_TIME = 0.06;
 const GRIND_FRICTION = 0.35;
 const GRIND_POINTS = 200;
 const GRIND_POINTS_PER_SEC = 700;
-/** How close to a rail you need to pass on the way down to lock on to it (arcade magnet). */
+/** How far above a rail you can pass on the way down and still lock on to it (arcade magnet). */
 const GRIND_CATCH = 0.3;
 /** Rolling friction on the loop is a bit higher: it's a tight curve. */
 const LOOP_FRICTION = 0.3;
 const LOOP_POINTS = 1000;
+/** Rail assist: an ollie this many seconds before a rail starts hops you onto it. */
+const RAIL_REACH = 0.7;
+/** ...as long as there's this much rail left to land on. */
+const RAIL_ROOM = 1.2;
 
 export type GrabName = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
 export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
@@ -274,7 +278,8 @@ export class Rider {
     if (!name) return;
     const canPop = this.grounded || this.grind !== null || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) {
-      this.pop();
+      // An ollie with a rail coming up hops you straight onto it.
+      if (!(name === 'Ollie' && this.railHop())) this.pop();
       if (name === 'Ollie') { this.ev.trick(TRICKS.Ollie); return; }
     }
     if (name === 'Ollie') return;
@@ -450,6 +455,32 @@ export class Rider {
   /** Points the grab in progress is worth so far. */
   get grabPoints() {
     return this.grab ? Math.round((GRAB_POINTS + GRAB_POINTS_PER_SEC * this.grabT) / 10) * 10 : 0;
+  }
+
+  /**
+   * Rail assist: by the time you've seen a rail, swiped and flown a full ollie, you'd only
+   * catch its very end. So an ollie on the ground with a rail starting within RAIL_REACH
+   * seconds ahead (or one alongside with room left) is a short, quick hop that comes down
+   * onto the rail near its start. Returns false if there's no rail to hop onto.
+   */
+  private railHop(): boolean {
+    if (!this.grounded || this.opts.pipe || this.v < 2) return false;
+    const rail = this.track.rails.find((r) => r.x0 - this.x < this.v * RAIL_REACH && this.x < r.x1 - RAIL_ROOM);
+    if (!rail) return false;
+    const y0 = this.y;
+    // Come down a little way along the rail, or a quick hop ahead if you're already beside it:
+    // the first spot far enough on that you'd be on your way down when you get there.
+    let xt = Math.max(rail.x0 + 0.4, this.x + this.v * 0.2);
+    const T = () => (xt - this.x) / this.v;
+    while (xt < rail.x1 - RAIL_ROOM && railY(rail, xt) - y0 > GRAVITY * T() * T() / 2 * 0.7) xt += 0.1;
+    if (xt >= rail.x1 - RAIL_ROOM) return false;
+    const t = T();
+    this.vx = this.v;
+    this.vy = (railY(rail, xt) - y0 + GRAVITY * t * t / 2) / t;
+    this.y += 0.02;
+    this.leaveGround();
+    this.ollied = true;
+    return true;
   }
 
   private pop() {
@@ -701,7 +732,7 @@ export class Rider {
       // Only with some rail left ahead: catching the very end would just flick you on and off.
       const ahead = (rl: Rail) => (this.vx >= 0 ? rl.x1 - this.x : this.x - rl.x0) > 0.6;
       const rail = this.vy < 0 && !this.falling ? tr.railAt(this.x) : null;
-      if (rail && ahead(rail) && py >= railY(rail, px) - GRIND_CATCH && this.y <= railY(rail, this.x) + GRIND_CATCH && this.y > tr.height(this.x)) {
+      if (rail && ahead(rail) && py >= railY(rail, px) - 0.05 && this.y <= railY(rail, this.x) + GRIND_CATCH && this.y > tr.height(this.x)) {
         this.catchRail(rail);
         if (this.grind) return;
       }

@@ -31,6 +31,8 @@ const MAX_INPUTS_PER_SEC = 3;
 const MIN_PIT_CLEAR_RATE = 0.6;
 /** Share of loop attempts that must make it round. */
 const MIN_LOOP_RATE = 0.95;
+/** Average share of a rail a human-speed grind should cover. */
+const MIN_GRIND_COVER = 0.6;
 const MIN_FINISH_RATE = 1.0;
 /** Lives per run, as in the game: each bail or fall costs one. */
 const LIVES = 3;
@@ -61,6 +63,8 @@ interface Result {
   loopsDone: number;
   /** Grinds per rail on the track. */
   railHits: number[];
+  /** Share of the rail each grind covered. */
+  coverage: number[];
 }
 
 /** Every trick the bots landed, across all runs. */
@@ -106,22 +110,6 @@ function checkLegs(skater: Skater, r: Rider, track: Track, trackId: string, t: n
 const lastLegs = new WeakMap<Skater, THREE.Vector3[]>();
 const bailedLast = new WeakMap<Skater, boolean>();
 
-/**
- * Where an ollie that lands after `delay` would first come down within reach of `rail`,
- * or null if it would miss. A ballistic guess: pop straight up from the current speed.
- */
-function railCatch(track: Track, r: Rider, rail: Rail, delay: number): number | null {
-  const x0 = r.x + r.v * delay;
-  const th = Math.atan(track.slope(x0));
-  let x = x0, y = track.height(x0), vx = r.v * Math.cos(th), vy = r.v * Math.sin(th) + 5.6;
-  for (let t = 0; t < 1.5; t += 1 / 60) {
-    x += vx / 60; y += vy / 60; vy -= 14 / 60;
-    if (vy < 0 && x >= rail.x0 && x <= rail.x1 && Math.abs(y - railY(rail, x)) < 0.15) return x;
-    if (y < track.height(x)) return null;
-  }
-  return null;
-}
-
 function state(r: Rider) {
   return [
     r.bailing ? 'bailing' : r.grounded ? 'ground' : 'air',
@@ -142,14 +130,14 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   const biome = BIOMES[def.biome];
   const track = def.build();
   const rand = rng(seed);
-  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, livesLost: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [], grinds: 0, loopsTried: 0, loopsDone: 0, railHits: track.rails.map(() => 0) };
+  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, livesLost: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [], grinds: 0, loopsTried: 0, loopsDone: 0, railHits: track.rails.map(() => 0), coverage: [] };
   let recent: { t: number; s: number }[] = [];
   let downT = 0;
   let t = 0;
   let respawnAt = -1;
   const r: Rider = new Rider(track, {
     loop(done) { if (done) res.loopsDone++; else res.loopsTried++; },
-    grind(rail) { res.grinds++; res.railHits[track.rails.indexOf(rail)]++; },
+    grind(rail) { res.grinds++; res.railHits[track.rails.indexOf(rail)]++; grindFrom = { rail, x: r.x }; },
     trick(tr) { tricks++; seen.set(tr.name, (seen.get(tr.name) ?? 0) + 1); }, land() {}, pump() {},
     bail() { res.bails++; res.livesLost++; },
     fall() { respawnAt = t + 1.2; res.livesLost++; },
@@ -175,6 +163,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   const railsTried = new Set<Rail>();
   // An ollie aimed at a rail is just an ollie: no flip on the way on.
   let railOllie = false, railOllieAt = -10;
+  let grindFrom: { rail: Rail; x: number } | null = null;
   const passed = new Set<number>();
 
   const press = (act: Act, extra = 0) => {
@@ -234,8 +223,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
         // Ollie onto a rail coming up, timed so you come down near its start.
         const rail = railTry ? track.rails.find((rl) => !railsTried.has(rl) && rl.x0 > r.x && rl.x0 - r.x < lead + 12) : undefined;
         if (rail) {
-          const at = railCatch(track, r, rail, REACTION);
-          if (at !== null && at < rail.x0 + Math.min(2, (rail.x1 - rail.x0) / 2)) { press('up'); railsTried.add(rail); railOllie = true; railOllieAt = t; }
+          // Swipe once the rail is about half a second away, as a player would on seeing it.
+          if (rail.x0 - r.x - lead < Math.abs(r.v) * 0.5) { press('up'); railsTried.add(rail); railOllie = true; railOllieAt = t; }
         }
         // Manual along a flat stretch with no jump coming up.
         const flat = [0, 1, 2, 3, 4].every((d) => Math.abs(track.slope(r.x + d * dir)) < 0.08);
@@ -263,6 +252,12 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
 
     const before = r.x;
     r.update(DT);
+    // How much of each rail a grind covered.
+    if (grindFrom && !r.grind) {
+      const rl = grindFrom.rail;
+      res.coverage.push(Math.min(1, (Math.min(r.x, rl.x1) - grindFrom.x) / (rl.x1 - rl.x0)));
+      grindFrom = null;
+    }
     if (skater) checkLegs(skater, r, track, trackId, t);
     t += DT;
     if (!r.grounded) peakAboveLip = Math.max(peakAboveLip, r.y - track.maxY);
@@ -329,6 +324,10 @@ for (const def of TRACKS) {
   const all = [...results, ...pumpers];
   const tried = all.reduce((s, r) => s + r.loopsTried, 0), done = all.reduce((s, r) => s + r.loopsDone, 0);
   if (track.loops.length && done < tried * MIN_LOOP_RATE) problems.push(`loops made ${(done / tried * 100).toFixed(0)}% of the time`);
+  // Rail assist should put you on near the start, not catching the last metre.
+  const cov = results.flatMap((r) => r.coverage);
+  const avgCov = cov.length ? cov.reduce((a, b) => a + b, 0) / cov.length : 1;
+  if (cov.length && avgCov < MIN_GRIND_COVER) problems.push(`grinds cover only ${(avgCov * 100).toFixed(0)}% of the rail on average`);
   track.rails.forEach((rl, i) => {
     if (!results.some((r) => r.railHits[i] > 0)) problems.push(`no run managed to grind the ${rl.kind} at ${rl.x0.toFixed(0)} m`);
   });
@@ -336,7 +335,7 @@ for (const def of TRACKS) {
   const bails = results.reduce((s, r) => s + r.bails, 0) / RUNS;
   const lost = results.reduce((s, r) => s + r.livesLost, 0) / RUNS;
   const status = problems.length ? 'FAIL' : 'ok  ';
-  console.log(`${status} ${def.id.padEnd(12)} median ${median.toFixed(1)}s  bails/run ${bails.toFixed(1)}  lives lost/run ${lost.toFixed(1)}  downslope ${downMedian.toFixed(2)}s  loops ${track.loops.length ? (all.reduce((s, r) => s + r.loopsDone, 0) / Math.max(1, all.reduce((s, r) => s + r.loopsTried, 0)) * 100).toFixed(0) + '%' : '-'}  grinds/run ${(results.reduce((s, r) => s + r.grinds, 0) / RUNS).toFixed(1)}/${track.rails.length}  gaps ${pitRates.map((r) => (r * 100).toFixed(0) + '%').join(' ') || '-'}`);
+  console.log(`${status} ${def.id.padEnd(12)} median ${median.toFixed(1)}s  bails/run ${bails.toFixed(1)}  lives lost/run ${lost.toFixed(1)}  downslope ${downMedian.toFixed(2)}s  loops ${track.loops.length ? (all.reduce((s, r) => s + r.loopsDone, 0) / Math.max(1, all.reduce((s, r) => s + r.loopsTried, 0)) * 100).toFixed(0) + '%' : '-'}  grinds/run ${(results.reduce((s, r) => s + r.grinds, 0) / RUNS).toFixed(1)}/${track.rails.length} (${(avgCov * 100).toFixed(0)}%)  gaps ${pitRates.map((r) => (r * 100).toFixed(0) + '%').join(' ') || '-'}`);
   if (problems.length) {
     failed = true;
     for (const p of problems) console.log(`       ${p}`);
