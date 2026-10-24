@@ -205,11 +205,11 @@ export const PARK: TrackDef[] = [
     }),
   },
   {
-    id: 'park-pipe', biome: 'park', name: 'Sunny Halfpipe', kind: 'pipe', par: 25500,
+    id: 'park-pipe', biome: 'park', name: 'Sunny Halfpipe', kind: 'pipe', par: 22000,
     challenges: [
       { text: 'Air of 1.5 metres', kind: 'air', metres: 1.5 },
       { text: 'Land 5 different tricks', kind: 'variety', count: 5 },
-      { text: 'Score 25,500', kind: 'score', points: 25500 },
+      { text: 'Score 22,000', kind: 'score', points: 22000 },
     ],
     build: pipe(4.5, 5),
   },

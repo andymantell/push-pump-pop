@@ -13,7 +13,7 @@ export const SNOW: TrackDef[] = [
       b.flat(6).rail(10, 0.6).flat(6);
       b.kicker(4, 1.5).flat(6).ease(6, -1.5).flat(5);
       b.ease(10, -3).rollers(2, 16, 1.26);
-      b.kicker(4.5, 1.8).flat(5).ease(7, -2.5).rollers(3, 13, 1.4).flat(4);
+      b.kicker(4.5, 1.8).flat(5).ease(7, -2.5).rollers(3, 16, 1.4).flat(4);
       b.kicker(5, 2.0).drop(-0.4).ease(10, -4).flat(4);
       b.sign('HUGE AIR').ease(12, -4).kicker(6, 2.6).drop(-0.6).ease(16, -6).flat(10);
     }),

@@ -439,7 +439,9 @@ export class Skater {
 
     // Ease in and out of pushing so the foot never snaps between the ground and the board.
     // No pushing on a snowboard: both feet are strapped in.
-    this.pushW += ((r.pushing && r.grounded && !r.bailing && !this.snow ? 1 : 0) - this.pushW) * (1 - Math.exp(-dt * 12));
+    // Capped too: starting to push the moment you land, after a big crouch, mustn't fling the foot down.
+    const pushTo = (r.pushing && r.grounded && !r.bailing && !this.snow ? 1 : 0) - this.pushW;
+    this.pushW += Math.max(-dt * 6, Math.min(dt * 6, pushTo * (1 - Math.exp(-dt * 12))));
     if (this.pushW > 0.01) {
       this.pushT = (this.pushT + dt * 1.6) % 1;
       const t = this.pushT;
@@ -581,7 +583,7 @@ export class Skater {
     const t = this.landT;
     this.landT += dt;
     if (this.landT > 1) this.landT = -1;
-    return this.landW * Math.sin(Math.min(1, t / 0.07) * Math.PI / 2) * Math.exp(-Math.max(0, t - 0.07) * 4.5);
+    return this.landW * Math.sin(Math.min(1, t / 0.1) * Math.PI / 2) * Math.exp(-Math.max(0, t - 0.1) * 4.5);
   }
 
   /** Reach the grabbing hand to the deck with two-bone IK, blended by w. */

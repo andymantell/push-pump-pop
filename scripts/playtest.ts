@@ -104,9 +104,12 @@ function rng(seed: number) {
 
 /** Distance to the next lip (where the ground drops away) within `range` metres. */
 function nextLip(track: Track, x: number, range: number): number | null {
+  // A gap straight off flat ground has no ramp to spot, just the edge.
+  const gap = track.pits.find((p) => p.x0 - x > 0.1 && p.x0 - x < range && track.slope(p.x0 - 0.5) < 0.35);
   for (let d = 0.2; d < range; d += 0.1) {
     const k0 = track.slope(x + d - 0.2), k1 = track.slope(x + d + 0.2);
     if (k0 > 0.35 && k1 < k0 - 0.6) return d;
+    if (gap && d >= gap.x0 - x - 0.05) return gap.x0 - x;
   }
   return null;
 }
@@ -242,6 +245,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   // Going for something that means staying on your feet: no tricks beyond ollies.
   const careful = !!G && (['finish', 'noLives', 'gaps', 'climb', 'pumps'].includes(G.kind) || (G.kind === 'score' && !!G.noLives));
   const wantRails = !!G && (G.kind === 'grind' || ('fromRail' in G && !!G.fromRail) || (G.kind === 'combo' && !!G.include?.includes('grind')));
+  // Ollie off the end of a rail to trick in the air after it.
+  const popOffRail = !!G && (('fromRail' in G && !!G.fromRail) || (G.kind === 'combo' && !!G.include?.includes('grind') && !!G.gaps));
   const wantManual = !!G && (G.kind === 'manual' || (G.kind === 'combo' && !!G.include?.includes('manual')));
   const pickFrom = <T,>(xs: T[]) => xs[Math.floor(rand() * xs.length)];
   const landed = new Set<TrickName>();
@@ -258,6 +263,10 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     queue.push({ at: t + REACTION + extra + (rand() * 2 - 1) * JITTER, act });
   };
 
+  /** No lip or rail coming up within `range` metres: safe to tilt for a manual (a tilt in the air is a flip). */
+  function clearAhead(range: number) {
+    return nextLip(track, r.x, Math.max(6, range)) === null && !track.rails.some((rl) => rl.x0 > r.x && rl.x0 - r.x < Math.max(6, range) + 2);
+  }
   /** Where and when the current air comes down, roughly. */
   function flight(): { time: number; x: number } {
     let x = r.x, y = r.y, vy = r.vy, tt = 0;
@@ -345,7 +354,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       }
       if (!r.grind) grindStyled = false;
       // Off the end of a rail with a trick to do: ollie off just before it ends.
-      if (r.grind && G && 'fromRail' in G && G.fromRail && r.grind.rail.x1 - r.x < Math.abs(r.v) * REACTION + 0.4 && t - grindLeft > 1) {
+      if (r.grind && popOffRail && r.grind.rail.x1 - r.x < Math.abs(r.v) * REACTION + 0.4 && t - grindLeft > 1) {
         press('up');
         grindLeft = t;
       }
@@ -359,6 +368,12 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         if (lip !== null && t - lipPlanned > 0.6 && Math.abs(lip - lead) < 0.6 + r.v * 0.04) {
           press('up');
           lipPlanned = t;
+        }
+        // Going for an air off a particular place (a roller crest, the pier end): ollie there.
+        const fromTag = G && 'from' in G && G.from ? G.from : G?.kind === 'air' ? 'crest' : undefined;
+        if (fromTag && fromTag !== 'kicker') {
+          const sp = track.spots.find((p) => p.tag === fromTag && p.x - r.x > 0 && Math.abs(p.x - r.x - lead) < 0.3 + r.v * 0.03);
+          if (sp && t - lipPlanned > 0.6) { press('up'); lipPlanned = t; }
         }
         // Ollie onto a rail coming up, timed so you come down near its start.
         const rail = railTry ? track.rails.find((rl) => !railsTried.has(rl) && rl.x0 > r.x && rl.x0 - r.x < lead + 12) : undefined;
@@ -378,17 +393,17 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
             press(lean);
             press('lean0', (pad.x1 - pad.x0) / Math.max(1, Math.abs(r.v)) + 0.3);
             manualPlanned = t;
-          } else if (!c.pad && room && nextLip(track, r.x, Math.abs(r.v) * (hold + REACTION)) === null && t - manualPlanned > hold + 0.8) {
+          } else if (!c.pad && room && clearAhead(Math.abs(r.v) * (hold + REACTION + 0.3)) && t - manualPlanned > hold + 0.8) {
             press(lean);
             press('lean0', hold);
             manualPlanned = t;
           }
-        } else if (!careful && !pumpOnly && !rail && flat && nextLip(track, r.x, 6) === null && t - manualPlanned > 3 && rand() < 0.02) {
+        } else if (!careful && !pumpOnly && !rail && flat && clearAhead(Math.abs(r.v) * 1.3) && t - manualPlanned > 3 && rand() < 0.02) {
           press(rand() > 0.5 ? 'lean+' : 'lean-');
           press('lean0', 0.6);
           manualPlanned = t;
         }
-      } else if (G && !pumpOnly && !trickPlanned && (!railOllie || ('fromRail' in G && G.fromRail)) && r.airTime > 0.02 && goalAir() !== undefined) {
+      } else if (G && !pumpOnly && !trickPlanned && (!railOllie || popOffRail) && r.airTime > 0.02 && goalAir() !== undefined) {
         // Handled by goalAir.
       } else if (!careful && !pumpOnly && !trickPlanned && !railOllie && r.vy > 3 && r.airTime > 0.05) {
         // Only trick on a big air, like a sensible player.
