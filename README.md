@@ -21,6 +21,7 @@ A mobile-friendly side-on skateboarding game inspired by Pumped BMX, built with 
 Flip tricks pop off the ground too. Chain tricks into combos; land before the board finishes spinning or you bail and lose the combo.
 A grab scores more the longer you hold it, and starts once any flip has finished, so flip with your right thumb, then swipe and hold with your left for a Kickflip + Nosegrab. Flips are swiped on the right half of the screen. Let go before you land, or you bail.
 Land a spin or flip before it's nearly round and you bail too. A manual keeps your combo going while you're on the ground.
+On the Snowy Mountain tracks the skater rides a snowboard: no pushing, and since your feet are strapped in, the flip-side swipes become snowboard tricks (left BS Shifty, right FS Shifty, down Tuck Knee) and manuals become tail and nose presses.
 Tilt is measured from however the device was held when the run started. On iPhone and iPad the game asks for motion access on your first tap.
 
 You get three lives per track. Each bail or fall into a gap costs one, and losing the third means starting the track again: the game freezes behind the Out of Lives screen and ignores taps, swipes and tilt until you do. Half-pipe bonus levels are timed and have no lives.

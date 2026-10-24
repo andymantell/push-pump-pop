@@ -12,12 +12,19 @@ export const PART_NAMES = [
   'thigh_L', 'thigh_R', 'shin_L', 'shin_R', 'shoe_L', 'shoe_R',
 ] as const;
 export type PartName = (typeof PART_NAMES)[number];
+/** Swapped in for the snow biome: a snowboard with bindings, and a beanie and goggles. */
+export const SNOW_PART_NAMES = ['snowboard', 'head_snow'] as const;
+export type SnowPartName = (typeof SNOW_PART_NAMES)[number];
 
 const THIGH = 0.44;
 const SHIN = 0.44;
 const UPPER_ARM = 0.29;
 const FOREARM = 0.3;
 const DECK_TOP = 0.115;
+/** Top of the snowboard's binding baseplates. */
+const SNOW_TOP = 0.05;
+/** Where the feet sit along the board, front and back. */
+const FRONT_X = 0.24, BACK_X = -0.21;
 const ANKLE = 0.075;
 /** Ankle joint height above the bottom of the sole. */
 const SOLE = 0.09;
@@ -112,6 +119,37 @@ function placeholderParts(): Record<PartName, THREE.Object3D> {
   };
 }
 
+function placeholderSnowParts(): Record<SnowPartName, THREE.Object3D> {
+  const board = new THREE.Group();
+  const top = toon(0x2a7fd4), base = toon(0xf4f4f4), strap = toon(0x222222);
+  const mid = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.02, 0.24), top);
+  mid.position.y = 0.012;
+  board.add(mid);
+  for (const s of [-1, 1]) {
+    const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 16, 1, false, 0, Math.PI), base);
+    tip.rotation.y = s > 0 ? -Math.PI / 2 : Math.PI / 2;
+    tip.position.set(s * 0.45, 0.03, 0);
+    tip.rotation.z = s * 0.3;
+    board.add(tip);
+  }
+  for (const x of [FRONT_X, BACK_X]) {
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.025, 0.3), strap);
+    plate.position.set(x, 0.035, 0.02);
+    const high = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.12, 0.02), strap);
+    high.position.set(x, 0.09, -0.12);
+    board.add(plate, high);
+  }
+  const head = new THREE.Group();
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.125, 16, 12), toon(0xf0c09a));
+  skull.position.y = 0.16;
+  const beanie = new THREE.Mesh(new THREE.SphereGeometry(0.135, 16, 10, 0, Math.PI * 2, 0, Math.PI / 1.9), toon(0xe8402a));
+  beanie.position.y = 0.17;
+  const goggles = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 0.06), toon(0xffb020));
+  goggles.position.set(0, 0.22, 0.1);
+  head.add(skull, beanie, goggles);
+  return { snowboard: board, head_snow: head };
+}
+
 export class Skater {
   readonly root = new THREE.Group();
   private body = new THREE.Group();
@@ -131,11 +169,14 @@ export class Skater {
   private grabW = 0;
   private manualPitch = 0;
   private lastGrab: GrabName = 'Indy';
+  private snowParts: Record<SnowPartName, THREE.Object3D>;
+  private snow = false;
 
-  constructor(parts?: Partial<Record<PartName, THREE.Object3D>>) {
+  constructor(parts?: Partial<Record<PartName | SnowPartName, THREE.Object3D>>) {
     const ph = placeholderParts();
     this.p = { ...ph, ...(parts ?? {}) } as Record<PartName, THREE.Object3D>;
     const p = this.p;
+    this.snowParts = { ...placeholderSnowParts(), ...(parts ?? {}) } as Record<SnowPartName, THREE.Object3D>;
 
     this.root.add(this.body);
     this.body.add(this.boardPivot);
@@ -155,6 +196,12 @@ export class Skater {
     p.forearm_L.position.y = -UPPER_ARM;
     p.forearm_R.position.y = -UPPER_ARM;
     for (const n of ['thigh_L', 'thigh_R', 'shin_L', 'shin_R', 'shoe_L', 'shoe_R'] as const) this.body.add(p[n]);
+    const sp = this.snowParts;
+    sp.snowboard.position.y = -0.08;
+    this.boardPivot.add(sp.snowboard);
+    p.torso.add(sp.head_snow);
+    sp.head_snow.position.y = 0.5;
+    this.setSnow(false);
 
     const sh = new THREE.Mesh(
       new THREE.CircleGeometry(0.55, 24),
@@ -167,6 +214,15 @@ export class Skater {
   }
 
   get shadowMesh() { return this.shadow; }
+
+  /** Snowboard and beanie on the snow, skateboard and cap everywhere else. */
+  setSnow(on: boolean) {
+    this.snow = on;
+    this.p.deck.visible = !on;
+    this.p.head.visible = !on;
+    this.snowParts.snowboard.visible = on;
+    this.snowParts.head_snow.visible = on;
+  }
 
   /** World positions of the points that should never go below the ground: knees, heels and toes. */
   legPoints(): THREE.Vector3[] {
@@ -202,6 +258,10 @@ export class Skater {
     }
     if (r.flipping) { crouchT = 0.8; liftT = 0.4; armT = 0.2; }
     if (r.manual) crouchT = 0.3;
+    // Tuck knee: knees pulled right up, board with them.
+    const tuck = r.current?.axis === 'tuck' ? Math.sin(r.trickProgress * Math.PI) : 0;
+    crouchT += (0.85 - crouchT) * tuck;
+    liftT += (0.45 - liftT) * tuck;
     if (r.grab) this.lastGrab = r.grab;
     this.grabW += ((r.grab ? 1 : 0) - this.grabW) * (1 - Math.exp(-dt * 18));
     const gw = this.grabW;
@@ -215,10 +275,13 @@ export class Skater {
 
     // Spins turn the whole rider about the vertical; flips and manuals pitch it,
     // flips about the middle of the body, manuals about the wheels left on the ground.
-    this.manualPitch += ((r.manual === 'Manual' ? 0.3 : r.manual === 'Nose Manual' ? -0.3 : 0) - this.manualPitch) * k;
+    const noseUp = r.manual === 'Manual' || r.manual === 'Tail Press', noseDown = r.manual === 'Nose Manual' || r.manual === 'Nose Press';
+    this.manualPitch += ((noseUp ? 0.3 : noseDown ? -0.3 : 0) - this.manualPitch) * k;
     const flip = r.flipAngle;
     const pitch = flip + this.manualPitch;
-    const pivot = r.flipping ? v3(0, 0.75, 0) : v3(this.manualPitch > 0 ? -0.25 : 0.25, 0.03, 0);
+    // A skateboard pivots on its wheels, a snowboard on its tail or nose.
+    const end = this.snow ? 0.42 : 0.25;
+    const pivot = r.flipping ? v3(0, 0.75, 0) : v3(this.manualPitch > 0 ? -end : end, 0.03, 0);
     const spin = r.spin ? r.spin.dir * r.spinProgress * (r.spin.deg === 360 ? Math.PI * 2 : Math.PI) : 0;
     const yaw = r.bodyYaw + spin;
     // Keep the pivot where it would be unpitched.
@@ -244,10 +307,14 @@ export class Skater {
     this.boardPivot.rotation.set(0, r.boardYaw, 0);
     if (trick && trick.axis === 'flip') this.boardPivot.rotation.x = trick.dir * prog * Math.PI * 2;
     if (trick && trick.axis === 'spin') this.boardPivot.rotation.y = r.boardYaw + prog * Math.PI;
+    // Shifty: twist the board across and back, feet still strapped to it.
+    const shifty = trick && trick.axis === 'shifty' ? trick.dir * Math.sin(prog * Math.PI) * 1.1 : 0;
+    this.boardPivot.rotation.y += shifty;
     this.boardPivot.rotation.z = grab.tilt * gw;
 
     // Body.
-    const hipY = STAND_HIP - this.crouch * 0.42 + this.lift * 0.4;
+    const deckTop = this.snow ? SNOW_TOP : DECK_TOP;
+    const hipY = STAND_HIP - (DECK_TOP - deckTop) - this.crouch * 0.42 + this.lift * 0.4;
     p.pelvis.position.set(0.02, hipY, 0);
     // Look where you're going: riding fakie after a 180, the shoulders open up
     // and the head turns the other way. cos(yaw) is +1 regular, -1 fakie.
@@ -256,15 +323,17 @@ export class Skater {
     p.torso.rotation.set(0.18 + this.crouch * 0.55 + gw * 0.25, twist, 0);
     p.head.rotation.set(-0.15 - this.crouch * 0.4, 1.0 * facing - twist, 0);
 
-    const flipLift = trick && trick.axis !== 'none' ? Math.sin(prog * Math.PI) * 0.22 : 0;
-    const footY = DECK_TOP + ANKLE + this.lift + flipLift;
-    // Feet ride the board as it tilts for a nose or tail grab.
+    // Feet lift off the board to let it flip or spin under them.
+    const flipLift = trick && (trick.axis === 'flip' || trick.axis === 'spin') ? Math.sin(prog * Math.PI) * 0.22 : 0;
+    const footY = deckTop + ANKLE + this.lift + flipLift;
+    // Feet ride the board as it tilts for a nose or tail grab, or twists for a shifty.
     const tilt = grab.tilt * gw;
-    const front = v3(0.24, footY + Math.sin(tilt) * 0.24, 0.02);
-    const back = v3(-0.21, footY - Math.sin(tilt) * 0.21, 0.02);
+    const front = v3(FRONT_X * Math.cos(shifty), footY + Math.sin(tilt) * FRONT_X, 0.02 - FRONT_X * Math.sin(shifty));
+    const back = v3(BACK_X * Math.cos(shifty), footY + Math.sin(tilt) * BACK_X, 0.02 - BACK_X * Math.sin(shifty));
 
     // Ease in and out of pushing so the foot never snaps between the ground and the board.
-    this.pushW += ((r.pushing && r.grounded && !r.bailing ? 1 : 0) - this.pushW) * (1 - Math.exp(-dt * 12));
+    // No pushing on a snowboard: both feet are strapped in.
+    this.pushW += ((r.pushing && r.grounded && !r.bailing && !this.snow ? 1 : 0) - this.pushW) * (1 - Math.exp(-dt * 12));
     if (this.pushW > 0.01) {
       this.pushT = (this.pushT + dt * 1.6) % 1;
       const t = this.pushT;

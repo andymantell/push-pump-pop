@@ -24,8 +24,10 @@ const TAKEOFF_TIME = 0.06;
 export type GrabName = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
 export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
 export type FlipName = 'Backflip' | 'Frontflip';
-export type ManualName = 'Manual' | 'Nose Manual';
-export type TrickName = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | GrabName | SpinName | FlipName | ManualName;
+/** Manuals on a skateboard, presses on a snowboard: nose up first. */
+export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press';
+type BoardTrick = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee';
+export type TrickName = BoardTrick | GrabName | SpinName | FlipName | ManualName;
 /** Tilt of the device: +1 nose up (manual, backflip), -1 nose down (nose manual, frontflip). */
 export type Lean = -1 | 0 | 1;
 export type Swipe = 'up' | 'down' | 'left' | 'right';
@@ -35,15 +37,27 @@ export interface Trick {
   duration: number;
   points: number;
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
-  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual';
+  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck';
   dir: 1 | -1;
 }
 
-export const TRICKS: Record<'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it', Trick> = {
+export const TRICKS: Record<BoardTrick, Trick> = {
   'Ollie': { name: 'Ollie', duration: 0, points: 100, axis: 'none', dir: 1 },
   'Kickflip': { name: 'Kickflip', duration: 0.42, points: 500, axis: 'flip', dir: 1 },
   'Heelflip': { name: 'Heelflip', duration: 0.42, points: 500, axis: 'flip', dir: -1 },
   'Pop Shove-it': { name: 'Pop Shove-it', duration: 0.4, points: 400, axis: 'spin', dir: 1 },
+  // Snowboard: your feet are strapped in, so the board twists or tucks up with you.
+  'BS Shifty': { name: 'BS Shifty', duration: 0.42, points: 450, axis: 'shifty', dir: -1 },
+  'FS Shifty': { name: 'FS Shifty', duration: 0.42, points: 450, axis: 'shifty', dir: 1 },
+  'Tuck Knee': { name: 'Tuck Knee', duration: 0.45, points: 400, axis: 'tuck', dir: 1 },
+};
+
+/** Flip-side swipes on a snowboard, where flipping the board out from under you can't happen. */
+const SWIPE_TRICK_SNOW: Record<Swipe, BoardTrick> = {
+  up: 'Ollie',
+  left: 'BS Shifty',
+  right: 'FS Shifty',
+  down: 'Tuck Knee',
 };
 
 /** Swipe and keep holding: grab the board until you let go. */
@@ -95,6 +109,8 @@ export interface RiderOptions {
   maxSpeed: number;
   /** Half pipe: no pushing, and airs off the lips always come back in. */
   pipe?: boolean;
+  /** Snowboard: strapped-in tricks and presses instead of flips and manuals. */
+  snow?: boolean;
 }
 
 export class Rider {
@@ -205,10 +221,10 @@ export class Rider {
 
   swipe(dir: Swipe) {
     if (this.bailing || this.grab) return;
-    const name = SWIPE_TRICK[dir];
+    const name = (this.opts.snow ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir];
     if (!name) return;
     const canPop = this.grounded || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
-    if (canPop && (name === 'Ollie' || name === 'Kickflip' || name === 'Heelflip' || name === 'Pop Shove-it')) {
+    if (canPop) {
       this.pop();
       if (name === 'Ollie') { this.ev.trick(TRICKS.Ollie); return; }
     }
@@ -378,7 +394,7 @@ export class Rider {
       // Too slow and you'd stall without pushing, so it drops back onto four wheels.
       // Once it drops, level out before the next one, so it can't flicker on and off.
       const want: ManualName | null = this.lean && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.8)
-        ? (this.lean > 0 ? 'Manual' : 'Nose Manual') : null;
+        ? (this.lean > 0 ? (this.opts.snow ? 'Tail Press' : 'Manual') : (this.opts.snow ? 'Nose Press' : 'Nose Manual')) : null;
       if (want !== this.manual) {
         if (this.manual && this.lean) this.manualBlocked = true;
         this.endManual();

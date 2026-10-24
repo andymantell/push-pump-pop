@@ -549,6 +549,14 @@ def build_skater():
 
     # Deck: origin on the ground under the wheels, deck top at 0.115.
     parts.append(build_board())
+
+    # Snow gear, swapped in on the snow biome: a snowboard and a beanie-and-goggles head.
+    parts.append(build_snowboard())
+    sk = skull(skin)
+    head = join('head_snow', [sk, *face(sk, skin, eye, white, hair, mouth), hair_shell(hair), *beanie_parts()])
+    head.scale = (1.08, 1.08, 1.08)
+    apply_tf(head)
+    parts.append(head)
     export(os.path.join(OUT, 'skater.glb'), parts)
 
 
@@ -625,6 +633,103 @@ def build_board():
         for y in (-0.1, 0.1):
             bits.append(cyl(wheel_m, 0.03, 0.034, loc=(x, y, 0.03), rot=(math.pi / 2, 0, 0), verts=20, bevel=0.008))
     return join('deck', bits)
+
+
+def beanie_parts():
+    """Knitted beanie with a turned-up cuff and a bobble, goggles pushed up on the cuff."""
+    wool = mat('beanie', (232, 64, 42))
+    cuff_m = mat('beanie_cuff', (200, 44, 30))
+    bobble = mat('beanie_bobble', (250, 246, 236))
+    strap = mat('goggle_strap', (34, 34, 38))
+    lens = mat('goggle_lens', (255, 176, 32))
+    dome = sphere(wool, 0.138, loc=(0, 0, 0.16), scale=(0.97, 1.02, 1.12), segs=28, rings=16)
+    bm = bmesh.new()
+    bm.from_mesh(dome.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < 0.2], context='VERTS')
+    bm.to_mesh(dome.data)
+    bm.free()
+    bits = [dome]
+    bits.append(cyl(cuff_m, 0.142, 0.04, loc=(0, 0, 0.212), verts=28, bevel=0.01))
+    bits.append(sphere(bobble, 0.038, loc=(0, 0.01, 0.318), segs=14, rings=10))
+    # Goggles resting on the cuff: strap round the head, lens at the front (-Y).
+    bits.append(cyl(strap, 0.147, 0.02, loc=(0, 0, 0.216), verts=28))
+    bits.append(cube(lens, (0.15, 0.03, 0.052), loc=(0, -0.145, 0.218), bevel=0.014, segs=3))
+    bits.append(cube(strap, (0.17, 0.02, 0.064), loc=(0, -0.136, 0.218), bevel=0.016, segs=3))
+    return bits
+
+
+def build_snowboard():
+    """Snowboard along X, origin on the snow under it, binding baseplates topping out at 0.05.
+
+    The feet stand across the board at x = 0.24 (front) and -0.21 (back), toes towards -Y.
+    """
+    top_m = mat('snowboard_top', (42, 127, 212))
+    graphic = mat('snowboard_graphic', (255, 214, 64))
+    base_m = mat('snowboard_base', (244, 244, 244))
+    binding = mat('binding', (34, 34, 38))
+    strap_m = mat('binding_strap', (232, 64, 42))
+
+    L, W, T = 1.0, 0.25, 0.014
+    nx, ny = 48, 8
+    bm = bmesh.new()
+    top, bot = [], []
+    for i in range(nx + 1):
+        u = i / nx * 2 - 1
+        x = u * L / 2
+        # Sidecut: a little narrower at the waist; round nose and tail.
+        half = W / 2 * (1 - 0.06 * (1 - u * u))
+        end = max(0.0, abs(u) - 0.8) / 0.2
+        width = max(half * math.sqrt(max(0.0, 1 - end * end)), 0.004)
+        rise = 0.06 * max(0.0, abs(u) - 0.7) ** 2 / 0.09
+        rt, rb = [], []
+        for j in range(ny + 1):
+            y = (j / ny * 2 - 1) * width
+            z = 0.012 + rise
+            rt.append(bm.verts.new((x, y, z + T / 2)))
+            rb.append(bm.verts.new((x, y, z - T / 2)))
+        top.append(rt)
+        bot.append(rb)
+    for i in range(nx):
+        for j in range(ny):
+            bm.faces.new((top[i][j], top[i + 1][j], top[i + 1][j + 1], top[i][j + 1]))
+            bm.faces.new((bot[i][j], bot[i][j + 1], bot[i + 1][j + 1], bot[i + 1][j]))
+    for i in range(nx):
+        bm.faces.new((top[i][0], bot[i][0], bot[i + 1][0], top[i + 1][0]))
+        bm.faces.new((top[i][ny], top[i + 1][ny], bot[i + 1][ny], bot[i][ny]))
+    for i in (0, nx):
+        for j in range(ny):
+            f = (top[i][j], top[i][j + 1], bot[i][j + 1], bot[i][j])
+            bm.faces.new(f if i == nx else f[::-1])
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    for f in bm.faces:
+        n = f.normal
+        c = f.calc_center_median()
+        if n.z > 0.5:
+            # A stripe of graphic down the middle of the top sheet.
+            f.material_index = 1 if abs(c.y) < 0.035 else 0
+        else:
+            f.material_index = 2
+    me = bpy.data.meshes.new('snowboard')
+    bm.to_mesh(me)
+    bm.free()
+    board = bpy.data.objects.new('snowboard_body', me)
+    bpy.context.collection.objects.link(board)
+    for m in (top_m, graphic, base_m):
+        board.data.materials.append(m)
+    for p in board.data.polygons:
+        p.use_smooth = True
+
+    bits = [board]
+    for x in (0.24, -0.21):
+        # Baseplate under the boot, highback behind the heel (+Y), two straps over the foot.
+        bits.append(cube(binding, (0.12, 0.27, 0.02), loc=(x, -0.02, 0.04), bevel=0.008))
+        bits.append(cube(binding, (0.12, 0.022, 0.15), loc=(x, 0.125, 0.11), rot=(-0.2, 0, 0), bevel=0.01))
+        for s in (1, -1):
+            bits.append(cube(binding, (0.012, 0.2, 0.05), loc=(x + s * 0.062, 0.0, 0.065), bevel=0.004))
+        bits.append(cube(strap_m, (0.15, 0.05, 0.02), loc=(x, 0.02, 0.135), bevel=0.008))
+        bits.append(cube(strap_m, (0.15, 0.04, 0.02), loc=(x, -0.11, 0.1), rot=(0.5, 0, 0), bevel=0.008))
+    return join('snowboard', bits)
 
 
 # ---------------------------------------------------------------- props

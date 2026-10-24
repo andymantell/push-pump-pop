@@ -129,7 +129,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   });
   const isPipe = def.kind === 'pipe';
   const skater = legs ? new Skater() : null;
-  r.opts = { friction: biome.friction, maxSpeed: isPipe ? 12.5 : biome.maxSpeed, pipe: isPipe };
+  r.opts = { friction: biome.friction, maxSpeed: isPipe ? 12.5 : biome.maxSpeed, pipe: isPipe, snow: def.biome === 'snow' };
+  skater?.setSnow(def.biome === 'snow');
   if (isPipe) r.v = 6;
   let peakAboveLip = 0, tricks = 0;
 
@@ -303,7 +304,7 @@ if (legHits.size) {
 // The bots should be able to land every kind of move, not just survive.
 if (!only) {
   console.log(`\ntricks landed: ${[...seen].map(([n, c]) => `${n} ${c}`).join(', ')}`);
-  const missing = ['Manual', 'Nose Manual', 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360', 'Indy', 'Melon', 'Nosegrab', 'Tailgrab'].filter((n) => !seen.get(n));
+  const missing = ['Manual', 'Nose Manual', 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360', 'Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'BS Shifty', 'Tuck Knee', 'Tail Press', 'Nose Press'].filter((n) => !seen.get(n));
   if (missing.length) { console.log(`never landed: ${missing.join(', ')}`); failed = true; }
 }
 

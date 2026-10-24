@@ -116,7 +116,9 @@ function loadTrack(d: TrackDef) {
   const b = BIOMES[d.biome];
   rider.track = track;
   const isPipe = d.kind === 'pipe';
-  rider.opts = { friction: b.friction, maxSpeed: isPipe ? 12.5 : b.maxSpeed, pipe: isPipe };
+  const snow = d.biome === 'snow';
+  rider.opts = { friction: b.friction, maxSpeed: isPipe ? 12.5 : b.maxSpeed, pipe: isPipe, snow };
+  skater.setSnow(snow);
   rider.reset();
   if (isPipe) rider.v = 6;
   camPos.set(track.startX + 3, track.height(track.startX) + 2, 12);
