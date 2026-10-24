@@ -9,6 +9,7 @@ import { loadAssets } from './assets';
 import { TRACKS, TrackDef, PIPE_TIME } from './tracks';
 import { BIOMES, BIOME_ORDER } from './biomes';
 import { Track } from './track';
+import { watchForUpdates } from './version';
 
 const $ = (id: string) => document.getElementById(id)!;
 const bestKey = (id: string) => `push-pump-pop-best-${id}`;
@@ -220,6 +221,8 @@ window.addEventListener('keydown', (e) => {
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'title') { e.preventDefault(); openSelect(); }
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'finished') { e.preventDefault(); start(def); }
 });
+
+watchForUpdates(() => state !== 'playing');
 
 // Camera follows from the side, pulling back and looking ahead with speed.
 const camPos = new THREE.Vector3(track.startX + 3, track.height(track.startX) + 2, 12);
