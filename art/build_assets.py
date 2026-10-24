@@ -669,8 +669,8 @@ def build_snowboard():
     binding = mat('binding', (34, 34, 38))
     strap_m = mat('binding_strap', (232, 64, 42))
 
-    L, W, T = 1.0, 0.25, 0.014
-    nx, ny = 48, 8
+    L, W, T = 1.05, 0.25, 0.016
+    nx, ny = 64, 8
     bm = bmesh.new()
     top, bot = [], []
     for i in range(nx + 1):
@@ -680,7 +680,9 @@ def build_snowboard():
         half = W / 2 * (1 - 0.06 * (1 - u * u))
         end = max(0.0, abs(u) - 0.8) / 0.2
         width = max(half * math.sqrt(max(0.0, 1 - end * end)), 0.004)
-        rise = 0.06 * max(0.0, abs(u) - 0.7) ** 2 / 0.09
+        # Twin tips kicked up like a skateboard's nose and tail.
+        k = max(0.0, abs(u) - 0.66) / 0.34
+        rise = 0.14 * k ** 1.7
         rt, rb = [], []
         for j in range(ny + 1):
             y = (j / ny * 2 - 1) * width
