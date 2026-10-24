@@ -34,6 +34,8 @@ const PERCH_ANGLE = 0.3;
 /** How far over the coping the board sits while perched, and how long dropping in takes. */
 const PERCH_OVER = 0.3;
 const DROP_TIME = 0.35;
+/** Dropping in gives you a shove down the wall, so the first pass already gets a little air. */
+const DROP_SPEED = 8;
 /** Rail assist: an ollie this many seconds before a rail starts hops you onto it. */
 const RAIL_REACH = 0.7;
 /** ...as long as there's this much rail left to land on. */
@@ -891,7 +893,7 @@ export class Rider {
       this.dropT = -1;
       this.x = x1;
       this.y = tr.height(x1);
-      this.v = 1.5;
+      this.v = DROP_SPEED;
     }
   }
 
