@@ -350,7 +350,8 @@ export class ChallengeRun {
     if (!a || !clean) return;
     const gaps = this.cleared(a.x0, this.x);
     const airTime = this.now - a.t0;
-    for (const t of a.tricks) this.credit(t.name, t.duration, a, gaps);
+    // A combo across a stretch counts an air from where it took off.
+    for (const t of a.tricks) this.credit(t.name, t.duration, a, gaps, a.x0);
     this.comboGaps += gaps.length;
     if (!a.tricks.length && !this.combo.length) this.comboGaps = 0;
     const names = a.tricks.map((t) => t.name);

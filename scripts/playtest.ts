@@ -412,7 +412,9 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
           const hold = (c.seconds ?? 0.6) + 0.35;
           const room = [...Array(Math.ceil(Math.abs(r.v) * (hold + REACTION)) + 1).keys()].every((d) => Math.abs(track.slope(r.x + d * dir)) < 0.08);
           // A combo across a stretch: one manual from its start to its end.
-          const span = c.kind === 'combo' && c.across ? c.across.map((tag) => track.spots.find((sp) => sp.tag === tag)!.x) : null;
+          let span = c.kind === 'combo' && c.across ? c.across.map((tag) => track.spots.find((sp) => sp.tag === tag)!.x) : null;
+          // Only a flat stretch is one long manual; across jumps, the tricks carry the combo.
+          if (span && [...Array(Math.ceil(span[1] - span[0])).keys()].some((d) => Math.abs(track.slope(span![0] + d)) > 0.08)) span = null;
           if (span && span[0] > r.x && span[0] - r.x < lead + 0.3 && t - manualPlanned > 1) {
             press(lean);
             press('lean0', (span[1] - span[0]) / Math.max(1, Math.abs(r.v)) + 0.5);
