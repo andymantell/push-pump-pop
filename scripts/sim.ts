@@ -33,8 +33,8 @@ function run(id: string, bot: Bot) {
       did = false;
       if (bot !== 'coast' && track.slope(r.x) < -0.15 && t - lastPump > 0.35) { r.pump(); lastPump = t; }
       // Pro: ollie at kicker lips.
-      if (bot === 'pro' && track.slope(r.x) > 0.55 && track.curvature(r.x + 0.3) < -2) r.swipe('up');
-    } else if (bot === 'pro' && !did && r.airTime > 0.05 && r.vy > 2.5) { r.swipe('left'); did = true; }
+      if (bot === 'pro' && track.slope(r.x) > 0.55 && track.curvature(r.x + 0.3) < -2) { r.swipe('up'); r.release(); }
+    } else if (bot === 'pro' && !did && r.airTime > 0.05 && r.vy > 2.5) { r.swipe('left'); r.release(); did = true; }
     r.update(dt);
     t += dt;
     if (r.grounded && track.slope(r.x) < -0.12) downT += dt;

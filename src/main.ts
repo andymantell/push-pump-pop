@@ -68,7 +68,8 @@ score.onBank = (pts, v) => { showCombo(v, 'banked'); comboHold = 1.1; if (v.mult
 score.onLost = (v) => { showCombo(v, 'lost'); comboHold = 1.1; };
 
 const rider = new Rider(track, {
-  trick(t: Trick) { score.addTrick(t); popup(t.name); },
+  trick(t: Trick) { score.addTrick(t); if (t.axis !== 'grab') popup(t.name); },
+  grab(name) { popup(name + '!'); },
   land({ airTime, smooth, peakY }) {
     if (def.kind === 'pipe') {
       const h = peakY - track.maxY;
@@ -131,6 +132,7 @@ let finishTimer = 0;
 const input = new Input(canvas);
 input.onPump = () => { if (state === 'playing') { rider.pump(); skater.pumpKick(); } };
 input.onSwipe = (d) => { if (state === 'playing') rider.swipe(d); };
+input.onRelease = () => { if (state === 'playing') rider.release(); };
 
 const panels = ['title', 'select', 'results'];
 function show(panel: string | null) {
@@ -320,7 +322,11 @@ function frame(now: number) {
     if (comboHold <= 0) showCombo(null);
   } else {
     const c = score.combo;
-    showCombo(c);
+    if (rider.grab) {
+      // Show the grab building up as you hold it.
+      const live = c ?? { names: [], base: 0, mult: 0 };
+      showCombo({ names: [...live.names, `${rider.grab} ${fmt(rider.grabPoints)}`], base: live.base + rider.grabPoints, mult: live.mult + 1 }, 'grabbing');
+    } else showCombo(c);
   }
   // Tutorial cue: light up while the rider is heading down a slope and could pump.
   const cue = state === 'playing' && !!def.tutorial && rider.grounded && !rider.bailing && rider.pumpTimer === 0

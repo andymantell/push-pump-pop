@@ -21,7 +21,8 @@ const WALL_SLOPE = 1.5;
 /** Grace after take-off before touching the ground counts as a landing. */
 const TAKEOFF_TIME = 0.06;
 
-export type TrickName = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it';
+export type GrabName = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
+export type TrickName = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | GrabName;
 export type Swipe = 'up' | 'down' | 'left' | 'right';
 
 export interface Trick {
@@ -29,18 +30,30 @@ export interface Trick {
   duration: number;
   points: number;
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
-  axis: 'none' | 'flip' | 'spin';
+  axis: 'none' | 'flip' | 'spin' | 'grab';
   dir: 1 | -1;
 }
 
-export const TRICKS: Record<TrickName, Trick> = {
+export const TRICKS: Record<Exclude<TrickName, GrabName>, Trick> = {
   'Ollie': { name: 'Ollie', duration: 0, points: 100, axis: 'none', dir: 1 },
   'Kickflip': { name: 'Kickflip', duration: 0.42, points: 500, axis: 'flip', dir: 1 },
   'Heelflip': { name: 'Heelflip', duration: 0.42, points: 500, axis: 'flip', dir: -1 },
   'Pop Shove-it': { name: 'Pop Shove-it', duration: 0.4, points: 400, axis: 'spin', dir: 1 },
 };
 
-const SWIPE_TRICK: Record<Swipe, TrickName | null> = {
+/** Swipe and keep holding: grab the board until you let go. */
+const SWIPE_GRAB: Record<Swipe, GrabName> = {
+  up: 'Indy',
+  down: 'Melon',
+  left: 'Nosegrab',
+  right: 'Tailgrab',
+};
+/** Hold this long after a swipe before it counts as a grab, so flicks stay flicks. */
+const GRAB_HOLD = 0.16;
+const GRAB_POINTS = 250;
+const GRAB_POINTS_PER_SEC = 900;
+
+const SWIPE_TRICK: Record<Swipe, Exclude<TrickName, GrabName> | null> = {
   up: 'Ollie',
   left: 'Kickflip',
   right: 'Heelflip',
@@ -51,6 +64,7 @@ export interface RiderEvents {
   trick(t: Trick): void;
   land(info: { airTime: number; smooth: boolean; hadTricks: boolean; peakY: number }): void;
   bail(): void;
+  grab?(name: GrabName): void;
   pump(good: boolean): void;
   fall(): void;
 }
@@ -86,6 +100,12 @@ export class Rider {
   /** Trick in progress: the board is spinning. */
   current: Trick | null = null;
   trickT = 0;
+  /** Finger still down after a swipe, and for how long. */
+  held: Swipe | null = null;
+  heldT = 0;
+  /** Grab in progress, and how long it has been held. */
+  grab: GrabName | null = null;
+  grabT = 0;
   /** Spin of the board from completed shove-its, kept for visuals. */
   boardYaw = 0;
   /** Smoothed values for animation. */
@@ -108,6 +128,8 @@ export class Rider {
     this.grounded = true;
     this.falling = false;
     this.current = null;
+    this.grab = null;
+    this.held = null;
     this.bailTimer = 0;
     this.boardYaw = 0;
     this.angle = Math.atan(this.track.slope(x));
@@ -121,6 +143,8 @@ export class Rider {
     this.angle = Math.atan(this.track.slope(this.x));
     this.bailTimer = 0;
     this.current = null;
+    this.grab = null;
+    this.held = null;
     this.boardYaw = 0;
     this.airTime = 0;
     this.pumpTimer = 0;
@@ -143,7 +167,9 @@ export class Rider {
   }
 
   swipe(dir: Swipe) {
-    if (this.bailing) return;
+    this.held = dir;
+    this.heldT = 0;
+    if (this.bailing || this.grab) return;
     const name = SWIPE_TRICK[dir];
     if (!name) return;
     const canPop = this.grounded || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
@@ -155,6 +181,22 @@ export class Rider {
     if (this.grounded || this.current) return;
     this.current = TRICKS[name];
     this.trickT = 0;
+  }
+
+  /** Finger lifted: let go of any grab and score it. */
+  release() {
+    this.held = null;
+    if (!this.grab) return;
+    const name = this.grab;
+    const points = Math.round((GRAB_POINTS + GRAB_POINTS_PER_SEC * this.grabT) / 10) * 10;
+    this.grab = null;
+    this.tricksThisAir++;
+    this.ev.trick({ name, duration: this.grabT, points, axis: 'grab', dir: 1 });
+  }
+
+  /** Points the grab in progress is worth so far. */
+  get grabPoints() {
+    return this.grab ? Math.round((GRAB_POINTS + GRAB_POINTS_PER_SEC * this.grabT) / 10) * 10 : 0;
   }
 
   private pop() {
@@ -282,6 +324,17 @@ export class Rider {
       const target = Math.max(-0.9, Math.min(0.9, Math.atan2(this.vy, Math.abs(this.vx)) * 0.75)) * Math.sign(this.vx || 1);
       if (!this.opts.pipe) this.angle += (target - this.angle) * Math.min(1, dt * 3);
 
+      if (this.held) {
+        this.heldT += dt;
+        // Grab once the board is free of any flip and the finger has stayed down.
+        if (!this.grab && !this.current && this.heldT >= GRAB_HOLD) {
+          this.grab = SWIPE_GRAB[this.held];
+          this.grabT = 0;
+          this.ev.grab?.(this.grab);
+        }
+      }
+      if (this.grab) this.grabT += dt;
+
       if (this.current) {
         this.trickT += dt;
         if (this.trickT >= this.current.duration) {
@@ -325,6 +378,7 @@ export class Rider {
       this.falling = true;
       this.fallPit = pit;
       this.current = null;
+      this.grab = null;
       this.ev.fall();
     }
 
@@ -339,9 +393,13 @@ export class Rider {
     this.y = gy;
     this.grounded = true;
     this.angle = th;
+    this.held = null;
 
     const midTrick = this.current !== null && this.trickT < this.current.duration * 0.8;
-    if (midTrick || (diff > 1.3 && this.airTime > 0.2 && Math.hypot(this.vx, this.vy) > 7)) {
+    // Still holding the board when you touch down: you can't stand on it.
+    const grabbing = this.grab !== null;
+    this.grab = null;
+    if (grabbing || midTrick || (diff > 1.3 && this.airTime > 0.2 && Math.hypot(this.vx, this.vy) > 7)) {
       this.current = null;
       this.v = tang * 0.35;
       this.bailTimer = BAIL_TIME;

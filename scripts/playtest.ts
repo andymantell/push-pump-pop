@@ -107,7 +107,7 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
       while (inputTimes.length && inputTimes[0] < t - 1) inputTimes.shift();
       if (inputTimes.length >= MAX_INPUTS_PER_SEC) continue;
       inputTimes.push(t);
-      if (act === 'pump') r.pump(); else r.swipe(act);
+      if (act === 'pump') r.pump(); else { r.swipe(act); r.release(); } // a flick, not a grab
     }
 
     // Decide. Looks ahead by where it will be when the input lands.

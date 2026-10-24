@@ -34,6 +34,7 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 #combo .pts em { font-style: normal; color: #ff7b3a; }
 #combo.banked .pts { color: #7dff9a; }
 #combo.lost .pts { color: #ff5a5a; text-decoration: line-through; }
+#combo.grabbing .pts { color: #6fd3ff; }
 
 #popups { position: absolute; inset: 0; }
 .popup {

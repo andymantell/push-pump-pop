@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Rider } from './rider';
+import { Rider, GrabName } from './rider';
 import { toon } from './toon';
 
 // Rigid-part skater posed procedurally: two-bone IK keeps the feet on the
@@ -16,12 +16,22 @@ export type PartName = (typeof PART_NAMES)[number];
 const THIGH = 0.44;
 const SHIN = 0.44;
 const UPPER_ARM = 0.29;
+const FOREARM = 0.3;
 const DECK_TOP = 0.115;
 const ANKLE = 0.075;
 const STAND_HIP = DECK_TOP + ANKLE + (THIGH + SHIN) * 0.97;
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const DOWN = v3(0, -1, 0);
+
+// Where each grab takes hold of the deck (deck space: +x nose, +z toe edge),
+// which hand does it, and how the board tilts (nose up is +).
+const GRABS: Record<GrabName, { hand: 'L' | 'R'; at: THREE.Vector3; tilt: number }> = {
+  Indy: { hand: 'R', at: v3(0.02, 0.1, 0.1), tilt: 0.1 },
+  Melon: { hand: 'L', at: v3(0.04, 0.1, -0.1), tilt: -0.05 },
+  Nosegrab: { hand: 'L', at: v3(0.4, 0.13, 0.04), tilt: 0.45 },
+  Tailgrab: { hand: 'R', at: v3(-0.4, 0.13, 0.04), tilt: -0.45 },
+};
 
 function placeholderParts(): Record<PartName, THREE.Object3D> {
   const skin = 0xf0c09a, shirt = 0x2f8fd8, pants = 0x2f3b4d, shoe = 0xf4f4f4, cap = 0xe8402a;
@@ -92,7 +102,7 @@ function placeholderParts(): Record<PartName, THREE.Object3D> {
   return {
     deck, pelvis, torso, head,
     upperArm_L: cap3(0.05, UPPER_ARM, shirt), upperArm_R: cap3(0.05, UPPER_ARM, shirt),
-    forearm_L: cap3(0.042, 0.3, skin), forearm_R: cap3(0.042, 0.3, skin),
+    forearm_L: cap3(0.042, FOREARM, skin), forearm_R: cap3(0.042, FOREARM, skin),
     thigh_L: cap3(0.075, THIGH, pants), thigh_R: cap3(0.075, THIGH, pants),
     shin_L: cap3(0.06, SHIN, pants), shin_R: cap3(0.06, SHIN, pants),
     shoe_L: shoeG(), shoe_R: shoeG(),
@@ -113,6 +123,9 @@ export class Skater {
   private pushT = 0;
   private bailT = 0;
   private bailBoard = new THREE.Vector3();
+  /** 0..1 blend into the grab pose, and the last grab for easing out. */
+  private grabW = 0;
+  private lastGrab: GrabName = 'Indy';
 
   constructor(parts?: Partial<Record<PartName, THREE.Object3D>>) {
     const ph = placeholderParts();
@@ -169,6 +182,13 @@ export class Skater {
       crouchT = r.current ? 0.45 : 0.35;
       armT = 0.9;
     }
+    if (r.grab) this.lastGrab = r.grab;
+    this.grabW += ((r.grab ? 1 : 0) - this.grabW) * (1 - Math.exp(-dt * 18));
+    const gw = this.grabW;
+    const grab = GRABS[this.lastGrab];
+    // Grabbing: knees up, board pulled in to the hand.
+    crouchT += (0.85 - crouchT) * gw;
+    liftT += (0.5 - liftT) * gw;
     this.crouch += (crouchT - this.crouch) * k;
     this.lift += (liftT - this.lift) * k;
     this.armRaise += (armT - this.armRaise) * k;
@@ -183,17 +203,20 @@ export class Skater {
     this.boardPivot.rotation.set(0, r.boardYaw, 0);
     if (trick && trick.axis === 'flip') this.boardPivot.rotation.x = trick.dir * prog * Math.PI * 2;
     if (trick && trick.axis === 'spin') this.boardPivot.rotation.y = r.boardYaw + prog * Math.PI;
+    this.boardPivot.rotation.z = grab.tilt * gw;
 
     // Body.
     const hipY = STAND_HIP - this.crouch * 0.42 + this.lift * 0.4;
     p.pelvis.position.set(0.02, hipY, 0);
-    p.torso.rotation.set(0.18 + this.crouch * 0.55, 0, 0);
+    p.torso.rotation.set(0.18 + this.crouch * 0.55 + gw * 0.25, 0, 0);
     p.head.rotation.set(-0.15 - this.crouch * 0.4, 1.0, 0);
 
     const flipLift = trick && trick.axis !== 'none' ? Math.sin(prog * Math.PI) * 0.22 : 0;
     const footY = DECK_TOP + ANKLE + this.lift + flipLift;
-    const front = v3(0.24, footY, 0.02);
-    const back = v3(-0.21, footY, 0.02);
+    // Feet ride the board as it tilts for a nose or tail grab.
+    const tilt = grab.tilt * gw;
+    const front = v3(0.24, footY + Math.sin(tilt) * 0.24, 0.02);
+    const back = v3(-0.21, footY - Math.sin(tilt) * 0.21, 0.02);
 
     if (r.pushing && r.grounded) {
       this.pushT = (this.pushT + dt * 1.6) % 1;
@@ -220,6 +243,7 @@ export class Skater {
     p.upperArm_R.rotation.set(0.25 - swing, 0, -(0.35 + this.armRaise * 0.9));
     p.forearm_L.rotation.set(0.6, 0, -0.3 - this.armRaise * 0.3);
     p.forearm_R.rotation.set(0.6, 0, 0.3 + this.armRaise * 0.3);
+    if (gw > 0.01) this.grabArm(grab, gw);
 
     // Bail: tumble off, board flies ahead, then snap back.
     if (r.bailing) {
@@ -250,6 +274,33 @@ export class Skater {
     const s = Math.max(0.3, 1 - height * 0.12);
     this.shadow.scale.set(1.3 * s, 0.5 * s, 1);
     (this.shadow.material as THREE.MeshBasicMaterial).opacity = 0.25 * s;
+  }
+
+  /** Reach the grabbing hand to the deck with two-bone IK, blended by w. */
+  private grabArm(g: (typeof GRABS)[GrabName], w: number) {
+    const p = this.p;
+    const upper = g.hand === 'L' ? p.upperArm_L : p.upperArm_R;
+    const fore = g.hand === 'L' ? p.forearm_L : p.forearm_R;
+    this.body.updateMatrixWorld(true);
+    // Target and pole in the torso's space, where the shoulder lives.
+    const hand = p.torso.worldToLocal(this.p.deck.localToWorld(g.at.clone()));
+    const s = upper.position.clone();
+    const d = hand.sub(s);
+    let len = d.length();
+    const max = UPPER_ARM + FOREARM - 0.002;
+    if (len > max) { d.multiplyScalar(max / len); len = max; }
+    const u = d.clone().normalize();
+    const cosA = (UPPER_ARM * UPPER_ARM + len * len - FOREARM * FOREARM) / (2 * UPPER_ARM * len);
+    const a = Math.acos(Math.max(-1, Math.min(1, cosA)));
+    // Elbow bows out to the side, away from the body.
+    const pole = v3(Math.sign(s.x), 0.3, -0.4);
+    const perp = pole.sub(u.clone().multiplyScalar(pole.dot(u))).normalize();
+    const elbow = u.clone().multiplyScalar(Math.cos(a) * UPPER_ARM).add(perp.multiplyScalar(Math.sin(a) * UPPER_ARM));
+    const qU = new THREE.Quaternion().setFromUnitVectors(DOWN, elbow.clone().normalize());
+    const foreDir = d.clone().sub(elbow).normalize().applyQuaternion(qU.clone().invert());
+    const qF = new THREE.Quaternion().setFromUnitVectors(DOWN, foreDir);
+    upper.quaternion.slerp(qU, w);
+    fore.quaternion.slerp(qF, w);
   }
 
   private leg(thigh: THREE.Object3D, shin: THREE.Object3D, shoe: THREE.Object3D, hip: THREE.Vector3, foot: THREE.Vector3) {
