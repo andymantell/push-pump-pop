@@ -23,7 +23,7 @@ A grab scores more the longer you hold it, and starts once any flip has finished
 Land a spin or flip before it's nearly round and you bail too. A manual keeps your combo going while you're on the ground.
 Tilt is measured from however the device was held when the run started. On iPhone and iPad the game asks for motion access on your first tap.
 
-You get three lives per track. Each bail or fall into a gap costs one, and losing the third means starting the track again. Half-pipe bonus levels are timed and have no lives.
+You get three lives per track. Each bail or fall into a gap costs one, and losing the third means starting the track again: the game freezes behind the Out of Lives screen and ignores taps, swipes and tilt until you do. Half-pipe bonus levels are timed and have no lives.
 
 ## Development
 

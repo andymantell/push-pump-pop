@@ -4,6 +4,7 @@ import { Rider, Trick, Lean } from './rider';
 import { Score, ComboView } from './score';
 import { Input } from './input';
 import { Tilt } from './tilt';
+import { Lives, LIVES } from './lives';
 import { World } from './world';
 import { Skater } from './skater';
 import { loadAssets } from './assets';
@@ -88,22 +89,19 @@ const rider = new Rider(track, {
 });
 let respawnTimer = 0;
 
-// Three lives a run: each bail or fall into a gap costs one, and losing the last
-// ends the run so you start the level again. Half pipes are timed and have none.
-const LIVES = 3;
-let lives = LIVES;
-let outTimer = 0;
+// Three lives a run; see lives.ts.
+const lives = new Lives();
 function drawLives(hit = false) {
   const el = $('lives');
-  el.innerHTML = def.kind === 'pipe' ? '' : Array.from({ length: LIVES }, (_, i) => `<span${i < lives ? '' : ' class="gone"'}>&#9829;</span>`).join('');
+  el.innerHTML = !lives.enabled ? '' : Array.from({ length: LIVES }, (_, i) => `<span${i < lives.left ? '' : ' class="gone"'}>&#9829;</span>`).join('');
   el.classList.remove('hit');
   if (hit) { void el.offsetWidth; el.classList.add('hit'); }
 }
 function loseLife() {
-  if (state !== 'playing' || def.kind === 'pipe' || outTimer > 0 || finishTimer > 0) return;
-  lives--;
+  if (state !== 'playing' || finishTimer > 0) return;
+  const last = lives.lose();
   drawLives(true);
-  if (lives <= 0) { outTimer = 0.001; popup('OUT OF LIVES', 'big'); }
+  if (last) { rider.setLean(0); popup('OUT OF LIVES', 'big'); }
 }
 
 function loadTrack(d: TrackDef) {
@@ -133,15 +131,17 @@ let time = 0;
 let finishTimer = 0;
 
 const input = new Input(canvas);
-input.onPump = () => { if (state === 'playing') { rider.pump(); skater.pumpKick(); } };
-input.onSwipe = (d) => { if (state === 'playing') rider.swipe(d); };
-input.onGrab = (d) => { if (state === 'playing') rider.grabSwipe(d); };
-input.onRelease = () => { if (state === 'playing') rider.release(); };
-input.onSpin = (d) => { if (state === 'playing') rider.spinSwipe(d); };
-input.onSpinMore = () => { if (state === 'playing') rider.spinMore(); };
+// Gameplay input only reaches the rider while you're riding with lives left.
+const canRide = () => state === 'playing' && lives.controllable;
+input.onPump = () => { if (canRide()) { rider.pump(); skater.pumpKick(); } };
+input.onSwipe = (d) => { if (canRide()) rider.swipe(d); };
+input.onGrab = (d) => { if (canRide()) rider.grabSwipe(d); };
+input.onRelease = () => { if (canRide()) rider.release(); };
+input.onSpin = (d) => { if (canRide()) rider.spinSwipe(d); };
+input.onSpinMore = () => { if (canRide()) rider.spinMore(); };
 // Lean from the keyboard or from tilting the device, whichever is tipped.
 let keyLean: Lean = 0, tiltLean: Lean = 0;
-const applyLean = () => rider.setLean(keyLean || tiltLean);
+const applyLean = () => rider.setLean(canRide() ? keyLean || tiltLean : 0);
 input.onLean = (l) => { keyLean = l; applyLean(); };
 const tilt = new Tilt();
 tilt.onLean = (l) => { tiltLean = l; applyLean(); };
@@ -158,8 +158,7 @@ function start(d: TrackDef = def) {
   time = 0;
   finishTimer = 0;
   respawnTimer = 0;
-  lives = LIVES;
-  outTimer = 0;
+  lives.reset(d.kind !== 'pipe');
   drawLives();
   showCombo(null);
   // However the device is being held right now counts as level.
@@ -304,11 +303,10 @@ function frame(now: number) {
 
   if (state === 'playing') {
     time += dt;
-    rider.update(dt);
-    if (outTimer > 0) {
-      // Let the bail or fall play out before the out-of-lives screen.
-      outTimer += dt;
-      if (outTimer > 1.6) finish(true);
+    if (lives.simulate(rider.bailing || rider.falling)) rider.update(dt);
+    if (lives.out) {
+      // Let the last crash play out, then show the Out of Lives screen.
+      if (lives.tick(dt)) finish(true);
     } else if (respawnTimer > 0) {
       respawnTimer -= dt;
       if (respawnTimer <= 0) {
@@ -321,12 +319,13 @@ function frame(now: number) {
     score.update(dt, rider.grounded && !rider.manual);
     if (def.kind === 'pipe') {
       if (time >= PIPE_TIME) { time = PIPE_TIME; finish(); }
-    } else if (rider.x >= track.finishX && finishTimer === 0 && outTimer === 0) finishTimer = 0.001;
+    } else if (rider.x >= track.finishX && finishTimer === 0 && !lives.out) finishTimer = 0.001;
     if (finishTimer > 0) {
       finishTimer += dt;
       if (finishTimer > 1.2 && rider.grounded) finish();
     }
-  } else if (state === 'finished') {
+  } else if (state === 'finished' && !lives.out) {
+    // Roll on past the finish line; after running out of lives everything stays frozen.
     rider.update(dt);
   }
 
