@@ -3,7 +3,17 @@
 
 export const DX = 0.05;
 
-export type PropKind = 'tree' | 'pine' | 'bush' | 'lamp' | 'fence' | 'cone' | 'bench' | 'rock';
+/** Name of a prop model in public/models/props.glb (see art/build_assets.py). */
+export type PropKind = string;
+
+/** A gap you must jump. Fall in and you respawn on the far side. */
+export interface Pit {
+  x0: number;
+  x1: number;
+  lipY: number;
+  landY: number;
+  floorY: number;
+}
 
 export interface Prop {
   kind: PropKind;
@@ -22,8 +32,10 @@ export class Track {
   readonly signs: { x: number; text: string }[];
   readonly minY: number;
   readonly maxY: number;
+  readonly pits: Pit[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[]) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = []) {
+    this.pits = pits;
     this.heights = Float32Array.from(heights);
     this.length = (heights.length - 1) * DX;
     this.startX = startX;
@@ -46,6 +58,22 @@ export class Track {
     return this.heights[i] * (1 - t) + this.heights[i + 1] * t;
   }
 
+  /** Height with pits bridged over, for laying scenery. */
+  surface(x: number): number {
+    for (const p of this.pits) {
+      if (x > p.x0 - DX && x < p.x1 + DX) {
+        const t = (x - p.x0) / (p.x1 - p.x0);
+        return p.lipY + (p.landY - p.lipY) * Math.max(0, Math.min(1, t));
+      }
+    }
+    return this.height(x);
+  }
+
+  pitAt(x: number): Pit | null {
+    for (const p of this.pits) if (x > p.x0 - 0.5 && x < p.x1 + 0.5) return p;
+    return null;
+  }
+
   /** dh/dx, smoothed over a short window so sample kinks don't jitter. */
   slope(x: number): number {
     const e = 0.08;
@@ -64,6 +92,7 @@ export class TrackBuilder {
   private y: number;
   props: Prop[] = [];
   signs: { x: number; text: string }[] = [];
+  pits: Pit[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -111,6 +140,17 @@ export class TrackBuilder {
     return this;
   }
 
+  /** A gap of `len` metres; the far side is `landDy` higher (negative for lower). */
+  pit(len: number, landDy = 0, depth = 10): this {
+    const x0 = this.x, lipY = this.y;
+    this.drop(-depth).flat(len).drop(depth + landDy);
+    this.pits.push({ x0, x1: this.x, lipY, landY: this.y, floorY: lipY - depth });
+    return this;
+  }
+
+  /** Abrupt step back up (a ledge face). */
+  rise(dy: number): this { return this.drop(dy); }
+
   prop(kind: PropKind, dx: number, z: number, scale = 1, rot = 0): this {
     this.props.push({ kind, x: this.x + dx, z, scale, rot });
     return this;
@@ -122,6 +162,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits);
   }
 }

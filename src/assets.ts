@@ -6,8 +6,6 @@ import { toonify } from './toon';
 
 // Models are built in Blender by art/build_assets.py and exported to public/models.
 
-const PROP_NAMES: PropKind[] = ['tree', 'pine', 'bush', 'rock', 'fence', 'lamp', 'cone', 'bench'];
-
 export interface Assets {
   parts: Partial<Record<PartName, THREE.Object3D>>;
   props: Partial<Record<PropKind, THREE.Object3D>>;
@@ -41,9 +39,9 @@ export async function loadAssets(): Promise<Assets> {
       const o = pick(skater.scene, n);
       if (o) assets.parts[n] = o;
     }
-    for (const n of PROP_NAMES) {
-      const o = pick(props.scene, n);
-      if (o) assets.props[n] = o;
+    for (const child of props.scene.children) {
+      const o = pick(props.scene, child.name);
+      if (o) assets.props[child.name] = o;
     }
   } catch (e) {
     // Fall back to the built-in shapes rather than failing to start.

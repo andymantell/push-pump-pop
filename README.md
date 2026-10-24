@@ -22,10 +22,17 @@ Flip tricks pop off the ground too. Chain tricks into combos; land before the bo
 npm install
 npm run dev      # local dev server
 npm run build    # type check and build to dist/
-npx tsx scripts/sim.ts   # headless physics run of level 1, for tuning
+npx tsx scripts/sim.ts   # headless bots ride every track, for tuning
 ```
 
 Pushing to `main` deploys to GitHub Pages via `.github/workflows/deploy.yml`.
+
+## Tracks and biomes
+
+- `src/biomes.ts`: look and feel of each biome (sky, surfaces, scenery, friction).
+- `src/tracks.ts`: track layouts as chains of shapes (`flat`, `ease`, `kicker`, `rollers`, `valley`, `drop`, `pit`, `sign`), see `TrackBuilder` in `src/track.ts`.
+
+Keep rollers long (12 m or more) so there's time to tap on each downslope.
 
 ## Models
 

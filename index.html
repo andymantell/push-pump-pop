@@ -15,8 +15,10 @@
       <div class="score"><span id="score">0</span><small>SCORE</small></div>
       <div class="time"><span id="time">0.0</span><small>TIME</small></div>
     </div>
+    <div id="trackname"></div>
     <div id="combo"></div>
     <div id="popups"></div>
+    <div id="pumpcue">TAP!</div>
     <div class="bottom">
       <div class="speed"><div id="speedbar"></div></div>
       <div id="progress"><div id="progressbar"></div></div>
@@ -31,18 +33,28 @@
       <p class="keys">Keyboard: Space to pump, arrow keys for tricks</p>
     </div>
     <button id="play">TAP TO PLAY</button>
-    <div id="best"></div>
+  </div>
+  <div id="select" class="panel hidden">
+    <h2>PICK A TRACK</h2>
+    <div id="tracklist"></div>
+    <button id="back" class="small">BACK</button>
   </div>
   <div id="results" class="panel hidden">
     <h2>FINISHED!</h2>
+    <div id="r-track"></div>
     <div class="stats">
       <div><small>SCORE</small><b id="r-score">0</b></div>
       <div><small>TIME</small><b id="r-time">0</b></div>
       <div><small>BEST COMBO</small><b id="r-combo">0</b></div>
     </div>
     <div id="r-best"></div>
-    <button id="again">RIDE AGAIN</button>
+    <div class="buttons">
+      <button id="next">NEXT TRACK</button>
+      <button id="again" class="alt">RIDE AGAIN</button>
+      <button id="tracks" class="alt">ALL TRACKS</button>
+    </div>
   </div>
+  <button id="menu" class="hidden" aria-label="Tracks">&#9776;</button>
   <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

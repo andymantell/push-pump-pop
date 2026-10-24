@@ -1,21 +1,23 @@
 import * as THREE from 'three';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
-import { buildLevel1 } from './level1';
 import { Rider, Trick } from './rider';
 import { Score, ComboView } from './score';
 import { Input } from './input';
 import { World } from './world';
 import { Skater } from './skater';
 import { loadAssets } from './assets';
+import { TRACKS, TrackDef } from './tracks';
+import { BIOMES, BIOME_ORDER } from './biomes';
+import { Track } from './track';
 
 const $ = (id: string) => document.getElementById(id)!;
-const BEST_KEY = 'push-pump-pop-best-1';
+const bestKey = (id: string) => `push-pump-pop-best-${id}`;
 
-function loadBest(): number {
-  try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch { return 0; }
+function loadBest(id: string): number {
+  try { return Number(localStorage.getItem(bestKey(id))) || 0; } catch { return 0; }
 }
-function saveBest(v: number) {
-  try { localStorage.setItem(BEST_KEY, String(v)); } catch { /* storage unavailable */ }
+function saveBest(id: string, v: number) {
+  try { localStorage.setItem(bestKey(id), String(v)); } catch { /* storage unavailable */ }
 }
 const fmt = (n: number) => Math.round(n).toLocaleString('en-GB');
 
@@ -26,57 +28,26 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 const effect = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
 
 const scene = new THREE.Scene();
-{
-  const cv = document.createElement('canvas');
-  cv.width = 2; cv.height = 256;
-  const c = cv.getContext('2d')!;
-  const g = c.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, '#3d9be0');
-  g.addColorStop(0.6, '#8fd0f5');
-  g.addColorStop(1, '#d8f1ff');
-  c.fillStyle = g;
-  c.fillRect(0, 0, 2, 256);
-  const t = new THREE.CanvasTexture(cv);
-  t.colorSpace = THREE.SRGBColorSpace;
-  scene.background = t;
-}
-scene.fog = new THREE.Fog(0xbfe6fb, 60, 190);
-
-scene.add(new THREE.HemisphereLight(0xdff3ff, 0x6b8f4e, 1.4));
+const hemi = new THREE.HemisphereLight(0xdff3ff, 0x6b8f4e, 1.4);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 2.2);
 sun.position.set(-6, 12, 10);
 scene.add(sun);
 scene.add(sun.target);
 
-const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 500);
 
 const assets = await loadAssets();
-const track = buildLevel1();
-const world = new World(track, assets.props);
+let def: TrackDef = TRACKS[0];
+let track: Track = def.build();
+let world = new World(track, BIOMES[def.biome], assets.props, def.id);
+world.applyEnvironment(scene, hemi, sun);
 scene.add(world.group);
-
-// Clouds drift slowly far behind the track.
-const clouds = new THREE.Group();
-{
-  const mat = new THREE.MeshToonMaterial({ color: 0xffffff });
-  mat.userData.outlineParameters = { visible: false };
-  for (let i = 0; i < 24; i++) {
-    const c = new THREE.Group();
-    for (let j = 0; j < 4; j++) {
-      const s = new THREE.Mesh(new THREE.SphereGeometry(2 + (j % 2), 10, 8), mat);
-      s.position.set(j * 2.2 - 3, (j % 2) * 0.8, 0);
-      c.add(s);
-    }
-    c.position.set(i * 30 - 20, 18 + (i * 7) % 10, -90 - (i % 4) * 10);
-    clouds.add(c);
-  }
-}
-scene.add(clouds);
 
 const score = new Score();
 const hud = {
   score: $('score'), time: $('time'), combo: $('combo'), popups: $('popups'),
-  speed: $('speedbar'), progress: $('progressbar'),
+  speed: $('speedbar'), progress: $('progressbar'), cue: $('pumpcue'),
 };
 
 function popup(text: string, cls = '') {
@@ -104,12 +75,30 @@ const rider = new Rider(track, {
   },
   bail() { score.lose(); popup('BAIL!', 'bad'); },
   pump(good) { if (good) popup('Pump!', 'good'); },
+  fall() { score.lose(); popup(world.biome.fallText, 'bad'); respawnTimer = 1.2; },
 });
+let respawnTimer = 0;
+
+function loadTrack(d: TrackDef) {
+  if (d !== def) {
+    def = d;
+    scene.remove(world.group);
+    track = d.build();
+    world = new World(track, BIOMES[d.biome], assets.props, d.id);
+    world.applyEnvironment(scene, hemi, sun);
+    scene.add(world.group);
+  }
+  const b = BIOMES[d.biome];
+  rider.track = track;
+  rider.opts = { friction: b.friction, maxSpeed: b.maxSpeed };
+  rider.reset();
+  camPos.set(track.startX + 3, track.height(track.startX) + 2, 12);
+}
 
 const skater = new Skater(assets.parts);
 scene.add(skater.root, skater.shadowMesh);
 
-type State = 'title' | 'playing' | 'finished';
+type State = 'title' | 'select' | 'playing' | 'finished';
 let state: State = 'title';
 let time = 0;
 let finishTimer = 0;
@@ -118,39 +107,81 @@ const input = new Input(canvas);
 input.onPump = () => { if (state === 'playing') { rider.pump(); skater.pumpKick(); } };
 input.onSwipe = (d) => { if (state === 'playing') rider.swipe(d); };
 
-function start() {
-  rider.reset();
+const panels = ['title', 'select', 'results'];
+function show(panel: string | null) {
+  for (const p of panels) $(p).classList.toggle('hidden', p !== panel);
+  $('menu').classList.toggle('hidden', panel !== null);
+}
+
+function start(d: TrackDef = def) {
+  loadTrack(d);
   score.reset();
   time = 0;
   finishTimer = 0;
+  respawnTimer = 0;
   showCombo(null);
-  $('title').classList.add('hidden');
-  $('results').classList.add('hidden');
+  $('trackname').textContent = d.name;
+  show(null);
   state = 'playing';
+}
+
+function openSelect() {
+  const list = $('tracklist');
+  list.innerHTML = '';
+  for (const id of BIOME_ORDER) {
+    const b = BIOMES[id];
+    const tracks = TRACKS.filter((t) => t.biome === id);
+    if (!tracks.length) continue;
+    const row = document.createElement('div');
+    row.className = 'biome';
+    row.style.setProperty('--swatch', b.swatch);
+    row.innerHTML = `<div class="biome-head"><b>${b.name}</b><span>${b.blurb}</span></div>`;
+    const btns = document.createElement('div');
+    btns.className = 'tracks';
+    tracks.forEach((t, i) => {
+      const btn = document.createElement('button');
+      const best = loadBest(t.id);
+      btn.innerHTML = `<small>${i + 1}</small>${t.name}<em>${best ? 'Best ' + fmt(best) : 'New'}</em>`;
+      btn.addEventListener('click', () => start(t));
+      btns.appendChild(btn);
+    });
+    row.appendChild(btns);
+    list.appendChild(row);
+  }
+  show('select');
+  state = 'select';
+}
+
+function nextTrack(): TrackDef {
+  return TRACKS[(TRACKS.indexOf(def) + 1) % TRACKS.length];
 }
 
 function finish() {
   score.bank();
   state = 'finished';
-  const best = loadBest();
+  const best = loadBest(def.id);
   const total = score.total;
-  if (total > best) saveBest(total);
+  if (total > best) saveBest(def.id, total);
+  $('r-track').textContent = def.name;
   $('r-score').textContent = fmt(total);
   $('r-time').textContent = time.toFixed(1) + 's';
   $('r-combo').textContent = fmt(score.bestCombo);
   $('r-best').textContent = total > best ? 'NEW BEST!' : `Best: ${fmt(best)}`;
-  $('results').classList.remove('hidden');
+  $('next').textContent = `NEXT: ${nextTrack().name.toUpperCase()}`;
+  show('results');
 }
 
-$('play').addEventListener('click', start);
-$('again').addEventListener('click', start);
+$('play').addEventListener('click', openSelect);
+$('again').addEventListener('click', () => start(def));
+$('next').addEventListener('click', () => start(nextTrack()));
+$('tracks').addEventListener('click', openSelect);
+$('menu').addEventListener('click', openSelect);
+$('back').addEventListener('click', () => { show('title'); state = 'title'; });
 window.addEventListener('keydown', (e) => {
-  if ((e.code === 'Enter' || e.code === 'Space') && state !== 'playing') { e.preventDefault(); start(); }
+  if (e.code === 'Escape' && state === 'playing') openSelect();
+  else if ((e.code === 'Enter' || e.code === 'Space') && state === 'title') { e.preventDefault(); openSelect(); }
+  else if ((e.code === 'Enter' || e.code === 'Space') && state === 'finished') { e.preventDefault(); start(def); }
 });
-{
-  const best = loadBest();
-  if (best) $('best').textContent = `Best: ${fmt(best)}`;
-}
 
 // Camera follows from the side, pulling back and looking ahead with speed.
 const camPos = new THREE.Vector3(track.startX + 3, track.height(track.startX) + 2, 12);
@@ -179,7 +210,6 @@ function updateCamera(dt: number) {
   camera.lookAt(camLook);
   sun.position.set(camPos.x - 6, camPos.y + 12, 10);
   sun.target.position.set(camPos.x, camPos.y, 0);
-  clouds.position.x = camPos.x * 0.6;
 }
 
 function resize() {
@@ -200,20 +230,27 @@ function frame(now: number) {
   if (state === 'playing') {
     time += dt;
     rider.update(dt);
+    if (respawnTimer > 0) {
+      respawnTimer -= dt;
+      if (respawnTimer <= 0) {
+        const pit = rider.fallPit;
+        if (pit) rider.respawn(pit.x1 + 1.5, 6);
+        else rider.respawn(rider.x, 6);
+      }
+    }
     score.update(dt, rider.grounded);
     if (rider.x >= track.finishX && finishTimer === 0) finishTimer = 0.001;
     if (finishTimer > 0) {
       finishTimer += dt;
       if (finishTimer > 1.2 && rider.grounded) finish();
     }
-  } else if (state === 'title') {
-    // Idle roll on the start deck behind the title.
-  } else {
+  } else if (state === 'finished') {
     rider.update(dt);
   }
 
   skater.update(dt, rider, (x) => track.height(x), (x) => track.slope(x));
   updateCamera(dt);
+  world.update(dt, camPos.x, camPos.y);
 
   if (comboHold > 0) {
     comboHold -= dt;
@@ -222,6 +259,10 @@ function frame(now: number) {
     const c = score.combo;
     showCombo(c);
   }
+  // Tutorial cue: light up while the rider is heading down a slope and could pump.
+  const cue = state === 'playing' && !!def.tutorial && rider.grounded && !rider.bailing && rider.pumpTimer === 0
+    && track.slope(rider.x + rider.v * 0.12) * Math.sign(rider.v || 1) < -0.12;
+  hud.cue.classList.toggle('on', cue);
   hud.score.textContent = fmt(score.total);
   hud.time.textContent = time.toFixed(1);
   hud.speed.style.width = `${Math.min(100, (rider.speed / 20) * 100)}%`;
@@ -234,6 +275,6 @@ requestAnimationFrame(frame);
 
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
-  rider, score, track, start, get state() { return state; },
+  rider, score, start, openSelect, TRACKS, get track() { return track; }, get state() { return state; },
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };

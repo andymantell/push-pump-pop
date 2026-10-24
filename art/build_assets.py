@@ -455,7 +455,432 @@ def build_props():
         cube(iron, (0.06, 0.06, 0.95), loc=(0.72, 0.16, 0.47), bevel=0.01),
     ]))
 
+    build_beach(out)
+    build_city(out)
+    build_snow(out)
+    build_desert(out)
+    build_jungle(out)
+    build_volcano(out)
     export(os.path.join(OUT, 'props.glb'), out)
+
+
+
+# ---------------------------------------------------------------- biome props
+
+def bend_strip(material, length, width, droop, segs=8, loc=(0, 0, 0), yaw=0.0, pitch=0.0, taper=True):
+    """A drooping leaf strip (palm frond) built along +X, then rotated."""
+    bm = bmesh.new()
+    rows = []
+    for i in range(segs + 1):
+        t = i / segs
+        x = t * length
+        z = -droop * t * t
+        w = width * (math.sin(math.pi * min(1.0, t * 1.15)) if taper else 1.0) + 0.01
+        rows.append((bm.verts.new((x, -w / 2, z)), bm.verts.new((x, 0, z + w * 0.15)), bm.verts.new((x, w / 2, z))))
+    for a, b in zip(rows, rows[1:]):
+        bm.faces.new((a[0], b[0], b[1], a[1]))
+        bm.faces.new((a[1], b[1], b[2], a[2]))
+    me = bpy.data.meshes.new('strip')
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new('strip', me)
+    bpy.context.collection.objects.link(o)
+    o.rotation_euler = (0, pitch, yaw)
+    o.location = loc
+    apply_tf(o)
+    o = finish(o, material, True)
+    sol = o.modifiers.new('sol', 'SOLIDIFY')
+    sol.thickness = 0.02
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.object.modifier_apply(modifier='sol')
+    return o
+
+
+def striped_cone(mats, r, depth, loc, verts=12, r2=0.0):
+    o = cyl(mats[0], r, depth, loc=loc, r2=r2, verts=verts, smooth=False)
+    for m in mats[1:]:
+        o.data.materials.append(m)
+    for i, p in enumerate(o.data.polygons):
+        c = p.center
+        ang = math.atan2(c.y - loc[1], c.x - loc[0])
+        p.material_index = int(((ang + math.pi) / (2 * math.pi)) * verts) % len(mats)
+    return o
+
+
+def build_beach(out):
+    trunk = mat('palm_trunk', (166, 120, 78))
+    trunk_dk = mat('palm_trunk_dark', (128, 90, 56))
+    frond = mat('palm_frond', (70, 168, 72))
+    frond2 = mat('palm_frond_light', (110, 196, 86))
+    coconut = mat('coconut', (110, 72, 40))
+    red = mat('red', (230, 60, 50))
+    white = mat('white', (245, 245, 245))
+    yellow = mat('yellow', (255, 206, 60))
+    blue = mat('sea_blue', (40, 150, 220))
+    wood = mat('beach_wood', (214, 168, 110))
+    wood_dk = mat('beach_wood_dark', (150, 108, 66))
+    rope = mat('rope', (222, 196, 140))
+    teal = mat('teal', (40, 190, 180))
+
+    # Palm: leaning segmented trunk, drooping fronds, coconuts.
+    parts = []
+    lean = 0.35
+    top = Vector((0, 0, 0))
+    n = 9
+    for i in range(n):
+        t0, t1 = i / n, (i + 1) / n
+        p0 = Vector((lean * t0 * t0 * 1.6, 0, 4.2 * t0))
+        p1 = Vector((lean * t1 * t1 * 1.6, 0, 4.2 * t1))
+        mid = (p0 + p1) / 2
+        d = p1 - p0
+        rot = (0, math.atan2(d.x, d.z), 0)
+        r = 0.2 - 0.07 * t0
+        parts.append(cyl(trunk if i % 2 == 0 else trunk_dk, r, d.length * 1.02, loc=tuple(mid), rot=rot, r2=r * 0.86, verts=10))
+        top = p1
+    for k in range(7):
+        yaw = k * 2 * math.pi / 7 + 0.3
+        parts.append(bend_strip(frond if k % 2 else frond2, 1.9, 0.42, 0.9, loc=tuple(top), yaw=yaw, pitch=-0.25))
+    for k in range(3):
+        a = k * 2.1
+        parts.append(sphere(coconut, 0.11, loc=(top.x + 0.13 * math.cos(a), 0.13 * math.sin(a), top.z - 0.15), segs=10, rings=8))
+    out.append(join('palm', parts))
+
+    # Beach umbrella with towel.
+    out.append(join('umbrella', [
+        cyl(white, 0.03, 2.2, loc=(0, 0, 1.1), verts=8),
+        striped_cone([red, white], 1.1, 0.5, loc=(0, 0, 2.15), verts=12, r2=0.02),
+        cube(teal, (1.6, 0.8, 0.02), loc=(0.6, -0.9, 0.01)),
+        cube(white, (0.3, 0.8, 0.021), loc=(0.6, -0.9, 0.012)),
+    ]))
+
+    # Lifeguard tower.
+    lg = []
+    for x in (-0.6, 0.6):
+        for y in (-0.6, 0.6):
+            lg.append(cube(white, (0.1, 0.1, 2.0), loc=(x, y, 1.0), bevel=0.01))
+    lg += [
+        cube(wood, (1.5, 1.5, 0.1), loc=(0, 0, 2.0), bevel=0.01),
+        cube(red, (1.3, 1.2, 0.9), loc=(0, 0.1, 2.5), bevel=0.02),
+        cube(white, (1.0, 0.05, 0.4), loc=(0, -0.5, 2.6), bevel=0.01),
+        cube(white, (1.6, 1.6, 0.08), loc=(0, 0.1, 3.0), rot=(math.radians(-8), 0, 0), bevel=0.02),
+        cube(wood_dk, (0.5, 1.6, 0.06), loc=(0, -1.25, 1.0), rot=(math.radians(-50), 0, 0), bevel=0.01),
+        cyl(red, 0.25, 0.08, loc=(0.75, -0.3, 2.5), rot=(0, math.pi / 2, 0), verts=16),
+    ]
+    out.append(join('lifeguard', lg))
+
+    # Surf shack.
+    sh = [
+        cube(wood, (2.4, 1.8, 1.9), loc=(0, 0, 0.95), bevel=0.02),
+        cube(wood_dk, (2.9, 2.3, 0.12), loc=(0, 0, 2.0), rot=(math.radians(-10), 0, 0), bevel=0.02),
+        cube(wood_dk, (2.0, 0.2, 0.08), loc=(0, -1.0, 1.0), bevel=0.01),
+        cube(blue, (1.6, 0.05, 0.6), loc=(0, -0.92, 1.5), bevel=0.01),
+        cube(yellow, (1.4, 0.06, 0.35), loc=(0, -0.95, 2.25), bevel=0.01),
+    ]
+    for x in (-1.0, 1.0):
+        sh.append(cyl(wood_dk, 0.06, 1.2, loc=(x, -1.15, 1.5), verts=8))
+    out.append(join('shack', sh))
+
+    # Rope fence: post plus a sagging rope to the next post 2.4 m along.
+    rf = [cyl(wood_dk, 0.07, 1.0, loc=(-1.2, 0, 0.5), verts=8), sphere(wood_dk, 0.08, loc=(-1.2, 0, 1.0), segs=8, rings=6)]
+    pts = [(-1.2 + 2.4 * i / 6, 0.85 - 0.18 * math.sin(math.pi * i / 6)) for i in range(7)]
+    for (x0, z0), (x1, z1) in zip(pts, pts[1:]):
+        d = math.hypot(x1 - x0, z1 - z0)
+        rf.append(cyl(rope, 0.02, d * 1.05, loc=((x0 + x1) / 2, 0, (z0 + z1) / 2), rot=(0, math.atan2(x1 - x0, z1 - z0), 0), verts=6))
+    out.append(join('ropefence', rf))
+
+    # Surfboard stuck upright in the sand.
+    board = sphere(yellow, 0.5, loc=(0, 0, 0.85), scale=(0.55, 0.09, 2.0), segs=20, rings=14)
+    stripe = sphere(red, 0.5, loc=(0, -0.002, 0.85), scale=(0.12, 0.092, 1.98), segs=12, rings=14)
+    out.append(join('surfboard', [board, stripe]))
+
+    out.append(join('beachball', [striped_cone([red, white, blue, yellow], 0.25, 0.0001, loc=(0, 0, 0.25), verts=8)] if False else [
+        sphere(red, 0.25, loc=(0, 0, 0.25), segs=16, rings=10),
+        sphere(white, 0.252, loc=(0, 0, 0.25), scale=(0.35, 1, 1), segs=16, rings=10),
+    ]))
+
+
+def build_city(out):
+    steel = mat('city_steel', (120, 128, 140))
+    steel_dk = mat('city_steel_dark', (70, 76, 88))
+    tank_wood = mat('tank_wood', (150, 100, 64))
+    tank_band = mat('tank_band', (60, 60, 66))
+    brick = mat('brick', (170, 80, 60))
+    brick_cap = mat('brick_cap', (110, 110, 116))
+    ac = mat('ac_unit', (205, 210, 214))
+    grille = mat('grille', (60, 64, 70))
+    red = mat('red', (230, 60, 50))
+    white = mat('white', (245, 245, 245))
+
+    # Water tank on legs.
+    wt = []
+    for x in (-0.8, 0.8):
+        for y in (-0.8, 0.8):
+            wt.append(cube(steel_dk, (0.1, 0.1, 2.0), loc=(x, y, 1.0)))
+    wt += [
+        cube(steel_dk, (1.9, 1.9, 0.1), loc=(0, 0, 2.0)),
+        cyl(tank_wood, 1.0, 2.2, loc=(0, 0, 3.15), verts=20),
+        cyl(tank_band, 1.03, 0.08, loc=(0, 0, 2.5), verts=20),
+        cyl(tank_band, 1.03, 0.08, loc=(0, 0, 3.4), verts=20),
+        cyl(tank_band, 1.08, 0.7, loc=(0, 0, 4.6), r2=0.05, verts=20, smooth=False),
+    ]
+    out.append(join('watertank', wt))
+
+    out.append(join('acunit', [
+        cube(ac, (1.2, 0.9, 0.9), loc=(0, 0, 0.45), bevel=0.04),
+        cyl(grille, 0.32, 0.04, loc=(0, -0.45, 0.48), rot=(math.pi / 2, 0, 0), verts=20),
+        cube(grille, (0.05, 0.02, 0.5), loc=(0, -0.475, 0.48)),
+        cube(grille, (0.5, 0.02, 0.05), loc=(0, -0.475, 0.48)),
+    ]))
+
+    out.append(join('chimney', [
+        cube(brick, (0.7, 0.7, 1.6), loc=(0, 0, 0.8), bevel=0.02),
+        cube(brick_cap, (0.85, 0.85, 0.12), loc=(0, 0, 1.62), bevel=0.02),
+        cyl(steel_dk, 0.12, 0.4, loc=(0.1, 0, 1.85), verts=10),
+    ]))
+
+    out.append(join('antenna', [
+        cyl(steel_dk, 0.05, 4.5, loc=(0, 0, 2.25), verts=8),
+        cube(steel_dk, (1.4, 0.04, 0.04), loc=(0, 0, 3.6)),
+        cube(steel_dk, (1.0, 0.04, 0.04), loc=(0, 0, 4.0)),
+        cube(steel_dk, (0.6, 0.04, 0.04), loc=(0, 0, 4.4)),
+        sphere(red, 0.07, loc=(0, 0, 4.55), segs=10, rings=6),
+        cyl(white, 0.45, 0.18, loc=(0.2, -0.2, 2.2), rot=(math.radians(60), 0, math.radians(20)), r2=0.12, verts=16),
+    ]))
+
+    rl = [cyl(steel, 0.035, 1.1, loc=(-1.2, 0, 0.55), verts=8), cyl(steel, 0.035, 1.1, loc=(0, 0, 0.55), verts=8)]
+    rl.append(cyl(steel, 0.03, 2.4, loc=(0, 0, 1.08), rot=(0, math.pi / 2, 0), verts=8))
+    rl.append(cyl(steel, 0.025, 2.4, loc=(0, 0, 0.6), rot=(0, math.pi / 2, 0), verts=8))
+    out.append(join('railing', rl))
+
+    out.append(join('vent', [
+        cyl(steel, 0.18, 0.7, loc=(0, 0, 0.35), verts=14),
+        cyl(steel_dk, 0.32, 0.18, loc=(0, 0, 0.82), r2=0.08, verts=14),
+        cyl(steel, 0.2, 0.06, loc=(0, 0, 0.72), verts=14),
+    ]))
+
+
+def build_snow(out):
+    snow = mat('snow', (240, 246, 252))
+    snow_sh = mat('snow_shade', (210, 226, 242))
+    pine = mat('pine_dark', (34, 104, 72))
+    pine2 = mat('pine_mid', (46, 124, 84))
+    bark = mat('bark', (122, 82, 50))
+    log = mat('log', (140, 90, 52))
+    log_dk = mat('log_dark', (100, 62, 36))
+    window = mat('window_glow', (255, 214, 120))
+    orange = mat('orange', (255, 120, 30))
+    coal = mat('coal', (40, 40, 44))
+    red = mat('red', (230, 60, 50))
+    steel = mat('city_steel', (120, 128, 140))
+    rock_m = mat('rock', (150, 152, 156))
+
+    sp = [cyl(bark, 0.15, 1.0, loc=(0, 0, 0.5), verts=8)]
+    for i, (r, z) in enumerate([(1.2, 1.3), (0.95, 2.1), (0.7, 2.85), (0.45, 3.5)]):
+        sp.append(cyl(pine if i % 2 == 0 else pine2, r, 1.1, loc=(0, 0, z), r2=0.05, verts=9, smooth=False))
+        sp.append(cyl(snow, r * 0.62, 0.42, loc=(0, 0, z + 0.36), r2=0.05, verts=9, smooth=False))
+    out.append(join('snowpine', sp))
+
+    cb = []
+    for i in range(7):
+        z = 0.15 + i * 0.28
+        cb.append(cyl(log if i % 2 else log_dk, 0.15, 3.2, loc=(0, -1.1, z), rot=(0, math.pi / 2, 0), verts=10))
+        cb.append(cyl(log if i % 2 == 0 else log_dk, 0.15, 2.4, loc=(-1.45, 0, z), rot=(math.pi / 2, 0, 0), verts=10))
+        cb.append(cyl(log if i % 2 == 0 else log_dk, 0.15, 2.4, loc=(1.45, 0, z), rot=(math.pi / 2, 0, 0), verts=10))
+    cb += [
+        cube(log_dk, (2.9, 2.2, 1.95), loc=(0, 0, 1.0)),
+        cube(snow, (3.6, 1.6, 0.18), loc=(0, -0.65, 2.45), rot=(math.radians(35), 0, 0), bevel=0.05),
+        cube(snow, (3.6, 1.6, 0.18), loc=(0, 0.65, 2.45), rot=(math.radians(-35), 0, 0), bevel=0.05),
+        cube(log_dk, (0.6, 0.06, 1.1), loc=(0.6, -1.27, 0.55)),
+        cube(window, (0.6, 0.06, 0.5), loc=(-0.7, -1.27, 1.1)),
+        cube(log_dk, (0.7, 0.07, 0.08), loc=(-0.7, -1.29, 1.1)),
+        cube(rock_m, (0.45, 0.45, 1.4), loc=(1.0, 0.4, 2.7), bevel=0.03),
+        cube(snow, (0.55, 0.55, 0.12), loc=(1.0, 0.4, 3.42), bevel=0.04),
+    ]
+    out.append(join('cabin', cb))
+
+    out.append(join('snowman', [
+        sphere(snow, 0.45, loc=(0, 0, 0.42), segs=18, rings=12),
+        sphere(snow, 0.33, loc=(0, 0, 1.0), segs=18, rings=12),
+        sphere(snow, 0.24, loc=(0, 0, 1.45), segs=18, rings=12),
+        cyl(orange, 0.04, 0.22, loc=(0, -0.3, 1.45), rot=(math.pi / 2, 0, 0), r2=0.005, verts=8),
+        sphere(coal, 0.03, loc=(0.08, -0.21, 1.53), segs=8, rings=6),
+        sphere(coal, 0.03, loc=(-0.08, -0.21, 1.53), segs=8, rings=6),
+        sphere(coal, 0.035, loc=(0, -0.32, 1.08), segs=8, rings=6),
+        sphere(coal, 0.035, loc=(0, -0.33, 0.92), segs=8, rings=6),
+        cyl(red, 0.26, 0.1, loc=(0, 0, 1.24), verts=16),
+        cube(red, (0.1, 0.05, 0.35), loc=(0.15, -0.24, 1.08), rot=(0, math.radians(-15), 0)),
+        cyl(coal, 0.22, 0.04, loc=(0, 0, 1.64), verts=16),
+        cyl(coal, 0.15, 0.25, loc=(0, 0, 1.78), verts=16),
+        cyl(bark, 0.02, 0.6, loc=(0.42, 0, 1.1), rot=(0, math.radians(60), 0), verts=6),
+        cyl(bark, 0.02, 0.6, loc=(-0.42, 0, 1.1), rot=(0, math.radians(-60), 0), verts=6),
+    ]))
+
+    out.append(join('liftpylon', [
+        cyl(steel, 0.18, 7.0, loc=(0, 0, 3.5), r2=0.12, verts=10),
+        cube(steel, (0.2, 3.0, 0.2), loc=(0, 0, 7.0)),
+        cyl(red, 0.25, 0.1, loc=(0, -1.3, 6.85), rot=(0, math.pi / 2, 0), verts=14),
+        cyl(red, 0.25, 0.1, loc=(0, 1.3, 6.85), rot=(0, math.pi / 2, 0), verts=14),
+        cube(snow, (0.5, 0.5, 0.15), loc=(0, 0, 0.07), bevel=0.04),
+    ]))
+
+    sf = [cyl(log_dk, 0.04, 1.2, loc=(-1.2, 0, 0.6), verts=6)]
+    for i in range(5):
+        sf.append(cube(orange, (2.4, 0.02, 0.07), loc=(0, 0, 0.25 + i * 0.2)))
+    for i in range(9):
+        sf.append(cube(orange, (0.05, 0.02, 0.9), loc=(-1.0 + i * 0.25, 0, 0.6)))
+    out.append(join('snowfence', sf))
+
+    out.append(join('snowrock', [
+        ico(rock_m, 0.6, loc=(0, 0, 0.25), scale=(1.3, 1.0, 0.75), sub=1, jitter=0.35, seed=11),
+        ico(snow, 0.55, loc=(0, 0, 0.5), scale=(1.25, 0.95, 0.35), sub=1, jitter=0.25, seed=12, smooth=True),
+    ]))
+
+
+def build_desert(out):
+    cactus = mat('cactus', (78, 150, 84))
+    cactus_dk = mat('cactus_dark', (58, 122, 66))
+    flower = mat('cactus_flower', (240, 90, 140))
+    red_rock = mat('red_rock', (196, 104, 64))
+    red_rock2 = mat('red_rock_light', (222, 140, 90))
+    sand_rock = mat('sand_rock', (214, 170, 110))
+    bone = mat('bone', (236, 226, 204))
+    tumble = mat('tumbleweed', (170, 130, 80))
+    wood_dk = mat('fence_wood_dark', (160, 108, 60))
+
+    cc = [capsule(cactus, 0.22, 0.24, 3.0, loc=(0, 0, 3.0))]
+    cc += [
+        capsule(cactus_dk, 0.13, 0.14, 0.8, loc=(0.5, 0, 2.2)),
+        cyl(cactus_dk, 0.13, 0.4, loc=(0.32, 0, 1.4), rot=(0, math.pi / 2, 0), verts=12),
+        capsule(cactus_dk, 0.12, 0.13, 0.7, loc=(-0.45, 0, 2.5)),
+        cyl(cactus_dk, 0.12, 0.35, loc=(-0.3, 0, 1.85), rot=(0, math.pi / 2, 0), verts=12),
+        sphere(flower, 0.07, loc=(0, 0, 3.02), segs=10, rings=6),
+    ]
+    out.append(join('cactus', cc))
+
+    out.append(join('barrelcactus', [
+        sphere(cactus, 0.32, loc=(0, 0, 0.28), scale=(1, 1, 0.9), segs=12, rings=8, smooth=False),
+        sphere(flower, 0.06, loc=(0, 0, 0.57), segs=8, rings=6),
+    ]))
+
+    # Layered sandstone butte for the middle distance.
+    mesa = []
+    for i, (w, h, z, m) in enumerate([(6, 3, 1.5, red_rock), (5, 2.5, 4.2, red_rock2), (4.2, 2.4, 6.6, red_rock), (3.6, 0.5, 8.0, sand_rock)]):
+        mesa.append(ico(m, 1, loc=(0, 0, z), scale=(w / 2, w / 2.6, h / 2), sub=1, jitter=0.15, seed=20 + i))
+    out.append(join('mesa', mesa))
+
+    out.append(join('desertrock', [
+        ico(red_rock, 0.7, loc=(0, 0, 0.3), scale=(1.3, 1.0, 0.7), sub=1, jitter=0.35, seed=31),
+        ico(red_rock2, 0.4, loc=(0.7, 0.2, 0.15), scale=(1, 0.9, 0.8), sub=1, jitter=0.35, seed=32),
+    ]))
+
+    tw = []
+    for k in range(5):
+        tw.append(ico(tumble, 0.35, loc=(0, 0, 0.35), scale=(1, 1, 1), sub=1, jitter=0.4, seed=40 + k))
+        tw[-1].rotation_euler = (k, k * 0.7, k * 1.3)
+        apply_tf(tw[-1])
+    for o in tw:
+        w = o.modifiers.new('wf', 'WIREFRAME')
+        w.thickness = 0.03
+        bpy.context.view_layer.objects.active = o
+        bpy.ops.object.modifier_apply(modifier='wf')
+    out.append(join('tumbleweed', tw))
+
+    out.append(join('skull', [
+        sphere(bone, 0.18, loc=(0, 0, 0.14), scale=(1, 1.3, 0.8), segs=12, rings=8),
+        cyl(bone, 0.04, 0.5, loc=(0.25, 0.1, 0.25), rot=(0, math.radians(60), 0), r2=0.01, verts=8),
+        cyl(bone, 0.04, 0.5, loc=(-0.25, 0.1, 0.25), rot=(0, math.radians(-60), 0), r2=0.01, verts=8),
+    ]))
+
+    out.append(join('signpost', [
+        cube(wood_dk, (0.1, 0.1, 1.8), loc=(0, 0, 0.9)),
+        cube(wood_dk, (0.9, 0.05, 0.25), loc=(0.3, -0.06, 1.5), rot=(0, math.radians(-8), 0), bevel=0.01),
+        cube(wood_dk, (0.8, 0.05, 0.22), loc=(-0.25, -0.06, 1.15), rot=(0, math.radians(6), 0), bevel=0.01),
+    ]))
+
+
+def build_jungle(out):
+    trunk = mat('jungle_trunk', (110, 84, 60))
+    leaf = mat('jungle_leaf', (40, 150, 70))
+    leaf2 = mat('jungle_leaf_light', (90, 190, 80))
+    leaf3 = mat('jungle_leaf_dark', (28, 110, 60))
+    stone = mat('temple_stone', (150, 150, 130))
+    stone_dk = mat('temple_stone_dark', (110, 112, 96))
+    moss = mat('moss', (90, 150, 60))
+    flower = mat('jungle_flower', (250, 80, 90))
+    yellow = mat('yellow', (255, 206, 60))
+
+    jt = [cyl(trunk, 0.3, 6.0, loc=(0, 0, 3.0), r2=0.18, verts=10)]
+    for i in range(4):
+        a = i * math.pi / 2 + 0.4
+        jt.append(cyl(trunk, 0.12, 1.6, loc=(0.5 * math.cos(a), 0.5 * math.sin(a), 5.2), rot=(math.sin(a) * -0.9, math.cos(a) * 0.9, 0), r2=0.06, verts=8))
+    for i, (x, y, z, r, m) in enumerate([(0, 0, 6.4, 1.8, leaf), (1.2, 0.3, 5.9, 1.3, leaf2), (-1.2, -0.2, 6.0, 1.4, leaf3), (0.3, -0.8, 6.9, 1.1, leaf2)]):
+        jt.append(ico(m, r, loc=(x, y, z), scale=(1, 1, 0.55), sub=2, jitter=0.25, seed=50 + i, smooth=True))
+    for k in range(6):
+        jt.append(cyl(leaf3, 0.025, 1.5 + (k % 3) * 0.6, loc=(-1.2 + k * 0.5, -0.3, 5.0 - (k % 3) * 0.3), verts=5))
+    out.append(join('jungletree', jt))
+
+    fn = []
+    for k in range(8):
+        yaw = k * 2 * math.pi / 8
+        fn.append(bend_strip(leaf if k % 2 else leaf2, 1.0, 0.3, 0.5, loc=(0, 0, 0.35), yaw=yaw, pitch=-0.7))
+    fn.append(sphere(flower, 0.08, loc=(0.1, 0, 0.55), segs=8, rings=6))
+    out.append(join('fern', fn))
+
+    pl = [
+        cube(stone_dk, (0.9, 0.9, 0.3), loc=(0, 0, 0.15), bevel=0.03),
+        cyl(stone, 0.32, 3.0, loc=(0, 0, 1.8), verts=12),
+        cube(stone_dk, (0.95, 0.95, 0.3), loc=(0, 0, 3.4), bevel=0.03),
+        ico(moss, 0.35, loc=(0.2, -0.3, 3.55), scale=(1.4, 1.2, 0.4), sub=1, jitter=0.3, seed=61, smooth=True),
+        ico(moss, 0.3, loc=(-0.25, -0.25, 1.0), scale=(0.8, 0.6, 1.4), sub=1, jitter=0.3, seed=62, smooth=True),
+    ]
+    out.append(join('pillar', pl))
+
+    out.append(join('stonehead', [
+        cube(stone, (1.2, 1.0, 1.5), loc=(0, 0, 0.75), bevel=0.12, segs=2),
+        cube(stone_dk, (1.3, 0.3, 0.25), loc=(0, -0.42, 1.15), bevel=0.04),
+        cube(stone_dk, (0.25, 0.35, 0.5), loc=(0, -0.55, 0.85), bevel=0.05),
+        cube(stone_dk, (0.6, 0.15, 0.12), loc=(0, -0.5, 0.45), bevel=0.03),
+        cube(yellow, (0.18, 0.06, 0.1), loc=(0.3, -0.5, 1.15)),
+        cube(yellow, (0.18, 0.06, 0.1), loc=(-0.3, -0.5, 1.15)),
+        ico(moss, 0.5, loc=(0, 0, 1.55), scale=(1.3, 1.1, 0.35), sub=1, jitter=0.3, seed=63, smooth=True),
+    ]))
+
+    rw = []
+    for i in range(3):
+        for j in range(3 - (i % 2)):
+            rw.append(cube(stone if (i + j) % 2 else stone_dk, (0.75, 0.5, 0.45), loc=(-0.8 + j * 0.8 + (i % 2) * 0.4, 0, 0.23 + i * 0.47), bevel=0.04))
+    rw.append(ico(moss, 0.4, loc=(0.3, -0.1, 1.45), scale=(1.6, 0.8, 0.4), sub=1, jitter=0.3, seed=64, smooth=True))
+    out.append(join('ruinwall', rw))
+
+
+def build_volcano(out):
+    basalt = mat('basalt', (58, 54, 60))
+    basalt2 = mat('basalt_light', (84, 78, 86))
+    lava = mat('lava', (255, 110, 30))
+    charred = mat('charred', (44, 36, 34))
+    ember = mat('ember', (255, 70, 40))
+
+    bc = []
+    for i, (x, y, h) in enumerate([(0, 0, 2.6), (0.55, 0.1, 1.8), (-0.5, 0.15, 2.1), (0.1, 0.55, 1.4), (-0.2, -0.45, 1.1)]):
+        bc.append(cyl(basalt if i % 2 else basalt2, 0.3, h, loc=(x, y, h / 2), verts=6, smooth=False))
+    out.append(join('basalt', bc))
+
+    dt = [cyl(charred, 0.18, 2.6, loc=(0, 0, 1.3), r2=0.08, verts=8)]
+    for i, (a, z, l) in enumerate([(0.7, 1.8, 1.0), (-0.8, 2.1, 0.9), (2.4, 1.5, 0.8)]):
+        dt.append(cyl(charred, 0.06, l, loc=(0.35 * math.cos(a), 0.35 * math.sin(a), z + 0.2), rot=(math.sin(a) * 0.9, math.cos(a) * 0.9, 0), r2=0.02, verts=6))
+    dt.append(sphere(ember, 0.05, loc=(0.1, -0.15, 1.0), segs=6, rings=4))
+    out.append(join('deadtree', dt))
+
+    out.append(join('lavarock', [
+        ico(basalt, 0.7, loc=(0, 0, 0.3), scale=(1.3, 1.0, 0.7), sub=1, jitter=0.35, seed=71),
+        ico(lava, 0.2, loc=(0.3, -0.45, 0.25), scale=(1.2, 0.5, 0.6), sub=1, jitter=0.2, seed=72, smooth=True),
+        ico(lava, 0.15, loc=(-0.4, -0.4, 0.4), scale=(1, 0.5, 0.6), sub=1, jitter=0.2, seed=73, smooth=True),
+    ]))
+
+    out.append(join('vent_rock', [
+        cyl(basalt2, 0.9, 0.9, loc=(0, 0, 0.45), r2=0.4, verts=10, smooth=False),
+        cyl(lava, 0.38, 0.05, loc=(0, 0, 0.9), verts=10),
+    ]))
 
 
 if __name__ == '__main__':

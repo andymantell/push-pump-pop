@@ -80,3 +80,40 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 .stats small { font-size: 12px; letter-spacing: 2px; opacity: 0.85; }
 .stats b { font-size: 32px; }
 #best, #r-best { font-size: 15px; opacity: 0.9; min-height: 1em; }
+
+#trackname { position: absolute; left: 0; right: 0; top: max(14px, env(safe-area-inset-top)); text-align: center; font-weight: 900; font-size: 14px; letter-spacing: 1px; opacity: 0.85; }
+#menu {
+  position: fixed; left: 50%; transform: translateX(-50%); top: calc(max(12px, env(safe-area-inset-top)) + 22px);
+  width: 40px; height: 34px; border: none; border-radius: 10px; font-size: 20px; color: #fff;
+  background: rgba(20, 35, 50, 0.35); cursor: pointer;
+}
+#menu.hidden { display: none; }
+.panel { overflow-y: auto; justify-content: flex-start; }
+.panel > :first-child { margin-top: auto; }
+.panel > :last-child { margin-bottom: auto; }
+.panel button.small { font-size: 16px; padding: 10px 28px; }
+.panel button.alt { background: #2f8fd8; box-shadow: 0 6px 0 #1e5f94; }
+.panel .buttons { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+#r-track { font-size: 18px; font-weight: 900; margin-top: -10px; }
+#tracklist { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 640px; }
+.biome {
+  display: flex; flex-direction: column; gap: 8px; text-align: left;
+  background: rgba(10, 20, 35, 0.45); border-radius: 14px; padding: 10px 12px; border-left: 8px solid var(--swatch);
+}
+.biome-head { display: flex; flex-direction: column; }
+.biome-head b { font-size: 18px; }
+.biome-head span { font-size: 13px; opacity: 0.85; text-shadow: none; }
+.biome .tracks { display: flex; flex-wrap: wrap; gap: 8px; }
+.biome .tracks button {
+  font-size: 15px; padding: 8px 14px; border-radius: 12px; box-shadow: 0 4px 0 #b84a17;
+  display: flex; align-items: center; gap: 8px; text-align: left;
+}
+.biome .tracks button small { background: rgba(0,0,0,0.25); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
+.biome .tracks button em { font-style: normal; font-size: 11px; opacity: 0.85; }
+
+#pumpcue {
+  position: absolute; left: 50%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 34px); transform: translateX(-50%);
+  font-weight: 900; font-size: 30px; color: #7dff9a; opacity: 0; transition: opacity 0.08s;
+}
+#pumpcue.on { opacity: 1; animation: cue 0.35s ease-in-out infinite alternate; }
+@keyframes cue { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.18); } }

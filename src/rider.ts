@@ -1,19 +1,19 @@
-import { Track } from './track';
+import { Track, Pit } from './track';
 
 // Arcade physics for a rider on a 2D height profile.
 
 export const GRAVITY = 14;
 const ROLL_FRICTION = 0.18;
-const AIR_DRAG = 0.0035;
-const PUMP_TIME = 0.36;
-const PUMP_ACCEL = 10;
+const AIR_DRAG = 0.006;
+const PUMP_TIME = 0.55;
+const PUMP_ACCEL = 9;
 const MIN_PUSH_SPEED = 4.5;
-const MAX_SPEED = 26;
+const MAX_SPEED = 17;
 const OLLIE_POP = 5.6;
 const COYOTE_TIME = 0.14;
 const BAIL_TIME = 1.3;
 /** Arcade grip: the board sticks to convex ground more than real gravity would allow. */
-const STICK = 1.8;
+const STICK = 2.2;
 
 export type TrickName = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it';
 export type Swipe = 'up' | 'down' | 'left' | 'right';
@@ -46,6 +46,13 @@ export interface RiderEvents {
   land(info: { airTime: number; smooth: boolean; hadTricks: boolean }): void;
   bail(): void;
   pump(good: boolean): void;
+  fall(): void;
+}
+
+export interface RiderOptions {
+  /** Rolling friction multiplier (ice < 1). */
+  friction: number;
+  maxSpeed: number;
 }
 
 export class Rider {
@@ -74,8 +81,26 @@ export class Rider {
   /** Smoothed values for animation. */
   crouch = 0;
 
-  constructor(private track: Track, private ev: RiderEvents) {
+  falling = false;
+  /** The gap we last fell into. */
+  fallPit: Pit | null = null;
+  opts: RiderOptions = { friction: 1, maxSpeed: MAX_SPEED };
+
+  constructor(public track: Track, private ev: RiderEvents) {
     this.reset();
+  }
+
+  /** Put the rider back on the track at x, rolling. */
+  respawn(x: number, speed: number) {
+    this.x = x;
+    this.y = this.track.height(x);
+    this.v = speed;
+    this.grounded = true;
+    this.falling = false;
+    this.current = null;
+    this.bailTimer = 0;
+    this.boardYaw = 0;
+    this.angle = Math.atan(this.track.slope(x));
   }
 
   reset() {
@@ -89,6 +114,7 @@ export class Rider {
     this.boardYaw = 0;
     this.airTime = 0;
     this.pumpTimer = 0;
+    this.falling = false;
   }
 
   get bailing() { return this.bailTimer > 0; }
@@ -155,6 +181,16 @@ export class Rider {
       }
     }
 
+    if (this.falling) {
+      // Tumbling into a pit: no collisions until respawn.
+      if (this.grounded) { this.vx = this.v * 0.5; this.vy = 0; this.grounded = false; }
+      this.vy -= GRAVITY * dt;
+      this.x += this.vx * 0.5 * dt;
+      this.y += this.vy * dt;
+      this.angle -= dt * 3;
+      return;
+    }
+
     if (this.grounded) {
       this.timeSinceGround = 0;
       const k = tr.slope(this.x);
@@ -163,12 +199,12 @@ export class Rider {
       const dir = Math.sign(this.v) || 1;
 
       let a = -GRAVITY * sin;
-      a -= dir * (ROLL_FRICTION + AIR_DRAG * this.v * this.v);
+      a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v);
 
       if (this.pumpTimer > 0 && !this.bailing) {
         // Pumping pays off on the way down a transition and costs a little on the way up.
         const downhill = -sin * dir;
-        const f = Math.max(-0.35, Math.min(1, downhill * 2.6));
+        const f = Math.max(-0.12, Math.min(1, downhill * 3));
         a += dir * PUMP_ACCEL * f;
       }
 
@@ -180,13 +216,17 @@ export class Rider {
       }
 
       this.v += a * dt;
-      this.v = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, this.v));
+      this.v = Math.max(-this.opts.maxSpeed, Math.min(this.opts.maxSpeed, this.v));
 
       // The ground falls away faster than gravity can hold us: take off.
       const kappa = -tr.curvature(this.x) / Math.pow(1 + k * k, 1.5);
-      if (kappa > 0 && this.v * this.v * kappa > GRAVITY * cos * STICK && Math.abs(this.v) > 4) {
-        this.vx = this.v * cos;
-        this.vy = this.v * sin;
+      // Leave along the face we were riding, not the drop ahead of it.
+      const face = Math.atan(tr.slope(this.x - Math.sign(this.v) * 0.15));
+      const lookX = this.x + this.v * Math.cos(face) * dt * 3;
+      const cliff = tr.height(lookX) < this.y + Math.tan(face) * (lookX - this.x) - 0.15;
+      if ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > GRAVITY * cos * STICK && Math.abs(this.v) > 4)) {
+        this.vx = this.v * Math.cos(face);
+        this.vy = this.v * Math.sin(face);
         if (this.pumpTimer > 0) this.vy += 1.2; // pumping into a lip pops you a little higher
         this.leaveGround();
         this.ollied = false;
@@ -220,7 +260,26 @@ export class Rider {
       }
 
       const gy = tr.height(this.x);
-      if (this.y <= gy) this.land(gy);
+      if (this.y <= gy) {
+        if (gy - this.y > 0.4) {
+          // Hit the face of a ledge: bounce off it.
+          this.x -= this.vx * dt * 1.5;
+          this.vx = -this.vx * 0.05;
+          this.vy = Math.min(this.vy, 0);
+        } else {
+          this.land(gy);
+        }
+      }
+    }
+
+    const pit = tr.pitAt(this.x);
+    // Too slow to clear a gap: you drop in rather than rocking on the lip.
+    const slowAtLip = pit && this.grounded && this.x > pit.x0 - 0.8 && this.x < pit.x0 && this.v < 6;
+    if (pit && !this.falling && (slowAtLip || this.y < Math.min(pit.lipY, pit.landY) - 1.6)) {
+      this.falling = true;
+      this.fallPit = pit;
+      this.current = null;
+      this.ev.fall();
     }
 
     if (this.x < 0.5) { this.x = 0.5; this.v = Math.abs(this.v) * 0.3; this.vx = Math.abs(this.vx) * 0.3; }
