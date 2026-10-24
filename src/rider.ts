@@ -53,8 +53,8 @@ const SWIPE_GRAB: Record<Swipe, GrabName> = {
   left: 'Nosegrab',
   right: 'Tailgrab',
 };
-/** Hold this long after a swipe before it counts as a grab, so flicks stay flicks. */
-const GRAB_HOLD = 0.16;
+/** Hold this long after a grab swipe before the grab starts, so a quick flick is just an ollie. */
+const GRAB_HOLD = 0.08;
 const GRAB_POINTS = 250;
 const GRAB_POINTS_PER_SEC = 900;
 
@@ -203,8 +203,6 @@ export class Rider {
   }
 
   swipe(dir: Swipe) {
-    this.held = dir;
-    this.heldT = 0;
     if (this.bailing || this.grab) return;
     const name = SWIPE_TRICK[dir];
     if (!name) return;
@@ -284,6 +282,15 @@ export class Rider {
   /** Body pitch from a flip in progress, radians (+ is nose up / backwards). */
   get flipAngle() {
     return this.flipping ? this.flipDir * this.flipT * Math.PI * 2 : 0;
+  }
+
+  /** Swipe on the grab side of the screen: pop if on the ground, then grab while held. */
+  grabSwipe(dir: Swipe) {
+    if (this.bailing || this.grab) return;
+    this.held = dir;
+    this.heldT = 0;
+    const canPop = this.grounded || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    if (canPop) this.pop();
   }
 
   /** Finger lifted: let go of any grab and score it. */

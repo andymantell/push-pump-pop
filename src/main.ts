@@ -135,6 +135,7 @@ let finishTimer = 0;
 const input = new Input(canvas);
 input.onPump = () => { if (state === 'playing') { rider.pump(); skater.pumpKick(); } };
 input.onSwipe = (d) => { if (state === 'playing') rider.swipe(d); };
+input.onGrab = (d) => { if (state === 'playing') rider.grabSwipe(d); };
 input.onRelease = () => { if (state === 'playing') rider.release(); };
 input.onSpin = (d) => { if (state === 'playing') rider.spinSwipe(d); };
 input.onSpinMore = () => { if (state === 'playing') rider.spinMore(); };

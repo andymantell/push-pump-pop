@@ -83,7 +83,7 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
   let peakAboveLip = 0, tricks = 0;
 
   // Inputs the bot has decided on, landing later.
-  type Act = 'pump' | Swipe | 'spin' | 'lean+' | 'lean-' | 'lean0';
+  type Act = 'pump' | Swipe | 'spin' | 'grab' | 'let go' | 'lean+' | 'lean-' | 'lean0';
   const queue: { at: number; act: Act }[] = [];
   let manualPlanned = -10;
   const inputTimes: number[] = [];
@@ -111,10 +111,12 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
       const { act } = queue.splice(i, 1)[0];
       // Tilting the device isn't a tap, so it doesn't count towards the tap rate.
       if (act === 'lean+' || act === 'lean-' || act === 'lean0') { r.setLean(act === 'lean+' ? 1 : act === 'lean-' ? -1 : 0); continue; }
+      if (act === 'let go') { r.release(); continue; }
       while (inputTimes.length && inputTimes[0] < t - 1) inputTimes.shift();
       if (inputTimes.length >= MAX_INPUTS_PER_SEC) continue;
       inputTimes.push(t);
       if (act === 'pump') r.pump();
+      else if (act === 'grab') r.grabSwipe((['up', 'down', 'left', 'right'] as const)[Math.floor(rand() * 4)]);
       else if (act === 'spin') {
         r.spinSwipe(rand() > 0.5 ? 'left' : 'right');
         // A long swipe on a big air makes it a 360.
@@ -152,6 +154,10 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
           const lean = rand() > 0.5 ? 'lean+' : 'lean-';
           press(lean);
           press('lean0', 0.2);
+        } else if (r.vy > 5 && pick < 0.5) {
+          // A big air: grab with the other thumb, and let go well before landing.
+          press('grab');
+          press('let go', 0.3);
         } else press(pick < 0.55 ? 'spin' : pick < 0.8 ? 'left' : 'down');
         trickPlanned = true;
       }
@@ -236,7 +242,7 @@ for (const def of TRACKS) {
 // The bots should be able to land every kind of move, not just survive.
 if (!only) {
   console.log(`\ntricks landed: ${[...seen].map(([n, c]) => `${n} ${c}`).join(', ')}`);
-  const missing = ['Manual', 'Nose Manual', 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360'].filter((n) => !seen.get(n));
+  const missing = ['Manual', 'Nose Manual', 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360', 'Indy', 'Melon', 'Nosegrab', 'Tailgrab'].filter((n) => !seen.get(n));
   if (missing.length) { console.log(`never landed: ${missing.join(', ')}`); failed = true; }
 }
 

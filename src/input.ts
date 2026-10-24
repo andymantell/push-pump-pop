@@ -6,16 +6,21 @@ const SWIPE_TIME = 450;
 const SPIN_ZONE = 0.35;
 /** A spin swipe this long (share of screen width) becomes a 360. */
 const SPIN_360 = 0.2;
+/** Swipes starting in this left share of the screen are grabs. */
+const GRAB_ZONE = 0.5;
+
+const GRAB_KEYS: Record<string, Swipe> = { KeyI: 'up', KeyK: 'down', KeyJ: 'left', KeyL: 'right' };
 
 interface Touch { x: number; y: number; t: number; done: boolean; swiped: boolean; spin: boolean; }
 
-// Tap anywhere to pump; swipe to trick, and keep holding to grab.
+// Tap anywhere to pump. Swipe on the right to flip; swipe on the left and hold to grab.
 // Swipe sideways along the bottom of the screen to spin; a longer swipe spins further.
-// Keyboard: space to pump, arrows to trick (hold the key to grab), Z/X to spin
+// Keyboard: space to pump, arrows to flip, hold I/J/K/L to grab, Z/X to spin
 // (press again for a 360), Q/E to tilt (manuals on the ground, flips in the air).
 export class Input {
   onPump: () => void = () => {};
   onSwipe: (d: Swipe) => void = () => {};
+  onGrab: (d: Swipe) => void = () => {};
   onRelease: () => void = () => {};
   onSpin: (d: 'left' | 'right') => void = () => {};
   onSpinMore: () => void = () => {};
@@ -45,9 +50,9 @@ export class Input {
         this.onSpin(dx > 0 ? 'right' : 'left');
         return;
       }
-      t.swiped = true;
-      if (Math.abs(dx) > Math.abs(dy)) this.onSwipe(dx > 0 ? 'right' : 'left');
-      else this.onSwipe(dy > 0 ? 'down' : 'up');
+      const dir: Swipe = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      if (t.x < window.innerWidth * GRAB_ZONE) { t.swiped = true; this.onGrab(dir); }
+      else this.onSwipe(dir);
     });
     const end = (e: PointerEvent) => {
       const t = this.touches.get(e.pointerId);
@@ -72,9 +77,10 @@ export class Input {
         this.emitLean();
       }
       else if (map[e.code]) { e.preventDefault(); this.onAny(); this.onSwipe(map[e.code]); }
+      else if (GRAB_KEYS[e.code]) { this.onAny(); this.onGrab(GRAB_KEYS[e.code]); }
     });
     window.addEventListener('keyup', (e) => {
-      if (/^(Arrow|Key[WASD]$)/.test(e.code)) this.onRelease();
+      if (GRAB_KEYS[e.code]) this.onRelease();
       if (e.code === 'KeyQ' || e.code === 'KeyE') {
         this.keyLean[e.code === 'KeyQ' ? 'q' : 'e'] = false;
         this.emitLean();
