@@ -148,6 +148,23 @@ export class TrackBuilder {
     return this;
   }
 
+  /** A half pipe: deck, wall down, flat bottom, wall up, deck. Walls are near vertical at the lips. */
+  halfpipe(radius = 4.5, flatLen = 5, deck = 6): this {
+    const umax = radius * 0.96;
+    const H = radius - Math.sqrt(radius * radius - umax * umax);
+    this.flat(deck);
+    this.run(umax, (t) => {
+      const u = umax * (1 - t);
+      return radius - Math.sqrt(radius * radius - u * u) - H;
+    });
+    this.flat(flatLen);
+    this.run(umax, (t) => {
+      const u = umax * t;
+      return radius - Math.sqrt(radius * radius - u * u);
+    });
+    return this.flat(deck);
+  }
+
   /** Abrupt step back up (a ledge face). */
   rise(dy: number): this { return this.drop(dy); }
 

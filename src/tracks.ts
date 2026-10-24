@@ -7,6 +7,8 @@ export interface TrackDef {
   id: string;
   biome: string;
   name: string;
+  /** 'pipe' is a timed half-pipe bonus level; 'run' rides to a finish line. */
+  kind?: 'run' | 'pipe';
   /** Show the pump-timing cue (first track only). */
   tutorial?: boolean;
   build: () => Track;
@@ -21,6 +23,27 @@ function layout(startY: number, startX: number, fn: (b: TrackBuilder) => void): 
     return b.build(startX, finishX);
   };
 }
+
+/** Half pipe bonus level: ride back and forth for PIPE_TIME seconds. */
+export const PIPE_TIME = 60;
+function pipe(radius: number, flatLen: number): () => Track {
+  return () => {
+    const b = new TrackBuilder(0);
+    b.halfpipe(radius, flatLen, 8);
+    const centre = 8 + radius * 0.96 + flatLen / 2;
+    return b.build(centre, Infinity);
+  };
+}
+
+const PIPES: [string, string, number, number][] = [
+  ['park', 'Sunny Halfpipe', 4.5, 5],
+  ['beach', 'Boardwalk Bowl', 4.5, 6],
+  ['rooftops', 'Rooftop Halfpipe', 4.2, 5],
+  ['snow', 'Ice Pipe', 5, 6],
+  ['desert', 'Canyon Pipe', 4.8, 5],
+  ['jungle', 'Temple Pipe', 4.2, 4.5],
+  ['volcano', 'Magma Pipe', 5, 5],
+];
 
 export const TRACKS: TrackDef[] = [
   {
@@ -134,4 +157,7 @@ export const TRACKS: TrackDef[] = [
       b.sign('FINAL LEAP').ease(10, -3).kicker(5, 2.0).pit(7, -2).ease(6, -1).flat(8);
     }),
   },
+  ...PIPES.map(([biome, name, radius, flatLen]): TrackDef => ({
+    id: `${biome}-pipe`, biome, name, kind: 'pipe', build: pipe(radius, flatLen),
+  })),
 ];

@@ -6,7 +6,7 @@ import { Input } from './input';
 import { World } from './world';
 import { Skater } from './skater';
 import { loadAssets } from './assets';
-import { TRACKS, TrackDef } from './tracks';
+import { TRACKS, TrackDef, PIPE_TIME } from './tracks';
 import { BIOMES, BIOME_ORDER } from './biomes';
 import { Track } from './track';
 
@@ -69,8 +69,13 @@ score.onLost = (v) => { showCombo(v, 'lost'); comboHold = 1.1; };
 
 const rider = new Rider(track, {
   trick(t: Trick) { score.addTrick(t); popup(t.name); },
-  land({ airTime, smooth }) {
-    if (airTime > 0.7) score.addBonus(`Air ${airTime.toFixed(1)}s`, Math.round(airTime * 120));
+  land({ airTime, smooth, peakY }) {
+    if (def.kind === 'pipe') {
+      const h = peakY - track.maxY;
+      if (h > 0.5) score.addBonus(`Air ${h.toFixed(1)}m`, Math.round(h * 150));
+      // Each air in the pipe scores on its own as you land it.
+      score.bank();
+    } else if (airTime > 0.7) score.addBonus(`Air ${airTime.toFixed(1)}s`, Math.round(airTime * 120));
     if (smooth) { score.addBonus('Smooth', 75); popup('Smooth landing', 'good'); }
   },
   bail() { score.lose(); popup('BAIL!', 'bad'); },
@@ -90,8 +95,10 @@ function loadTrack(d: TrackDef) {
   }
   const b = BIOMES[d.biome];
   rider.track = track;
-  rider.opts = { friction: b.friction, maxSpeed: b.maxSpeed };
+  const isPipe = d.kind === 'pipe';
+  rider.opts = { friction: b.friction, maxSpeed: isPipe ? 12.5 : b.maxSpeed, pipe: isPipe };
   rider.reset();
+  if (isPipe) rider.v = 6;
   camPos.set(track.startX + 3, track.height(track.startX) + 2, 12);
 }
 
@@ -141,7 +148,9 @@ function openSelect() {
     tracks.forEach((t, i) => {
       const btn = document.createElement('button');
       const best = loadBest(t.id);
-      btn.innerHTML = `<small>${i + 1}</small>${t.name}<em>${best ? 'Best ' + fmt(best) : 'New'}</em>`;
+      const tag = t.kind === 'pipe' ? 'BONUS' : String(i + 1);
+      if (t.kind === 'pipe') btn.classList.add('bonus');
+      btn.innerHTML = `<small>${tag}</small>${t.name}<em>${best ? 'Best ' + fmt(best) : 'New'}</em>`;
       btn.addEventListener('click', () => start(t));
       btns.appendChild(btn);
     });
@@ -162,6 +171,7 @@ function finish() {
   const best = loadBest(def.id);
   const total = score.total;
   if (total > best) saveBest(def.id, total);
+  $('r-title').textContent = def.kind === 'pipe' ? "TIME'S UP!" : 'FINISHED!';
   $('r-track').textContent = def.name;
   $('r-score').textContent = fmt(total);
   $('r-time').textContent = time.toFixed(1) + 's';
@@ -194,6 +204,27 @@ function updateCamera(dt: number) {
     return;
   }
   const aspect = camera.aspect;
+  if (def.kind === 'pipe') {
+    // Frame the whole pipe, rising to follow big airs.
+    const lip = track.maxY;
+    const halfW = 7.8;
+    const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const fitW = halfW / (tanH * aspect);
+    const fitH = (lip + 5) / 2 / tanH;
+    const pd = Math.max(fitW, fitH, 12);
+    const py = (track.minY + lip) / 2 + 1.2 + Math.max(0, rider.y - lip) * 0.6;
+    const px = track.startX + (rider.x - track.startX) * 0.25;
+    const kk = 1 - Math.exp(-dt * 3);
+    camPos.x += (px - camPos.x) * kk;
+    camPos.y += (py - camPos.y) * kk;
+    camPos.z += (pd - camPos.z) * kk;
+    camera.position.set(camPos.x, camPos.y + 1, camPos.z);
+    camLook.set(camPos.x, camPos.y, 0);
+    camera.lookAt(camLook);
+    sun.position.set(camPos.x - 6, camPos.y + 12, 10);
+    sun.target.position.set(camPos.x, camPos.y, 0);
+    return;
+  }
   const spd = rider.speed;
   const portrait = aspect < 1 ? 1 / aspect : 1;
   const dist = (10 + spd * 0.25) * Math.min(1.9, portrait * 0.85 + 0.15);
@@ -239,7 +270,9 @@ function frame(now: number) {
       }
     }
     score.update(dt, rider.grounded);
-    if (rider.x >= track.finishX && finishTimer === 0) finishTimer = 0.001;
+    if (def.kind === 'pipe') {
+      if (time >= PIPE_TIME) { time = PIPE_TIME; finish(); }
+    } else if (rider.x >= track.finishX && finishTimer === 0) finishTimer = 0.001;
     if (finishTimer > 0) {
       finishTimer += dt;
       if (finishTimer > 1.2 && rider.grounded) finish();
@@ -264,9 +297,10 @@ function frame(now: number) {
     && track.slope(rider.x + rider.v * 0.12) * Math.sign(rider.v || 1) < -0.12;
   hud.cue.classList.toggle('on', cue);
   hud.score.textContent = fmt(score.total);
-  hud.time.textContent = time.toFixed(1);
+  hud.time.textContent = def.kind === 'pipe' ? Math.max(0, PIPE_TIME - time).toFixed(1) : time.toFixed(1);
   hud.speed.style.width = `${Math.min(100, (rider.speed / 20) * 100)}%`;
-  hud.progress.style.width = `${Math.min(100, ((rider.x - track.startX) / (track.finishX - track.startX)) * 100)}%`;
+  const prog = def.kind === 'pipe' ? time / PIPE_TIME : (rider.x - track.startX) / (track.finishX - track.startX);
+  hud.progress.style.width = `${Math.min(100, prog * 100)}%`;
 
   effect.render(scene, camera);
   requestAnimationFrame(frame);

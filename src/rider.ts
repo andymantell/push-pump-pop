@@ -43,7 +43,7 @@ const SWIPE_TRICK: Record<Swipe, TrickName | null> = {
 
 export interface RiderEvents {
   trick(t: Trick): void;
-  land(info: { airTime: number; smooth: boolean; hadTricks: boolean }): void;
+  land(info: { airTime: number; smooth: boolean; hadTricks: boolean; peakY: number }): void;
   bail(): void;
   pump(good: boolean): void;
   fall(): void;
@@ -53,6 +53,8 @@ export interface RiderOptions {
   /** Rolling friction multiplier (ice < 1). */
   friction: number;
   maxSpeed: number;
+  /** Half pipe: no pushing, and airs off the lips always come back in. */
+  pipe?: boolean;
 }
 
 export class Rider {
@@ -66,6 +68,8 @@ export class Rider {
   /** Board/body pitch in radians. */
   angle = 0;
   airTime = 0;
+  /** Highest point of the current or last air. */
+  peakY = 0;
   timeSinceGround = 0;
   pumpTimer = 0;
   pushPhase = 0;
@@ -133,7 +137,7 @@ export class Rider {
     if (this.bailing) return;
     const name = SWIPE_TRICK[dir];
     if (!name) return;
-    const canPop = this.grounded || (this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    const canPop = this.grounded || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop && (name === 'Ollie' || name === 'Kickflip' || name === 'Heelflip' || name === 'Pop Shove-it')) {
       this.pop();
       if (name === 'Ollie') { this.ev.trick(TRICKS.Ollie); return; }
@@ -145,7 +149,10 @@ export class Rider {
   }
 
   private pop() {
-    if (this.grounded) {
+    if (this.grounded && this.opts.pipe && Math.abs(this.track.slope(this.x)) > 0.6) {
+      // On a steep wall an ollie would throw you off it: give a kick up the wall instead.
+      this.v += Math.sign(this.v || 1) * 1.5;
+    } else if (this.grounded) {
       const th = Math.atan(this.track.slope(this.x));
       this.vx = this.v * Math.cos(th) - OLLIE_POP * Math.sin(th) * 0.5;
       this.vy = this.v * Math.sin(th) + OLLIE_POP * Math.cos(th);
@@ -160,6 +167,13 @@ export class Rider {
   private leaveGround() {
     this.grounded = false;
     this.airTime = 0;
+    this.peakY = this.y;
+    if (this.opts.pipe && Math.abs(this.vx) < Math.abs(this.vy)) {
+      // Cap pipe airs at about 3 m over the lip so the camera can keep you in view.
+      this.vy = Math.min(this.vy, 8.5);
+      // Going up past a lip: drift back over the ramp so you land on the wall.
+      this.vx = -Math.sign(this.vx) * 0.35;
+    }
     this.tricksThisAir = 0;
   }
 
@@ -204,13 +218,15 @@ export class Rider {
       if (this.pumpTimer > 0 && !this.bailing) {
         // Pumping pays off on the way down a transition and costs a little on the way up.
         const downhill = -sin * dir;
-        const f = Math.max(-0.12, Math.min(1, downhill * 3));
+        let f = Math.max(-0.12, Math.min(1, downhill * 3));
+        // Half pipe: pumping through the flat bottom counts too, so it's easy to build height.
+        if (this.opts.pipe) f = Math.max(f, Math.abs(sin) < 0.3 ? 0.8 : 0.25);
         a += dir * PUMP_ACCEL * f;
       }
 
       // Auto push on flat ground when slow, so you never get stuck.
       this.pushing = false;
-      if (!this.bailing && this.v < MIN_PUSH_SPEED) {
+      if (!this.bailing && !this.opts.pipe && this.v < MIN_PUSH_SPEED) {
         a += 4 + GRAVITY * Math.max(0, sin);
         this.pushing = true;
       }
@@ -224,7 +240,7 @@ export class Rider {
       const face = Math.atan(tr.slope(this.x - Math.sign(this.v) * 0.15));
       const lookX = this.x + this.v * Math.cos(face) * dt * 3;
       const cliff = tr.height(lookX) < this.y + Math.tan(face) * (lookX - this.x) - 0.15;
-      if ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > GRAVITY * cos * STICK && Math.abs(this.v) > 4)) {
+      if ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > GRAVITY * cos * STICK && (this.opts.pipe || Math.abs(this.v) > 4))) {
         this.vx = this.v * Math.cos(face);
         this.vy = this.v * Math.sin(face);
         if (this.pumpTimer > 0) this.vy += 1.2; // pumping into a lip pops you a little higher
@@ -236,6 +252,12 @@ export class Rider {
       this.x += this.v * cos * dt;
       this.y = tr.height(this.x);
       this.angle = th;
+      if (this.opts.pipe && this.y >= tr.maxY - 1e-3 && Math.abs(k) < 0.05) {
+        // Never ride out onto the deck of a half pipe: turn back at the lip.
+        this.x -= this.v * cos * dt * 2;
+        this.y = tr.height(this.x);
+        this.v = -this.v * 0.5;
+      }
     } else {
       this.timeSinceGround += dt;
       this.airTime += dt;
@@ -244,9 +266,10 @@ export class Rider {
       this.x += this.vx * dt;
       this.y += this.vy * dt;
 
+      this.peakY = Math.max(this.peakY, this.y);
       // Visual pitch drifts towards the flight path so landings line up.
       const target = Math.max(-0.9, Math.min(0.9, Math.atan2(this.vy, Math.abs(this.vx)) * 0.75)) * Math.sign(this.vx || 1);
-      this.angle += (target - this.angle) * Math.min(1, dt * 3);
+      if (!this.opts.pipe) this.angle += (target - this.angle) * Math.min(1, dt * 3);
 
       if (this.current) {
         this.trickT += dt;
@@ -314,7 +337,7 @@ export class Rider {
     }
     const smooth = diff < 0.3 && this.airTime > 0.35;
     this.v = tang * (smooth ? 1.04 : 1);
-    this.ev.land({ airTime: this.airTime, smooth, hadTricks: this.tricksThisAir > 0 || this.ollied });
+    this.ev.land({ airTime: this.airTime, smooth, hadTricks: this.tricksThisAir > 0 || this.ollied, peakY: this.peakY });
     this.ollied = false;
   }
 

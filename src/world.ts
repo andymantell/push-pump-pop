@@ -516,6 +516,7 @@ export class World {
 
   private buildFinish() {
     const x = this.track.finishX;
+    if (!Number.isFinite(x)) return;
     const g = new THREE.Group();
     const zb = -TRACK_W / 2 - 0.2;
     for (const dx of [-1.8, 1.8]) {

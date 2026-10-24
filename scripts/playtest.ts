@@ -5,7 +5,7 @@
 //
 // The bot "sees" the track ahead like a player does, but its inputs land after a
 // reaction delay with random jitter, and it can't tap faster than a person.
-import { TRACKS } from '../src/tracks';
+import { TRACKS, PIPE_TIME } from '../src/tracks';
 import { BIOMES } from '../src/biomes';
 import { Rider, Swipe } from '../src/rider';
 import { Track } from '../src/track';
@@ -55,11 +55,14 @@ function play(trackId: string, seed: number): Result {
   let t = 0;
   let respawnAt = -1;
   const r: Rider = new Rider(track, {
-    trick() {}, land() {}, pump() {},
+    trick() { tricks++; }, land() {}, pump() {},
     bail() { res.bails++; },
     fall() { respawnAt = t + 1.2; },
   });
-  r.opts = { friction: biome.friction, maxSpeed: biome.maxSpeed };
+  const isPipe = def.kind === 'pipe';
+  r.opts = { friction: biome.friction, maxSpeed: isPipe ? 12.5 : biome.maxSpeed, pipe: isPipe };
+  if (isPipe) r.v = 6;
+  let peakAboveLip = 0, tricks = 0;
 
   // Inputs the bot has decided on, landing later.
   const queue: { at: number; act: 'pump' | Swipe }[] = [];
@@ -73,7 +76,7 @@ function play(trackId: string, seed: number): Result {
     queue.push({ at: t + REACTION + (rand() * 2 - 1) * JITTER, act });
   };
 
-  while (t < TIME_LIMIT && r.x < track.finishX) {
+  while (isPipe ? t < PIPE_TIME : t < TIME_LIMIT && r.x < track.finishX) {
     // Respawn after a fall, as the game does.
     if (respawnAt > 0 && t >= respawnAt) {
       const p = r.fallPit!;
@@ -93,13 +96,14 @@ function play(trackId: string, seed: number): Result {
 
     // Decide. Looks ahead by where it will be when the input lands.
     if (!r.falling && !r.bailing) {
-      const lead = Math.max(0, r.v) * REACTION;
+      const dir = Math.sign(r.v) || 1;
+      const lead = Math.abs(r.v) * REACTION;
       if (r.grounded) {
         trickPlanned = false;
-        const slopeThen = track.slope(r.x + lead);
+        const slopeThen = track.slope(r.x + lead * dir) * dir;
         if (slopeThen < -0.12 && t - lastPumpDecision > 0.45) { press('pump'); lastPumpDecision = t; }
         // Pop at the lip: decide when the lip is about one reaction-time away.
-        const lip = nextLip(track, r.x, lead + 1.5);
+        const lip = isPipe ? null : nextLip(track, r.x, lead + 1.5);
         if (lip !== null && t - lipPlanned > 0.6 && Math.abs(lip - lead) < 0.6 + r.v * 0.04) {
           press('up');
           lipPlanned = t;
@@ -114,6 +118,7 @@ function play(trackId: string, seed: number): Result {
     const before = r.x;
     r.update(DT);
     t += DT;
+    if (!r.grounded) peakAboveLip = Math.max(peakAboveLip, r.y - track.maxY);
     if (r.grounded && track.slope(r.x) < -0.12) downT += DT;
     else if (downT > 0) { if (downT > 0.1) res.downs.push(downT); downT = 0; }
     track.pits.forEach((p, i) => { if (before < p.x0 - 0.3 && r.x >= p.x0 - 0.3) res.lipSpeeds[i].push(+r.speed.toFixed(1)); });
@@ -126,7 +131,8 @@ function play(trackId: string, seed: number): Result {
     });
     // Allow a gap to count again after a respawn past it? No: one attempt per run.
   }
-  res.finished = r.x >= track.finishX;
+  // A half pipe counts as done if you can get a proper air (1 m over the lip) and a few tricks.
+  res.finished = isPipe ? peakAboveLip >= 1 && tricks >= 5 : r.x >= track.finishX;
   res.time = t;
   return res;
 }
