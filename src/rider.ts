@@ -33,9 +33,9 @@ const LOOP_POINTS = 1000;
 const PERCH_ANGLE = 0.3;
 /** How far over the coping the board sits while perched, and how long dropping in takes. */
 const PERCH_OVER = 0.3;
-const DROP_TIME = 0.35;
+const DROP_TIME = 0.2;
 /** Dropping in gives you a shove down the wall, so the first pass already gets a little air. */
-const DROP_SPEED = 8;
+const DROP_SPEED = 4;
 /** Rail assist: an ollie this many seconds before a rail starts hops you onto it. */
 const RAIL_REACH = 0.7;
 /** ...as long as there's this much rail left to land on. */
@@ -882,11 +882,12 @@ export class Rider {
   private stepDropIn(dt: number) {
     const tr = this.track;
     this.dropT = Math.min(1, this.dropT + dt / DROP_TIME);
-    const e = this.dropT * this.dropT * (3 - 2 * this.dropT);
-    const x1 = this.lipX + PERCH_OVER + 0.15;
-    const th = Math.atan(tr.slope(x1));
-    this.x = this.lipX + PERCH_OVER + 0.15 * e;
+    const e = this.dropT * this.dropT;
+    // Tip forward over the coping onto the top of the wall, already moving, then ride away.
+    const x0 = this.lipX + PERCH_OVER, x1 = this.lipX + 0.06;
     const y0 = tr.maxY + PERCH_OVER * Math.sin(PERCH_ANGLE);
+    const th = Math.atan(tr.slope(x1));
+    this.x = x0 + (x1 - x0) * e;
     this.y = y0 + (tr.height(x1) - y0) * e;
     this.angle = PERCH_ANGLE + (th - PERCH_ANGLE) * e;
     if (this.dropT >= 1) {
@@ -894,8 +895,11 @@ export class Rider {
       this.x = x1;
       this.y = tr.height(x1);
       this.v = DROP_SPEED;
+      // Leaning into the drop works like a short pump down the wall.
+      this.pumpTimer = PUMP_TIME * 0.5;
     }
   }
+
 
   /** 0..1 progress of the current trick, for animation. */
   get trickProgress() {
