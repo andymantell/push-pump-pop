@@ -19,6 +19,10 @@ const JITTER = 0.08; // +/- seconds of timing error
 const MAX_INPUTS_PER_SEC = 3;
 const MIN_PIT_CLEAR_RATE = 0.6;
 const MIN_FINISH_RATE = 1.0;
+/** Lives per run, as in the game: each bail or fall costs one. */
+const LIVES = 3;
+/** Share of runs that must finish without losing any life at all. */
+const MIN_CLEAN_RATE = 0.5;
 /** Median time spent rolling down a slope: below this, pumping can't be timed. */
 const MIN_DOWNSLOPE_TIME = 0.3;
 const TIME_LIMIT = 120;
@@ -33,6 +37,8 @@ interface Result {
   pitAttempts: number[];
   pitClears: number[];
   bails: number;
+  /** Lives lost by the time the run reached the finish (or ended). */
+  livesLost: number;
   lipSpeeds: number[][];
   downs: number[];
   /** Where the rider suddenly stopped. */
@@ -58,15 +64,15 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
   const biome = BIOMES[def.biome];
   const track = def.build();
   const rand = rng(seed);
-  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [] };
+  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, livesLost: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [] };
   let recent: { t: number; s: number }[] = [];
   let downT = 0;
   let t = 0;
   let respawnAt = -1;
   const r: Rider = new Rider(track, {
     trick() { tricks++; }, land() {}, pump() {},
-    bail() { res.bails++; },
-    fall() { respawnAt = t + 1.2; },
+    bail() { res.bails++; res.livesLost++; },
+    fall() { respawnAt = t + 1.2; res.livesLost++; },
   });
   const isPipe = def.kind === 'pipe';
   r.opts = { friction: biome.friction, maxSpeed: isPipe ? 12.5 : biome.maxSpeed, pipe: isPipe };
@@ -151,7 +157,8 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
     // Allow a gap to count again after a respawn past it? No: one attempt per run.
   }
   // A half pipe counts as done if you can get a proper air (1 m over the lip) and a few tricks.
-  res.finished = isPipe ? peakAboveLip >= 1 && tricks >= 5 : r.x >= track.finishX;
+  // A run only counts as finished if it got there before running out of lives.
+  res.finished = isPipe ? peakAboveLip >= 1 && tricks >= 5 : r.x >= track.finishX && res.livesLost < LIVES;
   res.time = t;
   return res;
 }
@@ -167,6 +174,7 @@ for (const def of TRACKS) {
   const pumpers = Array.from({ length: RUNS / 4 }, (_, i) => play(def.id, 5000 + i * 7919, true));
   const stops = [...results, ...pumpers].flatMap((r) => r.stops);
   const finishRate = results.filter((r) => r.finished).length / RUNS;
+  const cleanRate = results.filter((r) => r.finished && r.livesLost === 0).length / RUNS;
   const times = results.filter((r) => r.finished).map((r) => r.time).sort((a, b) => a - b);
   const median = times.length ? times[Math.floor(times.length / 2)] : NaN;
   const track = def.build();
@@ -179,14 +187,16 @@ for (const def of TRACKS) {
   const downMedian = downs.length ? downs[Math.floor(downs.length / 2)] : 1;
   const problems: string[] = [];
   if (downMedian < MIN_DOWNSLOPE_TIME) problems.push(`downslopes too short to pump (median ${downMedian.toFixed(2)}s)`);
-  if (finishRate < MIN_FINISH_RATE) problems.push(`finished ${(finishRate * 100).toFixed(0)}% of runs`);
+  if (finishRate < MIN_FINISH_RATE) problems.push(`finished ${(finishRate * 100).toFixed(0)}% of runs with lives left`);
+  if (def.kind !== 'pipe' && cleanRate < MIN_CLEAN_RATE) problems.push(`only ${(cleanRate * 100).toFixed(0)}% of runs kept all ${LIVES} lives`);
   pitRates.forEach((rate, i) => {
     if (rate < MIN_PIT_CLEAR_RATE) problems.push(`gap at ${track.pits[i].x0.toFixed(0)} m cleared ${(rate * 100).toFixed(0)}%`);
   });
   if (stops.length) problems.push(`sudden stops at ${[...new Set(stops.map((x) => Math.round(x)))].join(', ')} m`);
   const bails = results.reduce((s, r) => s + r.bails, 0) / RUNS;
+  const lost = results.reduce((s, r) => s + r.livesLost, 0) / RUNS;
   const status = problems.length ? 'FAIL' : 'ok  ';
-  console.log(`${status} ${def.id.padEnd(12)} median ${median.toFixed(1)}s  bails/run ${bails.toFixed(1)}  downslope ${downMedian.toFixed(2)}s  gaps ${pitRates.map((r) => (r * 100).toFixed(0) + '%').join(' ') || '-'}`);
+  console.log(`${status} ${def.id.padEnd(12)} median ${median.toFixed(1)}s  bails/run ${bails.toFixed(1)}  lives lost/run ${lost.toFixed(1)}  downslope ${downMedian.toFixed(2)}s  gaps ${pitRates.map((r) => (r * 100).toFixed(0) + '%').join(' ') || '-'}`);
   if (problems.length) {
     failed = true;
     for (const p of problems) console.log(`       ${p}`);

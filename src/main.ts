@@ -78,11 +78,29 @@ const rider = new Rider(track, {
     } else if (airTime > 0.7) score.addBonus(`Air ${airTime.toFixed(1)}s`, Math.round(airTime * 120));
     if (smooth) { score.addBonus('Smooth', 75); popup('Smooth landing', 'good'); }
   },
-  bail() { score.lose(); popup('BAIL!', 'bad'); },
+  bail() { score.lose(); popup('BAIL!', 'bad'); loseLife(); },
   pump(good) { if (good) popup('Pump!', 'good'); },
-  fall() { score.lose(); popup(world.biome.fallText, 'bad'); respawnTimer = 1.2; },
+  fall() { score.lose(); popup(world.biome.fallText, 'bad'); respawnTimer = 1.2; loseLife(); },
 });
 let respawnTimer = 0;
+
+// Three lives a run: each bail or fall into a gap costs one, and losing the last
+// ends the run so you start the level again. Half pipes are timed and have none.
+const LIVES = 3;
+let lives = LIVES;
+let outTimer = 0;
+function drawLives(hit = false) {
+  const el = $('lives');
+  el.innerHTML = def.kind === 'pipe' ? '' : Array.from({ length: LIVES }, (_, i) => `<span${i < lives ? '' : ' class="gone"'}>&#9829;</span>`).join('');
+  el.classList.remove('hit');
+  if (hit) { void el.offsetWidth; el.classList.add('hit'); }
+}
+function loseLife() {
+  if (state !== 'playing' || def.kind === 'pipe' || outTimer > 0 || finishTimer > 0) return;
+  lives--;
+  drawLives(true);
+  if (lives <= 0) { outTimer = 0.001; popup('OUT OF LIVES', 'big'); }
+}
 
 function loadTrack(d: TrackDef) {
   if (d !== def) {
@@ -126,6 +144,9 @@ function start(d: TrackDef = def) {
   time = 0;
   finishTimer = 0;
   respawnTimer = 0;
+  lives = LIVES;
+  outTimer = 0;
+  drawLives();
   showCombo(null);
   $('trackname').textContent = d.name;
   show(null);
@@ -165,18 +186,23 @@ function nextTrack(): TrackDef {
   return TRACKS[(TRACKS.indexOf(def) + 1) % TRACKS.length];
 }
 
-function finish() {
+function finish(out = false) {
   score.bank();
   state = 'finished';
   const best = loadBest(def.id);
   const total = score.total;
-  if (total > best) saveBest(def.id, total);
-  $('r-title').textContent = def.kind === 'pipe' ? "TIME'S UP!" : 'FINISHED!';
+  // Running out of lives doesn't count towards your best.
+  if (!out && total > best) saveBest(def.id, total);
+  $('results').classList.toggle('out', out);
+  $('next').classList.toggle('hidden', out);
+  $('again').textContent = out ? 'TRY AGAIN' : 'RIDE AGAIN';
+  $('again').classList.toggle('alt', !out);
+  $('r-title').textContent = out ? 'OUT OF LIVES!' : def.kind === 'pipe' ? "TIME'S UP!" : 'FINISHED!';
   $('r-track').textContent = def.name;
   $('r-score').textContent = fmt(total);
   $('r-time').textContent = time.toFixed(1) + 's';
   $('r-combo').textContent = fmt(score.bestCombo);
-  $('r-best').textContent = total > best ? 'NEW BEST!' : `Best: ${fmt(best)}`;
+  $('r-best').textContent = out ? 'Start the level again to finish it' : total > best ? 'NEW BEST!' : `Best: ${fmt(best)}`;
   $('next').textContent = `NEXT: ${nextTrack().name.toUpperCase()}`;
   show('results');
 }
@@ -261,7 +287,11 @@ function frame(now: number) {
   if (state === 'playing') {
     time += dt;
     rider.update(dt);
-    if (respawnTimer > 0) {
+    if (outTimer > 0) {
+      // Let the bail or fall play out before the out-of-lives screen.
+      outTimer += dt;
+      if (outTimer > 1.6) finish(true);
+    } else if (respawnTimer > 0) {
       respawnTimer -= dt;
       if (respawnTimer <= 0) {
         const pit = rider.fallPit;
@@ -272,7 +302,7 @@ function frame(now: number) {
     score.update(dt, rider.grounded);
     if (def.kind === 'pipe') {
       if (time >= PIPE_TIME) { time = PIPE_TIME; finish(); }
-    } else if (rider.x >= track.finishX && finishTimer === 0) finishTimer = 0.001;
+    } else if (rider.x >= track.finishX && finishTimer === 0 && outTimer === 0) finishTimer = 0.001;
     if (finishTimer > 0) {
       finishTimer += dt;
       if (finishTimer > 1.2 && rider.grounded) finish();
@@ -309,6 +339,6 @@ requestAnimationFrame(frame);
 
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
-  rider, score, skater, start, openSelect, TRACKS, get track() { return track; }, get state() { return state; },
+  rider, score, skater, start, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };

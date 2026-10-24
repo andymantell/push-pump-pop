@@ -16,6 +16,8 @@ A mobile-friendly side-on skateboarding game inspired by Pumped BMX, built with 
 
 Flip tricks pop off the ground too. Chain tricks into combos; land before the board finishes spinning or you bail and lose the combo.
 
+You get three lives per track. Each bail or fall into a gap costs one, and losing the third means starting the track again. Half-pipe bonus levels are timed and have no lives.
+
 ## Development
 
 ```sh
