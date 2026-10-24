@@ -25,12 +25,13 @@ const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const DOWN = v3(0, -1, 0);
 
 // Where each grab takes hold of the deck (deck space: +x nose, +z toe edge),
-// which hand does it, and how the board tilts (nose up is +).
-const GRABS: Record<GrabName, { hand: 'L' | 'R'; at: THREE.Vector3; tilt: number }> = {
-  Indy: { hand: 'R', at: v3(0.02, 0.1, 0.1), tilt: 0.1 },
-  Melon: { hand: 'L', at: v3(0.04, 0.1, -0.1), tilt: -0.05 },
-  Nosegrab: { hand: 'L', at: v3(0.4, 0.13, 0.04), tilt: 0.45 },
-  Tailgrab: { hand: 'R', at: v3(-0.4, 0.13, 0.04), tilt: -0.45 },
+// which hand does it, how the board tilts (nose up is +), which way the elbow
+// bows, and how far the knees splay apart to leave room for the arm.
+const GRABS: Record<GrabName, { hand: 'L' | 'R'; at: THREE.Vector3; tilt: number; elbow: THREE.Vector3; splay: number }> = {
+  Indy: { hand: 'R', at: v3(0.0, 0.1, 0.11), tilt: 0.1, elbow: v3(-0.3, 0, 1), splay: 0.9 },
+  Melon: { hand: 'L', at: v3(0.03, 0.1, -0.11), tilt: -0.05, elbow: v3(0.3, 0, -1), splay: 0.9 },
+  Nosegrab: { hand: 'L', at: v3(0.4, 0.13, 0.04), tilt: 0.45, elbow: v3(1, 0.3, -0.4), splay: 0 },
+  Tailgrab: { hand: 'R', at: v3(-0.4, 0.13, 0.04), tilt: -0.45, elbow: v3(-1, 0.3, -0.4), splay: 0 },
 };
 
 function placeholderParts(): Record<PartName, THREE.Object3D> {
@@ -234,8 +235,10 @@ export class Skater {
 
     const hipL = v3(0.14, hipY, 0);
     const hipR = v3(-0.06, hipY, 0);
-    this.leg(p.thigh_L, p.shin_L, p.shoe_L, hipL, front);
-    this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, back);
+    // Knees point forward, splaying apart for a grab between the legs.
+    const splay = grab.splay * gw;
+    this.leg(p.thigh_L, p.shin_L, p.shoe_L, hipL, front, v3(splay, 0, 1));
+    this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, back, v3(-splay, 0, 1));
 
     // Arms out for balance, higher in the air, swinging when pushing.
     const swing = r.pushing ? Math.sin(this.pushT * Math.PI * 2) * 0.5 : 0;
@@ -292,8 +295,7 @@ export class Skater {
     const u = d.clone().normalize();
     const cosA = (UPPER_ARM * UPPER_ARM + len * len - FOREARM * FOREARM) / (2 * UPPER_ARM * len);
     const a = Math.acos(Math.max(-1, Math.min(1, cosA)));
-    // Elbow bows out to the side, away from the body.
-    const pole = v3(Math.sign(s.x), 0.3, -0.4);
+    const pole = g.elbow.clone();
     const perp = pole.sub(u.clone().multiplyScalar(pole.dot(u))).normalize();
     const elbow = u.clone().multiplyScalar(Math.cos(a) * UPPER_ARM).add(perp.multiplyScalar(Math.sin(a) * UPPER_ARM));
     const qU = new THREE.Quaternion().setFromUnitVectors(DOWN, elbow.clone().normalize());
@@ -303,7 +305,7 @@ export class Skater {
     fore.quaternion.slerp(qF, w);
   }
 
-  private leg(thigh: THREE.Object3D, shin: THREE.Object3D, shoe: THREE.Object3D, hip: THREE.Vector3, foot: THREE.Vector3) {
+  private leg(thigh: THREE.Object3D, shin: THREE.Object3D, shoe: THREE.Object3D, hip: THREE.Vector3, foot: THREE.Vector3, pole: THREE.Vector3) {
     const d = foot.clone().sub(hip);
     let len = d.length();
     const max = THIGH + SHIN - 0.002;
@@ -311,7 +313,6 @@ export class Skater {
     const u = d.clone().normalize();
     const cosA = (THIGH * THIGH + len * len - SHIN * SHIN) / (2 * THIGH * len);
     const a = Math.acos(Math.max(-1, Math.min(1, cosA)));
-    const pole = v3(0, 0, 1);
     const perp = pole.sub(u.clone().multiplyScalar(pole.dot(u))).normalize();
     const knee = hip.clone().add(u.clone().multiplyScalar(Math.cos(a) * THIGH)).add(perp.multiplyScalar(Math.sin(a) * THIGH));
     const end = hip.clone().add(d);
