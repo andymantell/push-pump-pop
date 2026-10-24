@@ -25,10 +25,10 @@ These apply to all 70 tracks and come from what the game and the playtest alread
   finished by the pump-only bot (it never ollies) without losing a life. That means
   **no gaps** in those tracks, only things you can roll over. Park 7 ("Mind the Gap") is the
   first track that is allowed to fail the pump-only bot.
-- **New moves are optional first.** A move is "introduced" with a sign and an easy place to
-  do it, and is worth points, but the track can be finished without it. The only move that
-  is ever *required* is the ollie (to clear gaps). Grinds and loops stay optional for score
-  unless the grind/loop implementation makes a missed grind or a stalled loop harmless.
+- **Moves are never needed to reach the finish, except the ollie** (to clear gaps). Grinds
+  and loops can always be skipped on the way to the finish. Challenges (section 2a) are what
+  ask for specific moves, and a challenge only asks for a move the player has been taught
+  (see the rule in 2a).
 - **Lengths.** The playtest gives up at 120 s. Keep the bot's median time under 90 s, so the
   longest track is about 900 m (bots average about 9 to 11 m/s, a bit more on snow).
 - **Signs.** Each new idea gets a sign the first time it appears (e.g. `TILT: MANUAL`,
@@ -52,10 +52,10 @@ hardest thing on it, using these knobs:
 | 9    | 7-8 | 6-7 m | any | 8 m+ | loops into gaps |
 | 10   | 8+  | 6-8 m *(verify: longest today is 7 m at 79% clears)* | any | 6 m+ | everything |
 
-### Par and stars (proposed)
+### Par
 
-- Each track has a **par score**. Finishing gives 1 star, half par gives 2, par gives 3.
-  Stars are shown on the level select next to the best score. They never lock anything.
+- Each track has a **par score**. It is used by "Score N" challenges and shown on the
+  results screen. Stars now come from challenges (section 2a), not from par.
 - The par numbers below are design targets. When a track is built, **calibrate**: run the
   trick bot's 24 runs, take the 75th-percentile score and round to the nearest 500. If that
   is more than 25% away from the target, change the layout (more or fewer airs) rather than
@@ -69,19 +69,206 @@ hardest thing on it, using these knobs:
 
 ## 2. Unlock order
 
-Confirmed by Andy (2026-10-24): the next biome opens after track 5.
+Confirmed by Andy (2026-10-24): the next biome opens after track 5. Updated the same day:
+finishing alone isn't enough, you also need the track's required challenges.
 
 - The game opens with **Sunny Park 1** only.
-- Finishing a track (reaching the finish with a life left) unlocks the next track in that biome.
-- **Finishing track 5 of a biome unlocks track 1 of the next biome.** So there are always two
+- A track is **complete** when you have finished it (reached the finish with a life left) at
+  least once **and** done its required challenges (section 2a). Completing a track unlocks
+  the next track in that biome.
+- **Completing track 5 of a biome unlocks track 1 of the next biome.** So there are always two
   biomes on the go and a stuck child can go somewhere new. Biome order stays
   Park, Beach, Rooftops, Snow, Desert, Jungle, Volcano.
-- **Finishing track 3 of a biome unlocks its bonus level** (half pipe or mega ramp).
+- **Completing track 3 of a biome unlocks its bonus level** (half pipe or mega ramp).
 - Because of the T5 rule, anything taught in tracks 6 to 10 of a biome (e.g. grinds in
-  Park 8) can't be relied on in the next biome's tracks 1 to 5. Those stay optional there.
+  Park 8) may not have been played before the next biome. See the challenge rule in 2a.
 - A parent/debug "unlock all" (e.g. long-press the title) is worth having for testing.
 
 The level select will need paging or a scroll per biome once there are 11 buttons in a row.
+
+---
+
+## 2a. Challenges
+
+Andy (2026-10-24): every track has challenges, specific tricks and combos you need to land
+to progress, and they get harder through the game.
+
+### Rules
+
+- Every run track has **3 challenges**. Each one done is a **star** (0 to 3 stars per track).
+- **Required to complete the track:** challenge 1 in Sunny Park and Beach Boardwalk;
+  challenges 1 and 2 from Downtown Rooftops on. Challenge 3 is always optional, the hard one.
+- Challenges are **saved as soon as they are done**, even in a run that then runs out of lives.
+  You don't have to do them all in one run. Finishing the track is a separate requirement
+  (also saved once done).
+- **Taught moves only.** A required challenge may only ask for a move that is either taught
+  earlier on the guaranteed path (tracks 1 to 5 of earlier biomes, or earlier tracks in this
+  biome) or taught by a sign on this same track. Where a later track uses a move from
+  outside that path (manuals in Snow 5, loops in Jungle 7 and Volcano 5), that track repeats
+  the move's sign (`TILT: MANUAL`, `LOOP!`) before the first chance to do it.
+- **Sunny Park 1 to 6 stay very easy:** challenge 1 is one simple thing with three or more
+  chances to do it on the track.
+- **Bonus levels** have 3 challenges too, but they never gate anything.
+
+### Challenge kinds (for the builder)
+
+`TrackDef.challenges: Challenge[]`, three per track, each with `text` (shown to the player)
+and one of these kinds. "Over gap N" means the trick is landed in the air that clears pit N.
+
+| Kind | Params | Example text |
+|------|--------|--------------|
+| `finish` | - | Finish the track |
+| `trick` | name, or a group (`flip`, `grab`, `spin`, `bodyflip`), count, optional `overGap` | Land a kickflip / Grab over a gap |
+| `allOf` | list of trick names, in one run | Land all four grabs |
+| `sameAir` | list of names or groups | Grab and spin in the same air |
+| `combo` | min tricks, optional must-include list, optional min points, optional `overGap` | Land a 3-trick combo |
+| `grind` | count of rails or a specific rail, optional min seconds | Grind both flat rails |
+| `manual` | min seconds | Manual for 1 second |
+| `loop` | count | Ride the loop |
+| `air` | min seconds or min metres | Air for 1.5 seconds |
+| `pumps` | count of good pumps in one run | Do 10 good pumps |
+| `gaps` | all gaps cleared in one run (no falls) | Clear every gap |
+| `climb` | every valley exited without rolling back | Climb out of every gully first time |
+| `noLives` | finish without losing a life | Finish without losing a life |
+| `score` | points (usually par) | Score 10,000 |
+
+A loop counts as a trick in combos ("Loop + flip combo"). A grind counts as a trick in combos
+too, if the grind thread makes it one.
+
+### How challenges show in the game
+
+- **Level select:** each track button shows 0 to 3 stars and a lock. Tapping a locked track
+  says what to do, e.g. "Do challenge 1 on Grab Bag to open this".
+- **Before a run:** a card with the track name and its 3 challenges, each with an icon (the
+  trick's swipe arrow, a rail, a loop, a gap), ticked if already done, and "needed" next to
+  the required ones. One big GO button. Kept short enough to read aloud to a child.
+- **During the run:** the 3 challenges sit small in the top-left corner as icons with ticks.
+  When one is done: its tick fills in, a "CHALLENGE!" popup and a sound, and it's saved
+  straight away. Challenges with a count show it (e.g. 2/3).
+- **Results screen:** score and par, then the 3 challenges with ticks. Ones done this run get a
+  "NEW!" badge. Then either "Next track unlocked!" or exactly what's still missing ("Finish
+  the track" / "Do challenge 2 to open the next track").
+- **Out of Lives screen:** also shows any challenges done in that run, so it still feels like
+  progress.
+
+### Playtest gate for challenges
+
+The trick bot gets a "go for the challenges" mode (it does the asked tricks at the planned
+places). Each **required** challenge must be done in at least 50% of that bot's runs; each
+optional challenge at least once in 24 runs. Park 1 to 6 required challenges: at least 90%.
+
+### Challenges by track
+
+★ = required. Sunny Park and Beach need ★1; Rooftops onwards need ★1 and ★2.
+
+**Sunny Park**
+
+| # | Name | 1 | 2 | 3 |
+|---|------|---|---|---|
+| 1 | First Pump | ★ Finish the track | Do 3 good pumps | Finish without losing a life |
+| 2 | Little Ollies | ★ Land an ollie | Ollie all 3 kickers | Score 3,000 |
+| 3 | Flip Out | ★ Land a kickflip | Land a heelflip and a shove-it | Land all three flips in one run |
+| 4 | Grab Bag | ★ Land a grab | Hold a grab for 1 second | Land all four grabs |
+| 5 | Spin Cycle | ★ Land a 180 | Land a 360 | Grab and spin in the same air |
+| 6 | Wheelie Way | ★ Manual for 1 second | Nose manual for 1 second | Manual a whole pad |
+| 7 | Mind the Gap | ★ Clear a gap | Clear every gap | Kickflip over a gap |
+| 8 | Rail Ride | ★ Grind a rail | Grind both flat rails | Grind the rail after the kicker |
+| 9 | Combo Park | ★ Land a 2-trick combo | Land a 3-trick combo | Combo worth 3,000 |
+| 10 | Big Air Sunday | ★ Clear every gap | Indy on the big air | Score 22,000 |
+
+**Beach Boardwalk**
+
+| # | Name | 1 | 2 | 3 |
+|---|------|---|---|---|
+| 1 | Boardwalk Breeze | ★ Clear every water gap | Land a 3-trick combo | Score 6,000 |
+| 2 | Sandy Swells | ★ Get air off a roller top | Grab off a roller top | Air for 1 second |
+| 3 | Pier Pressure | ★ Grind a pier rail | Grind for 2 seconds | Kickflip off the end of a rail |
+| 4 | Low Tide | ★ Clear the end gap | Do 10 good pumps | Score 10,000 |
+| 5 | Surf's Up | ★ Clear every water gap | Grab over every gap | Kickflip + Indy combo |
+| 6 | Sunset Strip | ★ Land a 4-trick combo | Manual + flip + manual combo | Combo worth 8,000 |
+| 7 | Lifeguard Lookout | ★ Land a 360 | Melon over a water gap | Score 17,000 |
+| 8 | Jetty Jump | ★ Grind into the jetty gap and clear it | Rail + flip combo over the gap | Land a 5-trick combo |
+| 9 | Riptide | ★ Clear every water gap | Do 15 good pumps | Score 21,000 |
+| 10 | End of the Pier | ★ Finish without losing a life | 360 + grab off the pier end | Score 25,000 |
+
+**Downtown Rooftops**
+
+| # | Name | 1 | 2 | 3 |
+|---|------|---|---|---|
+| 1 | Rooftop Hop | ★ Clear every gap | ★ Kickflip over a gap | Finish without losing a life |
+| 2 | Stair Street | ★ Ollie a stair set | ★ Heelflip a stair set | Land a 3-trick combo |
+| 3 | Rush Hour Roofs | ★ Clear every gap | ★ Grab over 2 gaps | Finish without losing a life |
+| 4 | Handrail Hustle | ★ Grind a stair rail | ★ Grind 2 stair rails | Stair rail + flip combo |
+| 5 | Level Best | ★ Clear every gap | ★ 180 over a gap | Land a 4-trick combo |
+| 6 | Neon Nights | ★ Grind a ledge and clear its gap | ★ Ledge grind + flip over the gap | Score 23,000 |
+| 7 | Scaffold Scramble | ★ Clear every uphill gap | ★ Melon over an uphill gap | Finish without losing a life |
+| 8 | Billboard Blast | ★ Air for 1.5 seconds | ★ Grab and spin in the same air over a gap | Score 27,000 |
+| 9 | Skyline Sprint | ★ Clear a set of three gaps in one combo | ★ Land a 5-trick combo | Finish without losing a life |
+| 10 | Penthouse Plunge | ★ Clear the final gap | ★ Rail + flip + grab combo | Score 34,000 |
+
+**Snowy Mountain**
+
+| # | Name | 1 | 2 | 3 |
+|---|------|---|---|---|
+| 1 | Powder Run | ★ Air for 1.5 seconds | ★ Land a 360 | Score 20,000 |
+| 2 | Flip Hill | ★ Land a backflip | ★ Land a frontflip | Backflip and grab in the same air |
+| 3 | Pine Glades | ★ Do 10 good pumps | ★ Land a 3-trick combo | Finish without losing a life |
+| 4 | Crevasse Crossing | ★ Clear every crevasse | ★ Spin over a crevasse | Flip over a crevasse |
+| 5 | Frozen Lake | ★ Manual for 3 seconds | ★ One combo across the lake | Combo worth 10,000 |
+| 6 | Chairlift Line | ★ Grind a box | ★ Grind 3 rails | Rail + backflip combo |
+| 7 | Avalanche Alley | ★ Land a 5-trick combo | ★ Finish with no bails | Score 35,000 |
+| 8 | Glacier Gaps | ★ Clear every crevasse | ★ 360 over a level crevasse | Finish without losing a life |
+| 9 | Yeti Ridge | ★ Backflip and grab in the same air | ★ Air of 3 metres | Combo worth 15,000 |
+| 10 | Summit Send | ★ Backflip on the HUGE AIR | ★ Land a 6-trick combo | Score 45,000 |
+
+**Desert Canyon**
+
+| # | Name | 1 | 2 | 3 |
+|---|------|---|---|---|
+| 1 | Dry Gulch | ★ Do 8 good pumps | ★ Climb out of every gully first time | Score 6,000 |
+| 2 | Rattlesnake Ravine | ★ Climb out of every gully first time | ★ Air off a gully lip | Finish without losing a life |
+| 3 | Cactus Coulee | ★ Ollie off a gully kicker | ★ Flip + grab combo | Score 13,000 |
+| 4 | Mesa Top | ★ Clear every gap | ★ Spin over a gap | Finish without losing a life |
+| 5 | Tumbleweed Trail | ★ Grind across a gully | ★ Grind every gully rail | Grind + flip combo |
+| 6 | The Big Dip | ★ Climb out of every gully first time | ★ Air off the last gully | Score 21,000 |
+| 7 | Sandstorm Slalom | ★ Clear both gaps | ★ Land a 5-trick combo | Finish without losing a life |
+| 8 | Arch Loop | ★ Ride the loop | ★ Loop + flip combo | Score 28,000 |
+| 9 | Canyon Run | ★ Ride both loops | ★ Loop + grab + spin combo | Finish without losing a life |
+| 10 | Grand Gully | ★ Clear the final gap | ★ Loop + 2 tricks combo | Score 38,000 |
+
+**Jungle Ruins**
+
+| # | Name | 1 | 2 | 3 |
+|---|------|---|---|---|
+| 1 | Temple Rhythm | ★ Clear both river gaps | ★ One combo across a rhythm set | Score 5,000 |
+| 2 | Drum Beat | ★ Do 12 good pumps | ★ A trick on every kicker | Finish without losing a life |
+| 3 | Temple Steps | ★ Flip off a step | ★ Land a 4-trick combo | Score 12,000 |
+| 4 | Croc Creek | ★ Clear every river gap | ★ Grab over 3 gaps | Finish without losing a life |
+| 5 | Log Grind | ★ Grind a log | ★ Grind every log | Log + flip + log combo |
+| 6 | Tempo Shift | ★ Do 15 good pumps | ★ Finish with no bails | Score 22,000 |
+| 7 | Serpent Loop | ★ Ride the loop | ★ Loop + flip combo | Land a 6-trick combo |
+| 8 | Lost Idol | ★ Clear every gap | ★ Rail + gap + rail in one combo | Finish without losing a life |
+| 9 | Waterfall Drop | ★ Clear the waterfall gap | ★ Backflip over the waterfall gap | Score 34,000 |
+| 10 | Heart of the Temple | ★ Ride both loops | ★ Land a 7-trick combo | Finish without losing a life |
+
+**Volcano**
+
+| # | Name | 1 | 2 | 3 |
+|---|------|---|---|---|
+| 1 | Ember Trail | ★ Clear every lava gap | ★ Kickflip over lava | Finish without losing a life |
+| 2 | Lava Leap | ★ Clear every lava gap | ★ Grab and spin in the same air over lava | Score 20,000 |
+| 3 | Magma Rollers | ★ Clear every gap | ★ Do 12 good pumps | 3-trick combo over a lava gap |
+| 4 | Basalt Steps | ★ Grind a rail over lava | ★ Stair rail + flip combo | Finish without losing a life |
+| 5 | Lava Tube | ★ Ride the lava tube loop | ★ Loop + spin combo | Score 32,000 |
+| 6 | Caldera Rim | ★ Climb out of every crater first time | ★ Flip over lava from a crater lip | Finish without losing a life |
+| 7 | Fire Rhythm | ★ Clear every gap | ★ A trick over every lava gap | Score 40,000 |
+| 8 | Eruption Run | ★ Clear every uphill gap | ★ 360 over the 6 m gap | Combo worth 20,000 |
+| 9 | Pyroclastic Dash | ★ Ride both loops | ★ Land an 8-trick combo | Finish without losing a life |
+| 10 | Into the Crater | ★ Clear the crater gap | ★ Backflip and grab in the same air over the crater gap | Score 60,000 with no lives lost |
+
+**Bonus levels** (never required): half pipes: "Air of 2 metres", "Land 5 different
+tricks", "Score par". Mega ramps: "Clear the gap on all 3 drops", "A trick on both airs of
+one drop", "Score par".
 
 ---
 
@@ -340,7 +527,8 @@ The current DSL (`flat`, `ease`, `kicker`, `rollers`, `valley`, `drop`, `rise`, 
   Being designed in another thread.
 - **Manual pad**: a low flat box. Can be a helper over `rise`, `flat` and `drop`
   (or `kicker`/`ease` for soft edges). Needed from Park 6.
-- **Unlocks and stars**: new level select logic (section 2), plus paging per biome.
+- **Unlocks, challenges and stars**: challenge tracking and saving, the pre-run card, HUD
+  ticks and results (section 2a), new level select logic (section 2), plus paging per biome.
 - **Mega ramps**: a `quarterpipe` piece (half of `halfpipe`), a three-drop mode that puts the
   rider back at the top after each drop, and a camera that zooms out for very big airs (half
   pipe airs are capped at about 3 m today so the camera can keep up).
