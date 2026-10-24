@@ -1,4 +1,4 @@
-import { Track, Pit } from './track';
+import { Track, Pit, Rail, railY } from './track';
 
 // Arcade physics for a rider on a 2D height profile.
 
@@ -20,14 +20,21 @@ const LAND_KEEP = 0.9;
 const WALL_SLOPE = 1.5;
 /** Grace after take-off before touching the ground counts as a landing. */
 const TAKEOFF_TIME = 0.06;
+/** Grinding slows you a little more than rolling. */
+const GRIND_FRICTION = 0.35;
+const GRIND_POINTS = 200;
+const GRIND_POINTS_PER_SEC = 700;
+/** How close to a rail you need to pass on the way down to lock on to it (arcade magnet). */
+const GRIND_CATCH = 0.3;
 
 export type GrabName = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
 export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
 export type FlipName = 'Backflip' | 'Frontflip';
 /** Manuals on a skateboard, presses on a snowboard: nose up first. */
 export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press';
+export type GrindName = '50-50';
 type BoardTrick = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee';
-export type TrickName = BoardTrick | GrabName | SpinName | FlipName | ManualName;
+export type TrickName = BoardTrick | GrabName | SpinName | FlipName | ManualName | GrindName;
 /** Tilt of the device: +1 nose up (manual, backflip), -1 nose down (nose manual, frontflip). */
 export type Lean = -1 | 0 | 1;
 export type Swipe = 'up' | 'down' | 'left' | 'right';
@@ -37,7 +44,7 @@ export interface Trick {
   duration: number;
   points: number;
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
-  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck';
+  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind';
   dir: 1 | -1;
 }
 
@@ -99,6 +106,7 @@ export interface RiderEvents {
   bail(): void;
   grab?(name: GrabName): void;
   manual?(name: ManualName): void;
+  grind?(rail: Rail): void;
   pump(good: boolean): void;
   fall(): void;
 }
@@ -162,6 +170,11 @@ export class Rider {
   /** Smoothed values for animation. */
   crouch = 0;
 
+  /** Grind in progress: the rail, and how long you've been on it. */
+  grind: { rail: Rail; t: number } | null = null;
+  /** Depth: 0 on the riding line, the rail's z while grinding. */
+  z = 0;
+
   falling = false;
   /** The gap we last fell into. */
   fallPit: Pit | null = null;
@@ -181,6 +194,8 @@ export class Rider {
     this.current = null;
     this.grab = null;
     this.held = null;
+    this.grind = null;
+    this.z = 0;
     this.clearBody();
     this.bailTimer = 0;
     this.boardYaw = 0;
@@ -197,6 +212,8 @@ export class Rider {
     this.current = null;
     this.grab = null;
     this.held = null;
+    this.grind = null;
+    this.z = 0;
     this.clearBody();
     this.boardYaw = 0;
     this.airTime = 0;
@@ -208,7 +225,7 @@ export class Rider {
   private get wall() { return this.opts.pipe ? Infinity : WALL_SLOPE; }
 
   get bailing() { return this.bailTimer > 0; }
-  get speed() { return this.grounded ? Math.abs(this.v) : Math.hypot(this.vx, this.vy); }
+  get speed() { return this.grounded || this.grind ? Math.abs(this.v) : Math.hypot(this.vx, this.vy); }
 
   pump() {
     if (this.bailing) return;
@@ -223,7 +240,7 @@ export class Rider {
     if (this.bailing || this.grab) return;
     const name = (this.opts.snow ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir];
     if (!name) return;
-    const canPop = this.grounded || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    const canPop = this.grounded || this.grind !== null || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) {
       this.pop();
       if (name === 'Ollie') { this.ev.trick(TRICKS.Ollie); return; }
@@ -246,7 +263,7 @@ export class Rider {
   /** Swipe across the bottom of the screen: spin the body, popping first if on the ground. */
   spinSwipe(dir: 'left' | 'right') {
     if (this.bailing || this.spin) return;
-    const canPop = this.grounded || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    const canPop = this.grounded || this.grind !== null || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) this.pop();
     if (this.grounded) return;
     this.spin = { dir: dir === 'right' ? 1 : -1, deg: 180, t: 0 };
@@ -301,12 +318,50 @@ export class Rider {
     return this.flipping ? this.flipDir * this.flipT * Math.PI * 2 : 0;
   }
 
+  private get grindSlope() {
+    const r = this.grind!.rail;
+    return (r.y1 - r.y0) / (r.x1 - r.x0);
+  }
+
+  /** Points the grind in progress is worth so far. */
+  get grindPoints() {
+    return this.grind ? Math.round((GRIND_POINTS + GRIND_POINTS_PER_SEC * this.grind.t) / 10) * 10 : 0;
+  }
+
+  private endGrind() {
+    if (!this.grind) return;
+    const points = this.grindPoints, t = this.grind.t;
+    this.grind = null;
+    // Barely touched it: no grind.
+    if (t < 0.12) return;
+    this.ev.trick({ name: '50-50', duration: t, points, axis: 'grind', dir: 1 });
+  }
+
+  /** Come down onto a rail: lock into a grind, finishing any trick that's nearly done. */
+  private catchRail(rail: Rail) {
+    const almost = (!this.current || this.trickT >= this.current.duration * 0.8)
+      && (!this.spin || this.spinProgress >= 0.8) && !this.grab && !this.flipping;
+    // Mid-trick you can't stand on it: you pass by the rail instead.
+    if (!almost) return;
+    // A flip or spin that's nearly round finishes on the rail (see the grind step).
+    const th = Math.atan((rail.y1 - rail.y0) / (rail.x1 - rail.x0));
+    const dir = Math.sign(this.vx) || 1;
+    // Keep your forward speed, like a clean landing.
+    this.v = dir * Math.max((this.vx * Math.cos(th) + this.vy * Math.sin(th)) * dir, Math.abs(this.vx) * LAND_KEEP);
+    this.y = railY(rail, this.x);
+    this.angle = th;
+    this.held = null;
+    this.ollied = false;
+    this.grind = { rail, t: 0 };
+    this.ev.grind?.(rail);
+  }
+
   /** Swipe on the grab side of the screen: pop if on the ground, then grab while held. */
   grabSwipe(dir: Swipe) {
     if (this.bailing || this.grab) return;
     this.held = dir;
     this.heldT = 0;
-    const canPop = this.grounded || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    const canPop = this.grounded || this.grind !== null || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) this.pop();
   }
 
@@ -327,7 +382,15 @@ export class Rider {
   }
 
   private pop() {
-    if (this.grounded && this.opts.pipe && Math.abs(this.track.slope(this.x)) > 0.6) {
+    if (this.grind) {
+      // Ollie off the rail.
+      const th = Math.atan(this.grindSlope);
+      this.vx = this.v * Math.cos(th);
+      this.vy = this.v * Math.sin(th) + OLLIE_POP;
+      this.y += 0.02;
+      this.endGrind();
+      this.leaveGround();
+    } else if (this.grounded && this.opts.pipe && Math.abs(this.track.slope(this.x)) > 0.6) {
       // On a steep wall an ollie would throw you off it: give a kick up the wall instead.
       this.v += Math.sign(this.v || 1) * 1.5;
     } else if (this.grounded) {
@@ -384,6 +447,45 @@ export class Rider {
       this.x += this.vx * 0.5 * dt;
       this.y += this.vy * dt;
       this.angle -= dt * 3;
+      return;
+    }
+
+    this.z += ((this.grind ? this.grind.rail.z : 0) - this.z) * Math.min(1, dt * 14);
+
+    if (this.grind) {
+      const rail = this.grind.rail;
+      const th = Math.atan(this.grindSlope);
+      const dir = Math.sign(this.v) || 1;
+      this.timeSinceGround = 0;
+      this.v += (-GRAVITY * Math.sin(th) - dir * (GRIND_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v)) * dt;
+      this.x += this.v * Math.cos(th) * dt;
+      this.grind.t += dt;
+      this.angle = th;
+      if (this.current) {
+        this.trickT += dt;
+        if (this.trickT >= this.current.duration) {
+          const done = this.current;
+          if (done.axis === 'spin') this.boardYaw += Math.PI;
+          this.current = null;
+          this.tricksThisAir++;
+          this.ev.trick(done);
+        }
+      }
+      if (this.spin) {
+        this.spin.t += dt;
+        if (this.spin.t >= this.spinDuration) this.finishSpin();
+      }
+      if (this.x > rail.x1 || this.x < rail.x0 || Math.abs(this.v) < 1) {
+        // Off the end of the rail (or stalled on it): drop off and fly on.
+        this.y = railY(rail, Math.max(rail.x0, Math.min(rail.x1, this.x)));
+        this.vx = this.v * Math.cos(th);
+        this.vy = this.v * Math.sin(th);
+        this.endGrind();
+        this.leaveGround();
+        this.ollied = false;
+      } else {
+        this.y = railY(rail, this.x);
+      }
       return;
     }
 
@@ -455,6 +557,7 @@ export class Rider {
     } else {
       this.timeSinceGround += dt;
       this.airTime += dt;
+      const px = this.x, py = this.y;
       this.vy -= GRAVITY * dt;
       this.vx -= Math.sign(this.vx) * AIR_DRAG * this.vx * this.vx * dt;
       this.x += this.vx * dt;
@@ -508,6 +611,15 @@ export class Rider {
         }
       }
 
+      // Coming down onto a rail: grind it.
+      // Only with some rail left ahead: catching the very end would just flick you on and off.
+      const ahead = (rl: Rail) => (this.vx >= 0 ? rl.x1 - this.x : this.x - rl.x0) > 0.6;
+      const rail = this.vy < 0 && !this.falling ? tr.railAt(this.x) : null;
+      if (rail && ahead(rail) && py >= railY(rail, px) - GRIND_CATCH && this.y <= railY(rail, this.x) + GRIND_CATCH && this.y > tr.height(this.x)) {
+        this.catchRail(rail);
+        if (this.grind) return;
+      }
+
       const gy = tr.height(this.x);
       const k = tr.slope(this.x);
       // Over the top of a drop or a gap edge: the ground is falling away, so keep flying.
@@ -544,6 +656,7 @@ export class Rider {
       this.spin = null;
       this.flipping = false;
       this.manual = null;
+      this.grind = null;
       this.ev.fall();
     }
 

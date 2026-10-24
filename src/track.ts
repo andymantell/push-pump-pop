@@ -15,6 +15,32 @@ export interface Pit {
   floorY: number;
 }
 
+/** Something to grind: a straight bar from (x0, y0) to (x1, y1), at depth z. */
+export interface Rail {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  z: number;
+  kind: 'rail' | 'ledge' | 'handrail';
+}
+
+/** A flight of steps going down from (x0, y0); the ground under it is a straight slope. */
+export interface Stairs {
+  x0: number;
+  y0: number;
+  steps: number;
+  rise: number;
+  run: number;
+}
+
+/** Rails sit this far back on the track, so you roll past them unless you grind. */
+export const RAIL_Z = -0.6;
+
+export function railY(r: Rail, x: number): number {
+  return r.y0 + (r.y1 - r.y0) * (x - r.x0) / (r.x1 - r.x0);
+}
+
 export interface Prop {
   kind: PropKind;
   x: number;
@@ -33,9 +59,13 @@ export class Track {
   readonly minY: number;
   readonly maxY: number;
   readonly pits: Pit[];
+  readonly rails: Rail[];
+  readonly stairs: Stairs[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = []) {
     this.pits = pits;
+    this.rails = rails;
+    this.stairs = stairs;
     this.heights = Float32Array.from(heights);
     this.length = (heights.length - 1) * DX;
     this.startX = startX;
@@ -69,6 +99,12 @@ export class Track {
     return this.height(x);
   }
 
+  /** The rail over x, if any. */
+  railAt(x: number): Rail | null {
+    for (const r of this.rails) if (x >= r.x0 && x <= r.x1) return r;
+    return null;
+  }
+
   pitAt(x: number): Pit | null {
     for (const p of this.pits) if (x > p.x0 - 0.5 && x < p.x1 + 0.5) return p;
     return null;
@@ -93,6 +129,8 @@ export class TrackBuilder {
   props: Prop[] = [];
   signs: { x: number; text: string }[] = [];
   pits: Pit[] = [];
+  rails: Rail[] = [];
+  stairSets: Stairs[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -165,6 +203,28 @@ export class TrackBuilder {
     return this.flat(deck);
   }
 
+  /** A flat grind rail `height` above flat ground, `len` long. */
+  rail(len: number, height = 0.6): this {
+    this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + len, y1: this.y + height, z: RAIL_Z, kind: 'rail' });
+    return this.flat(len);
+  }
+
+  /** A low box ledge to grind along its edge. */
+  ledge(len: number, height = 0.45): this {
+    this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + len, y1: this.y + height, z: RAIL_Z, kind: 'ledge' });
+    return this.flat(len);
+  }
+
+  /** A flight of steps down, with a handrail to grind. Ride off the top and you jump the set. */
+  stairs(steps: number, rise = 0.17, run = 0.32, handrail = true): this {
+    const x0 = this.x, y0 = this.y, len = steps * run, drop = steps * rise;
+    this.stairSets.push({ x0, y0, steps, rise, run });
+    // The rail starts out over the top landing so there's room to ollie onto it.
+    const lead = 0.5, above = 0.55;
+    if (handrail) this.rails.push({ x0: x0 - lead, y0: y0 + above + lead * drop / len, x1: x0 + len, y1: y0 - drop + above, z: RAIL_Z, kind: 'handrail' });
+    return this.run(len, (t) => -drop * t);
+  }
+
   /** Abrupt step back up (a ledge face). */
   rise(dy: number): this { return this.drop(dy); }
 
@@ -179,6 +239,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets);
   }
 }

@@ -158,6 +158,8 @@ export class World {
     }
     this.buildTrack();
     this.buildPitFills();
+    this.buildStairs();
+    this.buildRails();
     this.buildGround();
     this.buildFar();
     this.buildProps();
@@ -255,9 +257,11 @@ export class World {
       g.computeVertexNormals();
       return g;
     };
+    this.topMat = toon(0xffffff, { map: surfaceTexture(this.biome.top) });
+    this.frontMat = toon(0xffffff, { map: surfaceTexture(this.biome.front) });
     const meshes = [
-      new THREE.Mesh(mk(top, topUv, false), toon(0xffffff, { map: surfaceTexture(this.biome.top) })),
-      new THREE.Mesh(mk(front, frontUv), toon(0xffffff, { map: surfaceTexture(this.biome.front) })),
+      new THREE.Mesh(mk(top, topUv, false), this.topMat),
+      new THREE.Mesh(mk(front, frontUv), this.frontMat),
       new THREE.Mesh(mk(band, null), toon(this.biome.band)),
       new THREE.Mesh(mk(edge, null), new THREE.MeshBasicMaterial({ color: 0x2b2420 })),
     ];
@@ -265,6 +269,64 @@ export class World {
     for (const m of meshes) {
       (m.material as THREE.Material).userData.outlineParameters = { visible: false };
       this.group.add(m);
+    }
+  }
+
+  private topMat!: THREE.Material;
+  private frontMat!: THREE.Material;
+
+  /** Steps drawn over the straight slope the rider actually rolls on. */
+  private buildStairs() {
+    const base = this.track.minY - 25;
+    // Box faces: +x, -x, +y, -y, +z, -z.
+    const mats = [this.frontMat, this.frontMat, this.topMat, this.frontMat, this.frontMat, this.frontMat];
+    for (const st of this.track.stairs) {
+      for (let i = 0; i < st.steps; i++) {
+        const top = st.y0 - i * st.rise;
+        const box = new THREE.Mesh(new THREE.BoxGeometry(st.run, top - base, TRACK_W + 0.02), mats);
+        box.position.set(st.x0 + (i + 0.5) * st.run, (top + base) / 2, 0);
+        this.group.add(box);
+        // A bright nosing on each step so the set reads at a glance.
+        const nose = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, TRACK_W + 0.04), toon(this.biome.band));
+        nose.position.set(st.x0 + i * st.run + 0.03, top - 0.015, 0);
+        this.group.add(nose);
+      }
+    }
+  }
+
+  /** Grind rails, box ledges and stair handrails. */
+  private buildRails() {
+    const barMat = toon(this.biome.band);
+    const postMat = toon(0x5a5e66);
+    const tmp = new THREE.Vector3();
+    for (const r of this.track.rails) {
+      const len = Math.hypot(r.x1 - r.x0, r.y1 - r.y0);
+      const ang = Math.atan2(r.y1 - r.y0, r.x1 - r.x0);
+      if (r.kind === 'ledge') {
+        // A concrete box with a metal edge along the top.
+        const h = r.y0 - this.track.height(r.x0);
+        const box = new THREE.Mesh(new THREE.BoxGeometry(len, h, 0.7), [this.frontMat, this.frontMat, this.topMat, this.frontMat, this.frontMat, this.frontMat]);
+        box.position.set((r.x0 + r.x1) / 2, r.y0 - h / 2, r.z - 0.2);
+        const coping = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.08), barMat);
+        coping.position.set((r.x0 + r.x1) / 2, r.y0 - 0.02, r.z + 0.12);
+        this.group.add(box, coping);
+        continue;
+      }
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, len, 12), barMat);
+      bar.position.set((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2 - 0.04, r.z);
+      bar.rotation.z = ang - Math.PI / 2;
+      this.group.add(bar);
+      // Posts down to the ground (or the stairs) every metre or two.
+      const n = Math.max(2, Math.round(len / 1.8) + 1);
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n;
+        tmp.set(r.x0 + (r.x1 - r.x0) * t, 0, 0);
+        const top = r.y0 + (r.y1 - r.y0) * t - 0.06;
+        const foot = this.track.height(tmp.x) - 0.05;
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, top - foot, 8), postMat);
+        post.position.set(tmp.x, (top + foot) / 2, r.z);
+        this.group.add(post);
+      }
     }
   }
 

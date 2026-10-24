@@ -60,8 +60,10 @@ export const TRACKS: TrackDef[] = [
       b.rollers(2, 12, 0.98).kicker(4, 1.8).flat(3).ease(3, 0.8).flat(6).rollers(2, 12, 0.7).flat(3);
       b.sign('DROP').drop(-0.3).ease(7, -2.3).flat(6);
       b.kicker(3.5, 1.2).flat(3.5).ease(4, -1.2).flat(3);
+      b.sign('OLLIE ON: GRIND').flat(6).rail(8, 0.5).flat(6);
       b.kicker(3.5, 1.4).flat(3).ease(5, -1.4).flat(5);
       b.rollers(3, 12, 1.05).flat(5);
+      b.sign('STAIRS').flat(5).stairs(5).flat(8);
       b.sign('BIG AIR').ease(14, -5).flat(3).kicker(5, 1.9, 2.3).drop(-0.4).ease(4, 0.2).ease(12, -4.2).flat(8);
     }),
   },
@@ -74,8 +76,10 @@ export const TRACKS: TrackDef[] = [
       b.rollers(3, 15, 1.5).flat(3);
       b.sign('WATER GAP').kicker(4, 1.4).pit(4.5, -0.4).ease(6, -1.0).flat(5);
       b.rollers(5, 14, 1.4).flat(4);
+      b.flat(6).ledge(8).flat(5);
       b.ease(8, -2).kicker(4.5, 1.7).flat(3).ease(6, -1.7).flat(4);
       b.rollers(2, 16, 1.5).flat(3);
+      b.flat(5).stairs(6).flat(8);
       b.sign('BIG AIR').ease(10, -3).kicker(5, 2.0).pit(6, -1.2).ease(8, -2).flat(8);
     }),
   },
@@ -89,10 +93,12 @@ export const TRACKS: TrackDef[] = [
       b.kicker(3.5, 1.2).pit(3.5, -1.7).flat(5);
       b.drop(-1.2).ease(4, -0.5).flat(5);
       b.kicker(4, 1.2).flat(4).ease(5, -1.2).flat(4);
+      b.flat(5).rail(9, 0.6).flat(5);
       b.kicker(4, 1.3).pit(4, -1.8).flat(6);
       b.rollers(2, 12, 0.98).flat(3);
       b.kicker(4, 1.4).pit(4.5, -2.2).flat(5);
       b.drop(-1).ease(6, -1.5).flat(4);
+      b.flat(5).stairs(7).flat(8);
       b.sign('BIG GAP').ease(6, -1.5).kicker(5, 1.8).pit(6, -3).ease(5, -1).flat(8);
     }),
   },
@@ -105,6 +111,7 @@ export const TRACKS: TrackDef[] = [
       b.ease(15, -5);
       b.kicker(5, 2.2).drop(-0.5).ease(12, -5);
       b.rollers(3, 15, 1.5).flat(4);
+      b.flat(6).rail(10, 0.6).flat(6);
       b.kicker(4, 1.5).flat(6).ease(6, -1.5).flat(5);
       b.ease(10, -3).rollers(2, 13, 1.26);
       b.kicker(4.5, 1.8).flat(5).ease(7, -2.5).rollers(3, 13, 1.4).flat(4);
@@ -121,8 +128,10 @@ export const TRACKS: TrackDef[] = [
       b.kicker(4, 1.3).flat(4).ease(5, -1.3).flat(4);
       b.valley(14, 4).flat(3);
       b.rollers(3, 12, 1.12).flat(3);
+      b.flat(5).ledge(8).flat(5);
       b.kicker(4, 1.5).flat(4).ease(6, -1.5).flat(4);
       b.sign('DEEP GULLY').valley(16, 5).flat(4);
+      b.flat(5).stairs(6).flat(8);
       b.rollers(2, 13, 1.4);
       b.sign('BIG AIR').ease(8, -2).kicker(5, 2.0).flat(3).ease(8, -2).flat(6);
     }),
@@ -137,8 +146,10 @@ export const TRACKS: TrackDef[] = [
       b.sign('RIVER').kicker(4, 1.3).pit(3, -0.6).flat(4);
       b.drop(-0.6).flat(2).drop(-0.6).flat(2).drop(-0.6).flat(4);
       b.rollers(4, 12, 0.91).flat(3);
+      b.sign('TEMPLE STEPS').flat(5).stairs(8).flat(8);
       b.ease(5, -1).kicker(4, 1.5).pit(4, -1.2).flat(4);
       b.rollers(3, 12, 1.12).flat(3);
+      b.flat(5).ledge(7).flat(4);
       b.ease(8, -2).kicker(4.5, 1.8).flat(3).ease(6, -1.8).flat(6);
     }),
   },
@@ -146,6 +157,7 @@ export const TRACKS: TrackDef[] = [
     id: 'volcano-1', biome: 'volcano', name: 'Lava Leap',
     build: layout(6, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(10, -4).flat(6);
+      b.rail(8, 0.6).flat(4);
       b.rollers(2, 13, 1.12).flat(3);
       b.sign('LAVA!').kicker(3.5, 1.0).pit(3, -0.5).flat(5);
       b.rollers(2, 12, 1.12).flat(3);

@@ -11,7 +11,7 @@
 import { TRACKS, PIPE_TIME } from '../src/tracks';
 import { BIOMES } from '../src/biomes';
 import { Rider, Swipe } from '../src/rider';
-import { Track } from '../src/track';
+import { Track, Rail, railY } from '../src/track';
 import * as THREE from 'three';
 import { Skater } from '../src/skater';
 
@@ -54,10 +54,14 @@ interface Result {
   downs: number[];
   /** Where the rider suddenly stopped. */
   stops: number[];
+  grinds: number;
+  /** Grinds per rail on the track. */
+  railHits: number[];
 }
 
 /** Every trick the bots landed, across all runs. */
 const seen = new Map<string, number>();
+const stopNotes: string[] = [];
 
 function rng(seed: number) {
   let s = seed >>> 0 || 1;
@@ -75,7 +79,8 @@ function nextLip(track: Track, x: number, range: number): number | null {
 
 function checkLegs(skater: Skater, r: Rider, track: Track, trackId: string, t: number) {
   skater.update(DT, r, (x) => track.height(x), (x) => track.slope(x));
-  if (r.falling) return; // tumbling into a gap goes below the ground on purpose
+  // Tumbling into a gap goes below the ground on purpose, and the respawn after it is a jump cut.
+  if (r.falling) { lastLegs.delete(skater); return; }
   // Crashing into the far wall of a gap you didn't clear isn't a pose to judge.
   if (skater.legPoints().some((p) => Math.abs(track.slope(p.x)) > 1.5) || Math.abs(track.slope(r.x)) > 1.5) { lastLegs.delete(skater); return; }
   // Legs snapping between poses from one frame to the next read as a glitch too.
@@ -97,11 +102,27 @@ function checkLegs(skater: Skater, r: Rider, track: Track, trackId: string, t: n
 const lastLegs = new WeakMap<Skater, THREE.Vector3[]>();
 const bailedLast = new WeakMap<Skater, boolean>();
 
+/**
+ * Where an ollie that lands after `delay` would first come down within reach of `rail`,
+ * or null if it would miss. A ballistic guess: pop straight up from the current speed.
+ */
+function railCatch(track: Track, r: Rider, rail: Rail, delay: number): number | null {
+  const x0 = r.x + r.v * delay;
+  const th = Math.atan(track.slope(x0));
+  let x = x0, y = track.height(x0), vx = r.v * Math.cos(th), vy = r.v * Math.sin(th) + 5.6;
+  for (let t = 0; t < 1.5; t += 1 / 60) {
+    x += vx / 60; y += vy / 60; vy -= 14 / 60;
+    if (vy < 0 && x >= rail.x0 && x <= rail.x1 && Math.abs(y - railY(rail, x)) < 0.15) return x;
+    if (y < track.height(x)) return null;
+  }
+  return null;
+}
+
 function state(r: Rider) {
   return [
     r.bailing ? 'bailing' : r.grounded ? 'ground' : 'air',
     r.pushing && 'pushing', r.manual, r.pumpTimer > 0 && 'pumping', r.flipping && 'flipping',
-    r.spin && 'spinning', r.grab, r.current?.name, r.bodyYaw && 'fakie',
+    r.spin && 'spinning', r.grab, r.grind && 'grinding', r.current?.name, r.bodyYaw && 'fakie',
   ].filter(Boolean).join(' ');
 }
 
@@ -117,12 +138,13 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   const biome = BIOMES[def.biome];
   const track = def.build();
   const rand = rng(seed);
-  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, livesLost: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [] };
+  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, livesLost: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [], grinds: 0, railHits: track.rails.map(() => 0) };
   let recent: { t: number; s: number }[] = [];
   let downT = 0;
   let t = 0;
   let respawnAt = -1;
   const r: Rider = new Rider(track, {
+    grind(rail) { res.grinds++; res.railHits[track.rails.indexOf(rail)]++; },
     trick(tr) { tricks++; seen.set(tr.name, (seen.get(tr.name) ?? 0) + 1); }, land() {}, pump() {},
     bail() { res.bails++; res.livesLost++; },
     fall() { respawnAt = t + 1.2; res.livesLost++; },
@@ -142,6 +164,11 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   let lastPumpDecision = -1;
   let lipPlanned = -1;
   let trickPlanned = false;
+  // Rails are optional: this player goes for them on most runs, and they never block the finish.
+  const railTry = !pumpOnly && rand() < 0.7;
+  const railsTried = new Set<Rail>();
+  // An ollie aimed at a rail is just an ollie: no flip on the way on.
+  let railOllie = false, railOllieAt = -10;
   const passed = new Set<number>();
 
   const press = (act: Act, extra = 0) => {
@@ -183,6 +210,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
       const lead = Math.abs(r.v) * REACTION;
       if (r.grounded) {
         trickPlanned = false;
+        if (t - railOllieAt > REACTION + JITTER + 0.1) railOllie = false;
         const slopeThen = track.slope(r.x + lead * dir) * dir;
         if (slopeThen < -0.12 && t - lastPumpDecision > 0.45) { press('pump'); lastPumpDecision = t; }
         // Pop at the lip: decide when the lip is about one reaction-time away.
@@ -191,14 +219,20 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
           press('up');
           lipPlanned = t;
         }
+        // Ollie onto a rail coming up, timed so you come down near its start.
+        const rail = railTry ? track.rails.find((rl) => !railsTried.has(rl) && rl.x0 > r.x && rl.x0 - r.x < lead + 12) : undefined;
+        if (rail) {
+          const at = railCatch(track, r, rail, REACTION);
+          if (at !== null && at < rail.x0 + Math.min(2, (rail.x1 - rail.x0) / 2)) { press('up'); railsTried.add(rail); railOllie = true; railOllieAt = t; }
+        }
         // Manual along a flat stretch with no jump coming up.
         const flat = [0, 1, 2, 3, 4].every((d) => Math.abs(track.slope(r.x + d * dir)) < 0.08);
-        if (!pumpOnly && flat && nextLip(track, r.x, 6) === null && t - manualPlanned > 3 && rand() < 0.02) {
+        if (!pumpOnly && !rail && flat && nextLip(track, r.x, 6) === null && t - manualPlanned > 3 && rand() < 0.02) {
           press(rand() > 0.5 ? 'lean+' : 'lean-');
           press('lean0', 0.6);
           manualPlanned = t;
         }
-      } else if (!pumpOnly && !trickPlanned && r.vy > 3 && r.airTime > 0.05) {
+      } else if (!pumpOnly && !trickPlanned && !railOllie && r.vy > 3 && r.airTime > 0.05) {
         // Only trick on a big air, like a sensible player.
         const pick = rand();
         if (isPipe && r.vy > 6 && pick < 0.3) {
@@ -224,12 +258,13 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
     else if (downT > 0) { if (downT > 0.1) res.downs.push(downT); downT = 0; }
     // Sudden stops, measured on forward (horizontal) speed so landings don't count.
     // Signed, so rolling back down a slope after a bail doesn't read as a stop.
-    const fwd = r.grounded ? r.v * Math.cos(Math.atan(track.slope(r.x))) : r.vx;
+    const fwd = r.grounded ? r.v * Math.cos(Math.atan(track.slope(r.x))) : r.grind ? r.v : r.vx;
     if (r.falling || r.bailing || track.pitAt(r.x)) recent = [];
     else {
       recent.push({ t, s: fwd });
       while (recent[0].t < t - STOP_WINDOW) recent.shift();
       const peak = Math.max(...recent.map((e) => e.s));
+      if (!isPipe && peak > 5 && fwd < peak * STOP_SHARE) { res.stops.push(+r.x.toFixed(1)); stopNotes.push(`${trackId} x=${r.x.toFixed(1)} ${peak.toFixed(1)}->${fwd.toFixed(1)} ${state(r)}`); recent = []; }
     }
     track.pits.forEach((p, i) => { if (before < p.x0 - 0.3 && r.x >= p.x0 - 0.3) res.lipSpeeds[i].push(+r.speed.toFixed(1)); });
 
@@ -277,11 +312,15 @@ for (const def of TRACKS) {
   pitRates.forEach((rate, i) => {
     if (rate < MIN_PIT_CLEAR_RATE) problems.push(`gap at ${track.pits[i].x0.toFixed(0)} m cleared ${(rate * 100).toFixed(0)}%`);
   });
+  // Every rail should be reachable with a human-timed ollie.
+  track.rails.forEach((rl, i) => {
+    if (!results.some((r) => r.railHits[i] > 0)) problems.push(`no run managed to grind the ${rl.kind} at ${rl.x0.toFixed(0)} m`);
+  });
   if (stops.length) problems.push(`sudden stops at ${[...new Set(stops.map((x) => Math.round(x)))].join(', ')} m`);
   const bails = results.reduce((s, r) => s + r.bails, 0) / RUNS;
   const lost = results.reduce((s, r) => s + r.livesLost, 0) / RUNS;
   const status = problems.length ? 'FAIL' : 'ok  ';
-  console.log(`${status} ${def.id.padEnd(12)} median ${median.toFixed(1)}s  bails/run ${bails.toFixed(1)}  lives lost/run ${lost.toFixed(1)}  downslope ${downMedian.toFixed(2)}s  gaps ${pitRates.map((r) => (r * 100).toFixed(0) + '%').join(' ') || '-'}`);
+  console.log(`${status} ${def.id.padEnd(12)} median ${median.toFixed(1)}s  bails/run ${bails.toFixed(1)}  lives lost/run ${lost.toFixed(1)}  downslope ${downMedian.toFixed(2)}s  grinds/run ${(results.reduce((s, r) => s + r.grinds, 0) / RUNS).toFixed(1)}/${track.rails.length}  gaps ${pitRates.map((r) => (r * 100).toFixed(0) + '%').join(' ') || '-'}`);
   if (problems.length) {
     failed = true;
     for (const p of problems) console.log(`       ${p}`);

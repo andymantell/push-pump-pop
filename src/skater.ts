@@ -158,6 +158,7 @@ export class Skater {
   private shadow: THREE.Mesh;
 
   private crouch = 0.15;
+  private flipLift = 0;
   private lift = 0;
   private armRaise = 0.5;
   private pumpAnim = 0;
@@ -261,6 +262,8 @@ export class Skater {
       crouchT = r.current ? 0.45 : 0.35;
       armT = 0.9;
     }
+    // Grinding: stand on the rail, arms out for balance (the tricks thread owns the full grind pose).
+    if (r.grind) { crouchT = 0.3; liftT = 0; armT = 0.75; }
     if (r.flipping) { crouchT = 0.8; liftT = 0.4; armT = 0.2; }
     if (r.manual) crouchT = 0.3;
     // Tuck knee: knees pulled right up, board with them.
@@ -302,7 +305,7 @@ export class Skater {
       while (d < 0.6 && groundY(r.x - side * d + side * 0.6) - r.y > 0.4) d += 0.02;
       wallX -= side * d;
     }
-    this.root.position.set(r.x + ox + wallX, r.y + oy, 0);
+    this.root.position.set(r.x + ox + wallX, r.y + oy, r.z);
     this.root.rotation.set(0, yaw, r.angle + pitch, 'ZYX');
 
     // Board tricks.
@@ -328,8 +331,10 @@ export class Skater {
     p.torso.rotation.set(0.18 + this.crouch * 0.55 + gw * 0.25, twist, 0);
     p.head.rotation.set(-0.15 - this.crouch * 0.4, 1.0 * facing - twist, 0);
 
-    // Feet lift off the board to let it flip or spin under them.
-    const flipLift = trick && (trick.axis === 'flip' || trick.axis === 'spin') ? Math.sin(prog * Math.PI) * 0.22 : 0;
+    // Feet lift off the board to let it flip or spin under them. Smoothed, so a flip that
+    // lands (or locks onto a rail) at 80% round doesn't snap the feet down.
+    this.flipLift += ((trick && (trick.axis === 'flip' || trick.axis === 'spin') ? Math.sin(prog * Math.PI) * 0.22 : 0) - this.flipLift) * k;
+    const flipLift = this.flipLift;
     const footY = deckTop + ANKLE + this.lift + flipLift;
     // Feet ride the board as it tilts for a nose or tail grab, or twists for a shifty.
     const tilt = grab.tilt * gw;
@@ -405,7 +410,7 @@ export class Skater {
     // Blob shadow on the ground below.
     const gy = groundY(r.x);
     const height = Math.max(0, r.y - gy);
-    this.shadow.position.set(r.x, gy + 0.02, 0);
+    this.shadow.position.set(r.x, gy + 0.02, r.z);
     this.shadow.rotation.set(-Math.PI / 2, 0, 0);
     this.shadow.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), Math.atan(groundSlope(r.x)));
     const s = Math.max(0.3, 1 - height * 0.12);
