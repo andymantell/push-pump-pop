@@ -275,6 +275,6 @@ requestAnimationFrame(frame);
 
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
-  rider, score, start, openSelect, TRACKS, get track() { return track; }, get state() { return state; },
+  rider, score, skater, start, openSelect, TRACKS, get track() { return track; }, get state() { return state; },
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };

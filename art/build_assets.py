@@ -197,20 +197,128 @@ def export(path, objects=None):
 
 # ---------------------------------------------------------------- skater
 
-def cap_dome(material):
-    """Baseball cap crown: the top of a sphere, cut off above the eyes."""
-    o = sphere(material, 0.134, loc=(0, 0, 0.16), scale=(1, 1.03, 1.0), segs=24, rings=16)
+def hair_shell(material):
+    """Short hair showing below the back and sides of the cap."""
+    o = sphere(material, 0.129, loc=(0, 0, 0.16), scale=(0.97, 1.03, 1.07), segs=24, rings=16)
     bm = bmesh.new()
     bm.from_mesh(o.data)
-    cut = 0.16 + 0.045  # brow line, above the eyes at 0.16
-    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < cut - 1e-4], context='VERTS')
+    cap_line = lambda y: 0.16 + 0.05 - 0.035 * max(0.0, y) / 0.137 + 0.012  # tucked just under the cap rim
+    kill = [v for v in bm.verts
+            if v.co.y < -0.02 - 0.03 * max(0.0, (v.co.z - 0.12) / 0.08)  # sideburns taper forward at the top
+            or v.co.z < 0.085 - 0.03 * max(0.0, v.co.y) / 0.13
+            or v.co.z > cap_line(v.co.y)]
+    bmesh.ops.delete(bm, geom=kill, context='VERTS')
     bm.to_mesh(o.data)
     bm.free()
-    # Back of the cap sits a little lower than the front.
-    for v in o.data.vertices:
-        if v.co.y > 0:
-            v.co.z -= 0.03 * (v.co.y / 0.134)
+    sol = o.modifiers.new('sol', 'SOLIDIFY')
+    sol.thickness = 0.006
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.object.modifier_apply(modifier='sol')
     return o
+
+
+def cap_parts(material):
+    """Baseball cap: crown, sweatband rim and a curved peak joined to the front of the rim."""
+    R = 0.137          # crown radius, just over the skull (0.125)
+    cz = 0.16          # skull centre height
+    rim = 0.05         # rim height above the skull centre at the front
+    back_drop = 0.035  # the back of the cap sits lower
+    segs = 32
+
+    def drop(y):
+        return back_drop * max(0.0, y) / R
+
+    # Crown: revolve a profile from the rim up to the top.
+    bm = bmesh.new()
+    a0 = math.asin(rim / R)
+    rings = []
+    n_lat = 8
+    for i in range(n_lat + 1):
+        a = a0 + (math.pi / 2 - a0) * i / n_lat
+        r = R * math.cos(a)
+        z = cz + R * math.sin(a)
+        ring = []
+        for k in range(segs):
+            t = 2 * math.pi * k / segs
+            x, y = r * math.sin(t), -r * math.cos(t)
+            y *= 1.04
+            ring.append(bm.verts.new((x, y, z - drop(y) * (1 - i / n_lat))))
+        rings.append(ring)
+    for ra, rb in zip(rings, rings[1:]):
+        for k in range(segs):
+            bm.faces.new((ra[k], ra[(k + 1) % segs], rb[(k + 1) % segs], rb[k]))
+    top = bm.verts.new((0, 0, cz + R))
+    for k in range(segs):
+        bm.faces.new((rings[-1][k], rings[-1][(k + 1) % segs], top))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new('crown')
+    bm.to_mesh(me)
+    bm.free()
+    crown = bpy.data.objects.new('crown', me)
+    bpy.context.collection.objects.link(crown)
+    crown = finish(crown, material, True)
+    sol = crown.modifiers.new('sol', 'SOLIDIFY')
+    sol.thickness = 0.008
+    bpy.context.view_layer.objects.active = crown
+    bpy.ops.object.modifier_apply(modifier='sol')
+
+    # Rim band: a short ring following the bottom edge, closing the crown.
+    r0 = R * math.cos(a0)
+    bm = bmesh.new()
+    lo, hi = [], []
+    for k in range(segs):
+        t = 2 * math.pi * k / segs
+        x, y = (r0 + 0.004) * math.sin(t), -(r0 + 0.004) * math.cos(t) * 1.04
+        z = cz + rim - drop(y)
+        lo.append(bm.verts.new((x, y, z - 0.004)))
+        hi.append(bm.verts.new((x, y, z + 0.018)))
+    for k in range(segs):
+        bm.faces.new((lo[k], lo[(k + 1) % segs], hi[(k + 1) % segs], hi[k]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new('band')
+    bm.to_mesh(me)
+    bm.free()
+    band = bpy.data.objects.new('band', me)
+    bpy.context.collection.objects.link(band)
+    band = finish(band, material, True)
+    sol = band.modifiers.new('sol', 'SOLIDIFY')
+    sol.thickness = 0.006
+    bpy.context.view_layer.objects.active = band
+    bpy.ops.object.modifier_apply(modifier='sol')
+
+    # Peak: inner edge on the front of the rim, outer edge a D-shaped curve, tipped down a little.
+    bm = bmesh.new()
+    inner, outer = [], []
+    n = 16
+    span = math.radians(75)
+    for i in range(n + 1):
+        t = -span + 2 * span * i / n
+        ix, iy = r0 * math.sin(t), -r0 * math.cos(t) * 1.04
+        reach = 0.09 * math.cos(t * 1.05) + 0.01
+        ox, oy = ix * 1.08, iy - reach
+        z_in = cz + rim - 0.002
+        z_out = z_in - 0.014 * (reach / 0.1)
+        # Slight downward curve across the width.
+        z_out -= 0.012 * (math.sin(t) ** 2)
+        inner.append(bm.verts.new((ix, iy, z_in)))
+        outer.append(bm.verts.new((ox, oy, z_out)))
+    for i in range(n):
+        bm.faces.new((inner[i], inner[i + 1], outer[i + 1], outer[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new('peak')
+    bm.to_mesh(me)
+    bm.free()
+    peak = bpy.data.objects.new('peak', me)
+    bpy.context.collection.objects.link(peak)
+    peak = finish(peak, material, True)
+    sol = peak.modifiers.new('sol', 'SOLIDIFY')
+    sol.thickness = 0.012
+    sol.offset = 0
+    bpy.context.view_layer.objects.active = peak
+    bpy.ops.object.modifier_apply(modifier='sol')
+
+    button = sphere(material, 0.014, loc=(0, 0, cz + R + 0.004), segs=10, rings=6)
+    return [crown, band, peak, button]
 
 
 def build_skater():
@@ -253,10 +361,8 @@ def build_skater():
     # Head: neck pivot at 0, skull centred at 0.16, cap with brim facing -Y.
     h = [
         sphere(skin, 0.125, loc=(0, 0, 0.16), scale=(0.95, 1, 1.05), segs=24, rings=16),
-        cap_dome(cap_m),
-        cube(cap_m, (0.17, 0.12, 0.018), loc=(0, -0.155, 0.19), rot=(math.radians(-8), 0, 0), bevel=0.008),
-        sphere(hair, 0.05, loc=(0.1, 0.04, 0.13), segs=10, rings=6),
-        sphere(hair, 0.05, loc=(-0.1, 0.04, 0.13), segs=10, rings=6),
+        *cap_parts(cap_m),
+        hair_shell(hair),
         sphere(eye, 0.016, loc=(0.042, -0.115, 0.16), segs=10, rings=6),
         sphere(eye, 0.016, loc=(-0.042, -0.115, 0.16), segs=10, rings=6),
         sphere(skin, 0.022, loc=(0, -0.125, 0.135), segs=10, rings=6),

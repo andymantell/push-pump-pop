@@ -13,7 +13,7 @@ import { Track } from '../src/track';
 const RUNS = 24;
 const REACTION = 0.22; // seconds from decision to input
 const JITTER = 0.08; // +/- seconds of timing error
-const MAX_INPUTS_PER_SEC = 5;
+const MAX_INPUTS_PER_SEC = 3;
 const MIN_PIT_CLEAR_RATE = 0.6;
 const MIN_FINISH_RATE = 1.0;
 /** Median time spent rolling down a slope: below this, pumping can't be timed. */
