@@ -251,7 +251,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   const wantRails = !!G && (G.kind === 'grind' || ('fromRail' in G && !!G.fromRail) || (G.kind === 'combo' && !!G.include?.includes('grind')));
   // Ollie off the end of a rail to trick in the air after it.
   const popOffRail = !!G && (('fromRail' in G && !!G.fromRail) || (G.kind === 'combo' && !!G.include?.includes('grind') && !!G.gaps));
-  const wantManual = !!G && (G.kind === 'manual' || (G.kind === 'combo' && !!G.include?.includes('manual')));
+  const wantManual = !!G && (G.kind === 'manual' || (G.kind === 'combo' && (!!G.include?.includes('manual') || !!G.across)));
   const pickFrom = <T,>(xs: T[]) => xs[Math.floor(rand() * xs.length)];
   const landed = new Set<TrickName>();
   let takeoffX = 0, grindLeft = -10;
@@ -399,7 +399,13 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
           const pad = track.pads.find((p) => p.x0 > r.x && p.x0 - r.x < lead + 0.3);
           const hold = (c.seconds ?? 0.6) + 0.35;
           const room = [...Array(Math.ceil(Math.abs(r.v) * (hold + REACTION)) + 1).keys()].every((d) => Math.abs(track.slope(r.x + d * dir)) < 0.08);
-          if (pad && t - manualPlanned > 1) {
+          // A combo across a stretch: one manual from its start to its end.
+          const span = c.kind === 'combo' && c.across ? c.across.map((tag) => track.spots.find((sp) => sp.tag === tag)!.x) : null;
+          if (span && span[0] > r.x && span[0] - r.x < lead + 0.3 && t - manualPlanned > 1) {
+            press(lean);
+            press('lean0', (span[1] - span[0]) / Math.max(1, Math.abs(r.v)) + 0.5);
+            manualPlanned = t;
+          } else if (pad && t - manualPlanned > 1) {
             press(lean);
             press('lean0', (pad.x1 - pad.x0) / Math.max(1, Math.abs(r.v)) + 0.3);
             manualPlanned = t;

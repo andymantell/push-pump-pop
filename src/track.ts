@@ -282,6 +282,12 @@ export class TrackBuilder {
     return this.flat(len);
   }
 
+  /** A rail running down a slope of `dy` (negative) over `len`, `height` above it. */
+  downrail(len: number, dy: number, height = 0.6): this {
+    this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + len, y1: this.y + dy + height, z: RAIL_Z, kind: 'rail' });
+    return this.ramp(len, dy);
+  }
+
   /** A low box ledge to grind along its edge. */
   ledge(len: number, height = 0.45): this {
     this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + len, y1: this.y + height, z: RAIL_Z, kind: 'ledge' });

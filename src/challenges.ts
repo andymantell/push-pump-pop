@@ -214,7 +214,7 @@ export class ChallengeRun {
         if (c.pad) return this.track.pads.some((p) => x0 <= p.x0 + 0.6 && this.x >= p.x1 - 0.6);
         return t.duration >= (c.seconds ?? 0);
       });
-      this.credit(t.name, t.duration, null);
+      this.credit(t.name, t.duration, null, [], x0);
       return;
     }
     if (t.axis === 'loop') {
@@ -228,9 +228,9 @@ export class ChallengeRun {
   }
 
   /** A trick landed, with the air it was done in (null on the ground or a rail). */
-  private credit(name: TrickName, duration: number, air: Air | null, gaps: number[] = []) {
+  private credit(name: TrickName, duration: number, air: Air | null, gaps: number[] = [], x = this.x) {
     this.landed.add(name);
-    this.combo.push({ name, x: this.x });
+    this.combo.push({ name, x });
     this.each('trick', (c, i) => {
       if (!matches(c.match, name) || duration < (c.minTime ?? 0)) return;
       if ((c.overGap || c.from || c.fromRail) && !air) return;
