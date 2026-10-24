@@ -197,6 +197,22 @@ def export(path, objects=None):
 
 # ---------------------------------------------------------------- skater
 
+def cap_dome(material):
+    """Baseball cap crown: the top of a sphere, cut off above the eyes."""
+    o = sphere(material, 0.134, loc=(0, 0, 0.16), scale=(1, 1.03, 1.0), segs=24, rings=16)
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    cut = 0.16 + 0.045  # brow line, above the eyes at 0.16
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < cut - 1e-4], context='VERTS')
+    bm.to_mesh(o.data)
+    bm.free()
+    # Back of the cap sits a little lower than the front.
+    for v in o.data.vertices:
+        if v.co.y > 0:
+            v.co.z -= 0.03 * (v.co.y / 0.134)
+    return o
+
+
 def build_skater():
     reset()
     skin = mat('skin', (240, 192, 154))
@@ -237,7 +253,7 @@ def build_skater():
     # Head: neck pivot at 0, skull centred at 0.16, cap with brim facing -Y.
     h = [
         sphere(skin, 0.125, loc=(0, 0, 0.16), scale=(0.95, 1, 1.05), segs=24, rings=16),
-        sphere(cap_m, 0.132, loc=(0, 0, 0.185), scale=(1, 1.02, 0.85), segs=24, rings=16),
+        cap_dome(cap_m),
         cube(cap_m, (0.17, 0.12, 0.018), loc=(0, -0.155, 0.19), rot=(math.radians(-8), 0, 0), bevel=0.008),
         sphere(hair, 0.05, loc=(0.1, 0.04, 0.13), segs=10, rings=6),
         sphere(hair, 0.05, loc=(-0.1, 0.04, 0.13), segs=10, rings=6),
