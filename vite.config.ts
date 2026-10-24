@@ -13,6 +13,8 @@ function versionFile(): Plugin {
   return {
     name: 'version-file',
     apply: 'build',
+    // Lets a running game check that a fresh index.html really is the new build.
+    transformIndexHtml: (html) => html.replace('<head>', `<head>\n  <meta name="build-id" content="${BUILD_ID}" />`),
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ id: BUILD_ID, changelog: CHANGELOG }) });
     },
@@ -25,6 +27,7 @@ export default defineConfig(({ command }) => ({
   build: { target: 'es2022' },
   define: {
     __BUILD_ID__: JSON.stringify(command === 'build' ? BUILD_ID : 'dev'),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     __CHANGELOG__: JSON.stringify(CHANGELOG),
   },
   plugins: [versionFile(), ...(process.env.SINGLE ? [viteSingleFile()] : [])],
