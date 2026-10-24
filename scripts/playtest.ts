@@ -44,6 +44,12 @@ const TIME_LIMIT = 120;
 /** A sudden stop: speed falls below this share of its recent peak within STOP_WINDOW. */
 const STOP_SHARE = 0.5;
 const STOP_WINDOW = 0.25;
+/**
+ * A dip whose top edge is too sharp throws you off the ground without an ollie, and you
+ * come down on the far upslope: you miss the whole downslope you should have pumped.
+ * Any air you didn't pop for that lands on an upslope steeper than this fails the track.
+ */
+const DIP_LAUNCH_SLOPE = 0.25;
 const DT = 1 / 60;
 
 interface Result {
@@ -58,6 +64,8 @@ interface Result {
   downs: number[];
   /** Where the rider suddenly stopped. */
   stops: number[];
+  /** Where the rider was thrown over a dip onto its upslope. */
+  dipLaunches: number[];
   grinds: number;
   loopsTried: number;
   loopsDone: number;
@@ -130,7 +138,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   const biome = BIOMES[def.biome];
   const track = def.build();
   const rand = rng(seed);
-  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, livesLost: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [], grinds: 0, loopsTried: 0, loopsDone: 0, railHits: track.rails.map(() => 0), coverage: [] };
+  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, livesLost: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [], dipLaunches: [], grinds: 0, loopsTried: 0, loopsDone: 0, railHits: track.rails.map(() => 0), coverage: [] };
   let recent: { t: number; s: number }[] = [];
   let downT = 0;
   let t = 0;
@@ -138,7 +146,12 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   const r: Rider = new Rider(track, {
     loop(done) { if (done) res.loopsDone++; else res.loopsTried++; },
     grind(rail) { res.grinds++; res.railHits[track.rails.indexOf(rail)]++; grindFrom = { rail, x: r.x }; },
-    trick(tr) { tricks++; seen.set(tr.name, (seen.get(tr.name) ?? 0) + 1); }, land() {}, pump() {},
+    trick(tr) { tricks++; seen.set(tr.name, (seen.get(tr.name) ?? 0) + 1); }, pump() {},
+    land({ airTime }) {
+      const up = track.slope(r.x) * (Math.sign(r.v) || 1);
+      // Only airs that left from a crest or an edge, not up a kicker or ramp.
+      if (!isPipe && !r.ollied && takeoffSlope < 0.15 && airTime > 0.3 && up > DIP_LAUNCH_SLOPE) res.dipLaunches.push(+r.x.toFixed(1));
+    },
     bail() { res.bails++; res.livesLost++; },
     fall() { respawnAt = t + 1.2; res.livesLost++; },
   });
@@ -148,6 +161,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   skater?.setSnow(def.biome === 'snow');
   if (isPipe) r.v = 6;
   let peakAboveLip = 0, tricks = 0;
+  let wasGrounded = true, takeoffSlope = 0;
 
   // Inputs the bot has decided on, landing later.
   type Act = 'pump' | Swipe | 'spin' | 'grab' | 'let go' | 'lean+' | 'lean-' | 'lean0';
@@ -251,7 +265,10 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
     }
 
     const before = r.x;
+    const slopeBefore = track.slope(r.x) * (Math.sign(r.v) || 1);
     r.update(DT);
+    if (wasGrounded && !r.grounded) takeoffSlope = slopeBefore;
+    wasGrounded = r.grounded;
     // How much of each rail a grind covered.
     if (grindFrom && !r.grind) {
       const rl = grindFrom.rail;
@@ -331,6 +348,8 @@ for (const def of TRACKS) {
   track.rails.forEach((rl, i) => {
     if (!results.some((r) => r.railHits[i] > 0)) problems.push(`no run managed to grind the ${rl.kind} at ${rl.x0.toFixed(0)} m`);
   });
+  const dips = [...results, ...pumpers].flatMap((r) => r.dipLaunches);
+  if (dips.length) problems.push(`thrown over a dip onto its upslope at ${[...new Set(dips.map((x) => Math.round(x)))].join(', ')} m (soften the dip's top edge)`);
   if (stops.length) problems.push(`sudden stops at ${[...new Set(stops.map((x) => Math.round(x)))].join(', ')} m`);
   const bails = results.reduce((s, r) => s + r.bails, 0) / RUNS;
   const lost = results.reduce((s, r) => s + r.livesLost, 0) / RUNS;

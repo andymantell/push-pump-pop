@@ -55,7 +55,7 @@ export const TRACKS: TrackDef[] = [
       b.sign('SWIPE UP: OLLIE').kicker(4, 1.3).flat(5).ease(5, -1.3).flat(6);
       b.rollers(2, 12, 1.26).flat(4);
       b.sign('SWIPE LEFT: KICKFLIP').kicker(4.5, 1.6).flat(4).ease(6, -1.6).flat(6);
-      b.rollers(2, 12, 0.84).ease(10, -2).rollers(2, 12, 1.12).flat(4);
+      b.rollers(2, 12, 0.84).ease(10, -2).rollers(2, 14, 1.12).flat(4);
       b.sign('GAP').kicker(4, 1.5).drop(-1.0).valley(7, 1.2).ease(4, 1.0).ease(6, -1.5).flat(6);
       b.rollers(2, 12, 0.98).kicker(4, 1.8).flat(3).ease(3, 0.8).flat(6).rollers(2, 12, 0.7).flat(3);
       b.sign('DROP').drop(-0.3).ease(7, -2.3).flat(6);
@@ -113,7 +113,7 @@ export const TRACKS: TrackDef[] = [
       b.rollers(3, 15, 1.5).flat(4);
       b.flat(6).rail(10, 0.6).flat(6);
       b.kicker(4, 1.5).flat(6).ease(6, -1.5).flat(5);
-      b.ease(10, -3).rollers(2, 13, 1.26);
+      b.ease(10, -3).rollers(2, 16, 1.26);
       b.kicker(4.5, 1.8).flat(5).ease(7, -2.5).rollers(3, 13, 1.4).flat(4);
       b.kicker(5, 2.0).drop(-0.4).ease(10, -4).flat(4);
       b.sign('HUGE AIR').ease(12, -4).kicker(6, 2.6).drop(-0.6).ease(16, -6).flat(10);
@@ -123,14 +123,14 @@ export const TRACKS: TrackDef[] = [
     id: 'desert-1', biome: 'desert', name: 'Dry Gulch',
     build: layout(4, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(10, -4).flat(6);
-      b.sign('PUMP OUT').valley(12, 3).flat(4);
+      b.sign('PUMP OUT').valley(24, 3).flat(4);
       b.rollers(2, 13, 1.26).flat(3);
       b.kicker(4, 1.3).flat(4).ease(5, -1.3).flat(4);
-      b.valley(14, 4).flat(3);
+      b.valley(27, 4).flat(3);
       b.rollers(3, 12, 1.12).flat(3);
       b.flat(5).ledge(8).flat(5);
       b.kicker(4, 1.5).flat(4).ease(6, -1.5).flat(4);
-      b.sign('DEEP GULLY').valley(16, 5).flat(4);
+      b.sign('DEEP GULLY').valley(30, 5).flat(4);
       b.flat(5).stairs(6).flat(8);
       b.rollers(2, 13, 1.4);
       b.sign('BIG AIR').ease(8, -2).kicker(5, 2.0).flat(3).ease(8, -2).flat(6);
