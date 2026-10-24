@@ -127,10 +127,10 @@ export const TRACKS: TrackDef[] = [
       b.sign('LAVA!').kicker(3.5, 1.0).pit(3, -0.5).flat(5);
       b.rollers(2, 12, 1.12).flat(3);
       b.kicker(4, 1.2).pit(4, -0.8).flat(4);
-      b.ease(8, -2).kicker(4, 1.5).pit(5, -1.0).flat(4);
+      b.flat(3).ease(10, -2.5).kicker(4, 1.5).pit(3.8, -1.2).flat(4);
       b.rollers(3, 12, 1.26).flat(3);
-      b.kicker(4, 1.4).pit(3.8, -1.2).ease(4, -1).flat(3);
-      b.kicker(4, 1.6).pit(5.5, -1.0).flat(4);
+      b.kicker(4, 1.4).pit(3.8, -1.2).ease(8, -1.5).flat(10);
+      b.ease(6, -1.5).kicker(4, 1.6).pit(4.5, -1.3).flat(4);
       b.sign('FINAL LEAP').ease(10, -3).kicker(5, 2.0).pit(7, -2).ease(6, -1).flat(8);
     }),
   },

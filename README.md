@@ -22,9 +22,11 @@ Flip tricks pop off the ground too. Chain tricks into combos; land before the bo
 npm install
 npm run dev      # local dev server
 npm run build    # type check and build to dist/
-npx tsx scripts/sim.ts   # headless bots ride every track, for tuning
+npm test                 # human-speed bot plays every track; fails if one is too hard
+npx tsx scripts/sim.ts   # quick physics stats per track, for tuning
 ```
 
+The deploy workflow runs `npm test` first, so a track that's too hard blocks the deploy.
 Pushing to `main` deploys to GitHub Pages via `.github/workflows/deploy.yml`.
 
 ## Tracks and biomes
