@@ -76,10 +76,34 @@
     <div class="buttons">
       <button id="next">NEXT TRACK</button>
       <button id="again" class="alt">RIDE AGAIN</button>
+      <button id="watch" class="alt replay hidden">&#9654; WATCH REPLAY</button>
       <button id="tracks" class="alt">ALL TRACKS</button>
     </div>
   </div>
   <button id="menu" class="hidden" aria-label="Tracks">&#9776;</button>
+  <button id="replaychip" class="hidden">&#9654; REPLAY</button>
+  <div id="replay" class="hidden">
+    <div id="rp-screen"></div>
+    <div id="rp-combo"></div>
+    <div id="rp-popups"></div>
+    <div class="rp-top">
+      <div class="rp-tag"><i></i><span id="rp-speedtag">REPLAY</span></div>
+      <div class="rp-info"><b id="rp-title"></b><span id="rp-pts"></span></div>
+      <button id="rp-close" aria-label="Close replay">&#10005;</button>
+    </div>
+    <div class="rp-controls">
+      <div id="rp-bar"><div class="rp-rail"><div id="rp-fill"></div></div><div id="rp-knob"></div></div>
+      <div class="rp-row">
+        <button id="rp-prev" class="rp-clip" aria-label="Previous replay">&#9664;</button>
+        <button id="rp-play" aria-label="Pause">&#10074;&#10074;</button>
+        <button id="rp-next" class="rp-clip" aria-label="Next replay">&#9654;</button>
+        <span id="rp-count"></span>
+        <div class="rp-speeds">
+          <button data-speed="1">1&times;</button><button data-speed="0.5">&frac12;&times;</button><button data-speed="0.25">&frac14;&times;</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

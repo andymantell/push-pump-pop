@@ -12,6 +12,7 @@ import { TRACKS, TrackDef, PIPE_TIME } from './tracks';
 import { BIOMES, BIOME_ORDER } from './biomes';
 import { Track } from './track';
 import { watchForUpdates } from './version';
+import { Replays, Player, Clip, HudSnap, MAX_CLIPS } from './replay';
 
 const $ = (id: string) => document.getElementById(id)!;
 const bestKey = (id: string) => `push-pump-pop-best-${id}`;
@@ -54,6 +55,7 @@ const hud = {
 };
 
 function popup(text: string, cls = '') {
+  replays.popup(text, cls);
   const el = document.createElement('div');
   el.className = 'popup ' + cls;
   el.textContent = text;
@@ -62,16 +64,24 @@ function popup(text: string, cls = '') {
 }
 
 let comboHold = 0;
+// What the combo readout shows, kept for replays.
+let comboSnap: HudSnap | null = null;
 function showCombo(v: ComboView | null, cls = '') {
-  if (!v) { hud.combo.innerHTML = ''; return; }
+  const html = v ? `<div class="names">${v.names.join(' + ')}</div><div class="pts">${fmt(v.base)} <em>x${v.mult}</em></div>` : '';
+  if (html === (comboSnap?.html ?? '') && cls === (comboSnap?.cls ?? '')) return;
+  comboSnap = v ? { html, cls } : null;
   hud.combo.className = cls;
-  hud.combo.innerHTML = `<div class="names">${v.names.join(' + ')}</div><div class="pts">${fmt(v.base)} <em>x${v.mult}</em></div>`;
+  hud.combo.innerHTML = html;
 }
-score.onBank = (pts, v) => { showCombo(v, 'banked'); comboHold = 1.1; if (v.mult > 1) popup(`+${fmt(pts)}`, 'big'); };
-score.onLost = (v) => { showCombo(v, 'lost'); comboHold = 1.1; };
+score.onBank = (pts, v) => {
+  showCombo(v, 'banked'); comboHold = 1.1;
+  if (v.mult > 1) popup(`+${fmt(pts)}`, 'big');
+  replays.bank(pts, v.names, def.kind === 'pipe');
+};
+score.onLost = (v) => { showCombo(v, 'lost'); comboHold = 1.1; replays.lost(); };
 
 const rider = new Rider(track, {
-  trick(t: Trick) { score.addTrick(t); if (t.axis !== 'grab' && t.axis !== 'manual') popup(t.name); },
+  trick(t: Trick) { replays.trick(t.duration, rider.grounded); score.addTrick(t); if (t.axis !== 'grab' && t.axis !== 'manual') popup(t.name); },
   grab(name) { popup(name + '!'); },
   manual(name) { popup(name + '!'); },
   land({ airTime, smooth, peakY }) {
@@ -127,14 +137,59 @@ function loadTrack(d: TrackDef) {
 const skater = new Skater(assets.parts);
 scene.add(skater.root, skater.shadowMesh);
 
-type State = 'title' | 'select' | 'playing' | 'finished';
+// Big combos are recorded for slow-motion replays: see replay.ts.
+const replays: Replays = new Replays(skater.joints, camera, skater.shadowMesh);
+const player = new Player(replays, () => replays.clips);
+const chip = $('replaychip');
+let chipClip: Clip | null = null;
+let chipTimer = 0;
+replays.onClip = (c) => {
+  if (state !== 'playing') return;
+  chipClip = c;
+  chipTimer = 5;
+  chip.classList.remove('hidden');
+};
+function hideChip() { chipTimer = 0; chipClip = null; chip.classList.add('hidden'); }
+/** Where the replay was opened from, to go back to. */
+let replayFrom: State | null = null;
+/** A moment's pause back in the run after a replay, so you're ready to ride. */
+let resumeTimer = 0;
+function watchReplay(c: Clip | undefined) {
+  if (!c || state === 'replay') return;
+  replayFrom = state;
+  state = 'replay';
+  hideChip();
+  $('hud').classList.add('hidden');
+  $('results').classList.add('hidden');
+  $('menu').classList.add('hidden');
+  player.show(c, camPos);
+}
+player.onClose = () => {
+  state = replayFrom ?? 'playing';
+  replayFrom = null;
+  $('hud').classList.remove('hidden');
+  if (state === 'finished') show('results');
+  else {
+    $('menu').classList.remove('hidden');
+    // Anything held when the replay opened has been let go of by now.
+    if (rider.grab) rider.release();
+    keyLean = 0;
+    applyLean();
+    resumeTimer = 0.8;
+    popup('GO!', 'big');
+  }
+};
+chip.addEventListener('click', () => watchReplay(chipClip ?? replays.clips[0]));
+$('watch').addEventListener('click', () => { replays.flush(); watchReplay(replays.clips[0]); });
+
+type State = 'title' | 'select' | 'playing' | 'finished' | 'replay';
 let state: State = 'title';
 let time = 0;
 let finishTimer = 0;
 
 const input = new Input(canvas);
 // Gameplay input only reaches the rider while you're riding with lives left.
-const canRide = () => state === 'playing' && lives.controllable;
+const canRide = () => state === 'playing' && resumeTimer <= 0 && lives.controllable;
 input.onPump = () => { if (canRide()) { rider.pump(); skater.pumpKick(); } };
 input.onSwipe = (d) => { if (canRide()) rider.swipe(d); };
 input.onGrab = (d) => { if (canRide()) rider.grabSwipe(d); };
@@ -161,6 +216,9 @@ function start(d: TrackDef = def) {
   finishTimer = 0;
   respawnTimer = 0;
   lives.reset(d.kind !== 'pipe');
+  replays.reset();
+  hideChip();
+  resumeTimer = 0;
   drawLives();
   showCombo(null);
   // However the device is being held right now counts as level.
@@ -221,7 +279,20 @@ function finish(out = false) {
   $('r-combo').textContent = fmt(score.bestCombo);
   $('r-best').textContent = out ? 'Start the level again to finish it' : total > best ? 'NEW BEST!' : `Best: ${fmt(best)}`;
   $('next').textContent = `NEXT: ${nextTrack().name.toUpperCase()}`;
+  hideChip();
+  watchCount = -1;
+  // The run's last combo banks just now, so its replay is cut when you ask to watch.
+  updateWatch();
   show('results');
+}
+
+let watchCount = -1;
+function updateWatch() {
+  const n = Math.min(replays.clips.length + replays.waiting, MAX_CLIPS);
+  if (n === watchCount) return;
+  watchCount = n;
+  $('watch').classList.toggle('hidden', n === 0);
+  $('watch').innerHTML = n > 1 ? `&#9654; WATCH REPLAYS (${n})` : '&#9654; WATCH REPLAY';
 }
 
 $('play').addEventListener('click', openSelect);
@@ -233,12 +304,13 @@ $('tracks').addEventListener('click', openSelect);
 $('menu').addEventListener('click', openSelect);
 $('back').addEventListener('click', () => { show('title'); state = 'title'; });
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Escape' && state === 'playing') openSelect();
+  if (e.code === 'KeyR' && (state === 'playing' && chipClip || state === 'finished')) { replays.flush(); watchReplay(chipClip ?? replays.clips[0]); }
+  else if (e.code === 'Escape' && state === 'playing') openSelect();
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'title') { e.preventDefault(); openSelect(); }
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'finished') { e.preventDefault(); start(def); }
 });
 
-watchForUpdates(() => state === 'playing', openSelect);
+watchForUpdates(() => state === 'playing' || replayFrom === 'playing', openSelect);
 
 // Camera follows from the side, pulling back and looking ahead with speed.
 const camPos = new THREE.Vector3(track.startX + 3, track.height(track.startX) + 2, 12);
@@ -305,7 +377,17 @@ function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
 
-  if (state === 'playing') {
+  if (state === 'replay') {
+    // Replays pose the skater and camera themselves; the run waits, timer and all.
+    const r = player.update(dt);
+    world.update(r.dt, r.follow.x, r.follow.y);
+    effect.render(scene, camera);
+    requestAnimationFrame(frame);
+    return;
+  }
+
+  if (resumeTimer > 0) resumeTimer -= dt;
+  else if (state === 'playing') {
     time += dt;
     if (lives.simulate(rider.bailing || rider.falling)) rider.update(dt);
     if (lives.out) {
@@ -336,6 +418,12 @@ function frame(now: number) {
   skater.update(dt, rider, (x) => track.height(x), (x) => track.slope(x));
   updateCamera(dt);
   world.update(dt, camPos.x, camPos.y);
+  if (state === 'playing' || state === 'finished') replays.record(dt, camPos, rider.grounded, comboSnap);
+  if (chipTimer > 0) {
+    chipTimer -= dt;
+    if (chipTimer <= 0) hideChip();
+  }
+  if (state === 'finished') updateWatch();
 
   if (comboHold > 0) {
     comboHold -= dt;
@@ -368,6 +456,6 @@ requestAnimationFrame(frame);
 
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
-  rider, score, skater, start, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
+  rider, score, skater, replays, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };

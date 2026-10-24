@@ -237,6 +237,11 @@ export class Skater {
     return pts;
   }
 
+  /** Everything update() moves, for recording replays. */
+  get joints(): THREE.Object3D[] {
+    return [this.root, this.body, this.boardPivot, ...Object.values(this.p), ...Object.values(this.snowParts), this.shadow];
+  }
+
   pumpKick() { this.pumpAnim = 1; }
 
   update(dt: number, r: Rider, groundY: (x: number) => number, groundSlope: (x: number) => number) {

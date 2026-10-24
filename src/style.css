@@ -11,6 +11,7 @@ html, body {
 canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
 
 #hud { position: fixed; inset: 0; pointer-events: none; text-shadow: 0 3px 0 #1d2b3a; }
+#hud.hidden { display: none; }
 #hud .top {
   display: flex; justify-content: space-between;
   padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
@@ -24,17 +25,17 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 @keyframes hit { 0%, 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
 #results.out #r-title { color: #ff5a5a; }
 
-#combo {
+#combo, #rp-combo {
   position: absolute; left: 0; right: 0; top: 22%;
   text-align: center; font-weight: 900; font-size: 20px; padding: 0 16px;
   transition: opacity 0.2s;
 }
-#combo .names { font-size: 17px; opacity: 0.95; }
-#combo .pts { font-size: 34px; color: #ffe066; }
-#combo .pts em { font-style: normal; color: #ff7b3a; }
-#combo.banked .pts { color: #7dff9a; }
-#combo.lost .pts { color: #ff5a5a; text-decoration: line-through; }
-#combo.grabbing .pts { color: #6fd3ff; }
+#combo .names, #rp-combo .names { font-size: 17px; opacity: 0.95; }
+#combo .pts, #rp-combo .pts { font-size: 34px; color: #ffe066; }
+#combo .pts em, #rp-combo .pts em { font-style: normal; color: #ff7b3a; }
+#combo.banked .pts, #rp-combo.banked .pts { color: #7dff9a; }
+#combo.lost .pts, #rp-combo.lost .pts { color: #ff5a5a; text-decoration: line-through; }
+#combo.grabbing .pts, #rp-combo.grabbing .pts { color: #6fd3ff; }
 
 #popups { position: absolute; inset: 0; }
 .popup {
@@ -166,3 +167,66 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
   height: 34px; padding: 0 12px; display: flex; align-items: center; border-radius: 10px; box-shadow: none;
 }
 #update.compact b { font-size: 13px; }
+
+/* Replays: a chip to watch a big combo back mid-run, and the replay screen. */
+#replaychip {
+  position: fixed; z-index: 5; left: 50%; transform: translateX(-50%);
+  top: calc(max(12px, env(safe-area-inset-top)) + 66px);
+  border: none; border-radius: 999px; padding: 10px 20px; font: inherit; font-size: 17px; font-weight: 900;
+  color: #fff; background: #e8402a; box-shadow: 0 4px 0 #9a2414; cursor: pointer;
+  animation: chip 0.35s ease-out;
+}
+#replaychip:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 1px 0 #9a2414; }
+#replaychip.hidden { display: none; }
+@keyframes chip { from { opacity: 0; transform: translateX(-50%) scale(0.6); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+.panel button.replay { background: #e8402a; box-shadow: 0 6px 0 #9a2414; }
+
+#replay { position: fixed; inset: 0; z-index: 8; text-shadow: 0 3px 0 #1d2b3a; }
+#replay.hidden { display: none; }
+#rp-screen {
+  position: absolute; inset: 0; cursor: pointer;
+  /* Letterbox bars and a soft vignette so it reads as a replay at a glance. */
+  background:
+    linear-gradient(rgba(10, 15, 25, 0.75), rgba(10, 15, 25, 0) 16%, rgba(10, 15, 25, 0) 70%, rgba(10, 15, 25, 0.8)),
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.25));
+}
+#rp-combo, #rp-popups { pointer-events: none; }
+#rp-popups { position: absolute; inset: 0; }
+.rp-top {
+  position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: flex-start; gap: 12px;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  pointer-events: none;
+}
+.rp-tag { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 16px; letter-spacing: 2px; white-space: nowrap; padding-top: 8px; }
+.rp-tag i { width: 12px; height: 12px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; animation: rec 1s steps(2) infinite; }
+@keyframes rec { 50% { opacity: 0.2; } }
+.rp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; font-weight: 900; }
+.rp-info b { font-size: 16px; line-height: 1.2; }
+.rp-info span { font-size: 24px; color: #ffe066; }
+#replay button {
+  pointer-events: auto; border: none; font: inherit; font-weight: 900; color: #fff; cursor: pointer;
+  background: rgba(20, 35, 50, 0.55); text-shadow: none; touch-action: manipulation;
+}
+#replay button:active { transform: translateY(2px); }
+#rp-close { width: 48px; height: 48px; border-radius: 50%; font-size: 22px; flex: none; }
+.rp-controls {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 6px;
+  padding: 0 max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  max-width: 760px; margin: 0 auto;
+}
+/* A tall bar so it's easy to catch with a thumb; the rail is drawn thin inside it. */
+#rp-bar { position: relative; height: 44px; cursor: pointer; touch-action: none; }
+.rp-rail { position: absolute; left: 0; right: 0; top: 50%; height: 8px; margin-top: -4px; border-radius: 4px; background: rgba(255, 255, 255, 0.3); overflow: hidden; }
+#rp-fill { height: 100%; width: 0; background: #ffe066; }
+#rp-knob {
+  position: absolute; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+  background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); pointer-events: none;
+}
+.rp-row { display: flex; align-items: center; gap: 10px; }
+#rp-play { width: 64px; height: 56px; border-radius: 28px; font-size: 22px; background: #ff7b3a; box-shadow: 0 4px 0 #b84a17; }
+.rp-clip { width: 48px; height: 48px; border-radius: 50%; font-size: 16px; }
+#replay.single .rp-clip { display: none; }
+#rp-count { font-weight: 900; font-size: 15px; opacity: 0.85; }
+.rp-speeds { margin-left: auto; display: flex; border-radius: 26px; overflow: hidden; background: rgba(20, 35, 50, 0.55); }
+#replay .rp-speeds button { min-width: 56px; height: 48px; font-size: 18px; background: none; padding: 0 10px; }
+#replay .rp-speeds button.on { background: #ffe066; color: #1d2b3a; }
