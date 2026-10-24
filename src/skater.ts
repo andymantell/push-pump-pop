@@ -224,8 +224,12 @@ export class Skater {
     // Body.
     const hipY = STAND_HIP - this.crouch * 0.42 + this.lift * 0.4;
     p.pelvis.position.set(0.02, hipY, 0);
-    p.torso.rotation.set(0.18 + this.crouch * 0.55 + gw * 0.25, 0, 0);
-    p.head.rotation.set(-0.15 - this.crouch * 0.4, 1.0, 0);
+    // Look where you're going: riding fakie after a 180, the shoulders open up
+    // and the head turns the other way. cos(yaw) is +1 regular, -1 fakie.
+    const facing = Math.cos(yaw);
+    const twist = 0.3 * (facing - 1) / 2;
+    p.torso.rotation.set(0.18 + this.crouch * 0.55 + gw * 0.25, twist, 0);
+    p.head.rotation.set(-0.15 - this.crouch * 0.4, 1.0 * facing - twist, 0);
 
     const flipLift = trick && trick.axis !== 'none' ? Math.sin(prog * Math.PI) * 0.22 : 0;
     const footY = DECK_TOP + ANKLE + this.lift + flipLift;

@@ -133,6 +133,7 @@ export class Rider {
   /** Device tilt, and whether it has been back to level since take-off. */
   lean: Lean = 0;
   private leanArmed = false;
+  private manualBlocked = false;
   /** Body flip in progress (+1 backflip), and how far round it is in turns. */
   flipDir: 1 | -1 = 1;
   flipT = 0;
@@ -262,7 +263,7 @@ export class Rider {
   setLean(l: Lean) {
     if (l === this.lean) return;
     this.lean = l;
-    if (l === 0) this.leanArmed = true;
+    if (l === 0) { this.leanArmed = true; this.manualBlocked = false; }
   }
 
   private endManual() {
@@ -375,9 +376,11 @@ export class Rider {
       const k = tr.slope(this.x);
       // Tilted on gentle ground: balance on two wheels.
       // Too slow and you'd stall without pushing, so it drops back onto four wheels.
-      const want: ManualName | null = this.lean && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.8)
+      // Once it drops, level out before the next one, so it can't flicker on and off.
+      const want: ManualName | null = this.lean && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.8)
         ? (this.lean > 0 ? 'Manual' : 'Nose Manual') : null;
       if (want !== this.manual) {
+        if (this.manual && this.lean) this.manualBlocked = true;
         this.endManual();
         if (want) { this.manual = want; this.manualT = 0; this.ev.manual?.(want); }
       }

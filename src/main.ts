@@ -350,6 +350,7 @@ function frame(now: number) {
   const cue = state === 'playing' && !!def.tutorial && rider.grounded && !rider.bailing && rider.pumpTimer === 0
     && track.slope(rider.x + rider.v * 0.12) * Math.sign(rider.v || 1) < -0.12;
   hud.cue.classList.toggle('on', cue);
+  $('spinzone').classList.toggle('hidden', state !== 'playing');
   hud.score.textContent = fmt(score.total);
   hud.time.textContent = def.kind === 'pipe' ? Math.max(0, PIPE_TIME - time).toFixed(1) : time.toFixed(1);
   hud.speed.style.width = `${Math.min(100, (rider.speed / 20) * 100)}%`;

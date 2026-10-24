@@ -2,8 +2,8 @@ import { Swipe, Lean } from './rider';
 
 const SWIPE_DIST = 28;
 const SWIPE_TIME = 450;
-/** Swipes starting in this bottom share of the screen are spins. */
-const SPIN_ZONE = 0.35;
+/** Swipes starting in this bottom share of the screen are spins (the band drawn as #spinzone). */
+const SPIN_ZONE = 0.4;
 /** A spin swipe this long (share of screen width) becomes a 360. */
 const SPIN_360 = 0.2;
 /** Swipes starting in this left share of the screen are grabs. */
