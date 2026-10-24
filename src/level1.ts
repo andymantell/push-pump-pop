@@ -56,7 +56,7 @@ function scatterProps(b: TrackBuilder, length: number) {
     return seed / 4294967296;
   };
   const props = b.props;
-  const back: PropKind[] = ['tree', 'tree', 'bush', 'rock', 'tree', 'bush'];
+  const back: PropKind[] = ['tree', 'tree', 'bush', 'rock', 'pine', 'bush', 'pine'];
   for (let x = -10; x < length; x += 3 + rnd() * 4) {
     const kind = back[Math.floor(rnd() * back.length)];
     props.push({ kind, x, z: -6 - rnd() * 22, scale: 0.8 + rnd() * 0.6, rot: rnd() * Math.PI * 2 });

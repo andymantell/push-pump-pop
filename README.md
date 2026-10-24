@@ -26,3 +26,12 @@ npx tsx scripts/sim.ts   # headless physics run of level 1, for tuning
 ```
 
 Pushing to `main` deploys to GitHub Pages via `.github/workflows/deploy.yml`.
+
+## Models
+
+The skater, board and scenery are modelled in Blender from code. To rebuild them:
+
+```sh
+python3 -m venv .venv && .venv/bin/pip install bpy
+.venv/bin/python art/build_assets.py   # writes public/models/*.glb
+```

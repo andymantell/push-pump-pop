@@ -3,7 +3,7 @@
 
 export const DX = 0.05;
 
-export type PropKind = 'tree' | 'bush' | 'lamp' | 'fence' | 'cone' | 'bench' | 'rock';
+export type PropKind = 'tree' | 'pine' | 'bush' | 'lamp' | 'fence' | 'cone' | 'bench' | 'rock';
 
 export interface Prop {
   kind: PropKind;

@@ -224,6 +224,7 @@ function placeholderProp(kind: PropKind | 'finish'): THREE.Object3D {
   };
   switch (kind) {
     case 'tree':
+    case 'pine':
       add(new THREE.CylinderGeometry(0.15, 0.22, 2, 7), 0x7a5232, 0, 1, 0);
       add(new THREE.IcosahedronGeometry(1.3, 0), 0x3f9a45, 0, 2.8, 0);
       add(new THREE.IcosahedronGeometry(0.9, 0), 0x52b552, 0.5, 3.6, 0.2);

@@ -6,6 +6,7 @@ import { Score, ComboView } from './score';
 import { Input } from './input';
 import { World } from './world';
 import { Skater } from './skater';
+import { loadAssets } from './assets';
 
 const $ = (id: string) => document.getElementById(id)!;
 const BEST_KEY = 'push-pump-pop-best-1';
@@ -49,8 +50,9 @@ scene.add(sun.target);
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
 
+const assets = await loadAssets();
 const track = buildLevel1();
-const world = new World(track);
+const world = new World(track, assets.props);
 scene.add(world.group);
 
 // Clouds drift slowly far behind the track.
@@ -104,7 +106,7 @@ const rider = new Rider(track, {
   pump(good) { if (good) popup('Pump!', 'good'); },
 });
 
-const skater = new Skater();
+const skater = new Skater(assets.parts);
 scene.add(skater.root, skater.shadowMesh);
 
 type State = 'title' | 'playing' | 'finished';
@@ -153,7 +155,13 @@ window.addEventListener('keydown', (e) => {
 // Camera follows from the side, pulling back and looking ahead with speed.
 const camPos = new THREE.Vector3(track.startX + 3, track.height(track.startX) + 2, 12);
 const camLook = new THREE.Vector3();
+let camOverride: { pos: number[]; look: number[] } | null = null;
 function updateCamera(dt: number) {
+  if (camOverride) {
+    camera.position.fromArray(camOverride.pos);
+    camera.lookAt(new THREE.Vector3().fromArray(camOverride.look));
+    return;
+  }
   const aspect = camera.aspect;
   const spd = rider.speed;
   const portrait = aspect < 1 ? 1 / aspect : 1;
@@ -225,4 +233,7 @@ function frame(now: number) {
 requestAnimationFrame(frame);
 
 // Handy for automated play testing.
-(window as unknown as { __game: unknown }).__game = { rider, score, track, start, get state() { return state; } };
+(window as unknown as { __game: unknown }).__game = {
+  rider, score, track, start, get state() { return state; },
+  setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
+};
