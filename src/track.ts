@@ -214,6 +214,12 @@ export class TrackBuilder {
     return this.spot('lip');
   }
 
+  /** A gap of `len` with a rail across it at `height` above the lip, starting a little before it. */
+  gapRail(len: number, height = 0.6, lead = 6): this {
+    this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + lead + len + 2, y1: this.y + height, z: RAIL_Z, kind: 'rail' });
+    return this.flat(lead).pit(len).flat(2);
+  }
+
   /** A valley with a rail bridging it at the height of its rims: grind across or ride through. */
   bridge(len: number, depth: number, height = 0.5): this {
     this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + len, y1: this.y + height, z: RAIL_Z, kind: 'rail' });
