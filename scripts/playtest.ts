@@ -29,6 +29,8 @@ const REACTION = 0.22; // seconds from decision to input
 const JITTER = 0.08; // +/- seconds of timing error
 const MAX_INPUTS_PER_SEC = 3;
 const MIN_PIT_CLEAR_RATE = 0.6;
+/** Share of loop attempts that must make it round. */
+const MIN_LOOP_RATE = 0.95;
 const MIN_FINISH_RATE = 1.0;
 /** Lives per run, as in the game: each bail or fall costs one. */
 const LIVES = 3;
@@ -55,6 +57,8 @@ interface Result {
   /** Where the rider suddenly stopped. */
   stops: number[];
   grinds: number;
+  loopsTried: number;
+  loopsDone: number;
   /** Grinds per rail on the track. */
   railHits: number[];
 }
@@ -138,12 +142,13 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   const biome = BIOMES[def.biome];
   const track = def.build();
   const rand = rng(seed);
-  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, livesLost: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [], grinds: 0, railHits: track.rails.map(() => 0) };
+  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, livesLost: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [], grinds: 0, loopsTried: 0, loopsDone: 0, railHits: track.rails.map(() => 0) };
   let recent: { t: number; s: number }[] = [];
   let downT = 0;
   let t = 0;
   let respawnAt = -1;
   const r: Rider = new Rider(track, {
+    loop(done) { if (done) res.loopsDone++; else res.loopsTried++; },
     grind(rail) { res.grinds++; res.railHits[track.rails.indexOf(rail)]++; },
     trick(tr) { tricks++; seen.set(tr.name, (seen.get(tr.name) ?? 0) + 1); }, land() {}, pump() {},
     bail() { res.bails++; res.livesLost++; },
@@ -266,7 +271,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
     // Sudden stops, measured on forward (horizontal) speed so landings don't count.
     // Signed, so rolling back down a slope after a bail doesn't read as a stop.
     const fwd = r.grounded ? r.v * Math.cos(Math.atan(track.slope(r.x))) : r.grind ? r.v : r.vx;
-    if (r.falling || r.bailing || track.pitAt(r.x)) recent = [];
+    if (r.falling || r.bailing || r.loop || track.pitAt(r.x)) recent = [];
     else {
       recent.push({ t, s: fwd });
       while (recent[0].t < t - STOP_WINDOW) recent.shift();
@@ -320,6 +325,10 @@ for (const def of TRACKS) {
     if (rate < MIN_PIT_CLEAR_RATE) problems.push(`gap at ${track.pits[i].x0.toFixed(0)} m cleared ${(rate * 100).toFixed(0)}%`);
   });
   // Every rail should be reachable with a human-timed ollie.
+  // Loops must go round with ordinary pumping, for the bot that tricks and the one that only pumps.
+  const all = [...results, ...pumpers];
+  const tried = all.reduce((s, r) => s + r.loopsTried, 0), done = all.reduce((s, r) => s + r.loopsDone, 0);
+  if (track.loops.length && done < tried * MIN_LOOP_RATE) problems.push(`loops made ${(done / tried * 100).toFixed(0)}% of the time`);
   track.rails.forEach((rl, i) => {
     if (!results.some((r) => r.railHits[i] > 0)) problems.push(`no run managed to grind the ${rl.kind} at ${rl.x0.toFixed(0)} m`);
   });
@@ -327,7 +336,7 @@ for (const def of TRACKS) {
   const bails = results.reduce((s, r) => s + r.bails, 0) / RUNS;
   const lost = results.reduce((s, r) => s + r.livesLost, 0) / RUNS;
   const status = problems.length ? 'FAIL' : 'ok  ';
-  console.log(`${status} ${def.id.padEnd(12)} median ${median.toFixed(1)}s  bails/run ${bails.toFixed(1)}  lives lost/run ${lost.toFixed(1)}  downslope ${downMedian.toFixed(2)}s  grinds/run ${(results.reduce((s, r) => s + r.grinds, 0) / RUNS).toFixed(1)}/${track.rails.length}  gaps ${pitRates.map((r) => (r * 100).toFixed(0) + '%').join(' ') || '-'}`);
+  console.log(`${status} ${def.id.padEnd(12)} median ${median.toFixed(1)}s  bails/run ${bails.toFixed(1)}  lives lost/run ${lost.toFixed(1)}  downslope ${downMedian.toFixed(2)}s  loops ${track.loops.length ? (all.reduce((s, r) => s + r.loopsDone, 0) / Math.max(1, all.reduce((s, r) => s + r.loopsTried, 0)) * 100).toFixed(0) + '%' : '-'}  grinds/run ${(results.reduce((s, r) => s + r.grinds, 0) / RUNS).toFixed(1)}/${track.rails.length}  gaps ${pitRates.map((r) => (r * 100).toFixed(0) + '%').join(' ') || '-'}`);
   if (problems.length) {
     failed = true;
     for (const p of problems) console.log(`       ${p}`);

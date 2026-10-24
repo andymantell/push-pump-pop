@@ -52,7 +52,7 @@ listing every line the running copy doesn't have yet, so don't reword old lines.
 ## Tracks and biomes
 
 - `src/biomes.ts`: look and feel of each biome (sky, surfaces, scenery, friction).
-- `src/tracks.ts`: track layouts as chains of shapes (`flat`, `ease`, `kicker`, `rollers`, `valley`, `drop`, `pit`, `rail`, `ledge`, `stairs`, `sign`), see `TrackBuilder` in `src/track.ts`. Rails, ledges and stair handrails are grindable: ollie on and you lock into a 50-50; the playtest bot aims for each one and fails a track if no run manages to grind one.
+- `src/tracks.ts`: track layouts as chains of shapes (`flat`, `ease`, `kicker`, `rollers`, `valley`, `drop`, `pit`, `rail`, `ledge`, `stairs`, `loop`, `sign`), see `TrackBuilder` in `src/track.ts`. Rails, ledges and stair handrails are grindable: ollie on and you lock into a 50-50; the playtest bot aims for each one and fails a track if no run manages to grind one. Loops (`loop(radius)`) need about 15 m/s to get round, so put a long downhill and rollers before them and keep them for later tracks; fall off and you lose a life and pick up past the loop. The playtest needs 95% of loop attempts to make it round.
 
 Keep rollers long (12 m or more) so there's time to tap on each downslope.
 

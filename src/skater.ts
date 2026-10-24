@@ -267,6 +267,8 @@ export class Skater {
     const style = r.grind?.style;
     if (r.grind) { crouchT = style === 'Boardslide' ? 0.45 : 0.32; liftT = 0; armT = 0.75; }
     this.slideW += ((style === 'Boardslide' ? 1 : 0) - this.slideW) * (1 - Math.exp(-dt * 16));
+    // Round a loop: low and tucked, board on the track.
+    if (r.loop) { crouchT = 0.5; liftT = 0; armT = 0.4; }
     if (r.flipping) { crouchT = 0.8; liftT = 0.4; armT = 0.2; }
     if (r.manual) crouchT = 0.3;
     // Tuck knee: knees pulled right up, board with them.

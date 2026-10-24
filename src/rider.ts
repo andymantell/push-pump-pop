@@ -1,4 +1,4 @@
-import { Track, Pit, Rail, railY } from './track';
+import { Track, Pit, Rail, railY, Loop, LOOP_SHIFT } from './track';
 
 // Arcade physics for a rider on a 2D height profile.
 
@@ -26,6 +26,9 @@ const GRIND_POINTS = 200;
 const GRIND_POINTS_PER_SEC = 700;
 /** How close to a rail you need to pass on the way down to lock on to it (arcade magnet). */
 const GRIND_CATCH = 0.3;
+/** Rolling friction on the loop is a bit higher: it's a tight curve. */
+const LOOP_FRICTION = 0.3;
+const LOOP_POINTS = 1000;
 
 export type GrabName = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
 export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
@@ -33,8 +36,9 @@ export type FlipName = 'Backflip' | 'Frontflip';
 /** Manuals on a skateboard, presses on a snowboard: nose up first. */
 export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press';
 export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind';
+export type LoopName = 'Loop';
 type BoardTrick = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee';
-export type TrickName = BoardTrick | GrabName | SpinName | FlipName | ManualName | GrindName;
+export type TrickName = BoardTrick | GrabName | SpinName | FlipName | ManualName | GrindName | LoopName;
 /** Tilt of the device: +1 nose up (manual, backflip), -1 nose down (nose manual, frontflip). */
 export type Lean = -1 | 0 | 1;
 export type Swipe = 'up' | 'down' | 'left' | 'right';
@@ -44,7 +48,7 @@ export interface Trick {
   duration: number;
   points: number;
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
-  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind';
+  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop';
   dir: 1 | -1;
 }
 
@@ -116,6 +120,8 @@ export interface RiderEvents {
   grab?(name: GrabName): void;
   manual?(name: ManualName): void;
   grind?(rail: Rail): void;
+  /** Entered a loop (done false), or came out of it (true). */
+  loop?(done: boolean): void;
   pump(good: boolean): void;
   fall(): void;
 }
@@ -183,6 +189,10 @@ export class Rider {
   grind: { rail: Rail; t: number; style: GrindName } | null = null;
   /** Depth: 0 on the riding line, the rail's z while grinding. */
   z = 0;
+  /** Loop in progress, and how far round (radians from the bottom). */
+  loop: { L: Loop; phi: number } | null = null;
+  /** Fell off a loop: tumbling down inside it, landing on the ground. */
+  loopFall = false;
 
   falling = false;
   /** The gap we last fell into. */
@@ -204,6 +214,8 @@ export class Rider {
     this.grab = null;
     this.held = null;
     this.grind = null;
+    this.loop = null;
+    this.loopFall = false;
     this.z = 0;
     this.clearBody();
     this.bailTimer = 0;
@@ -222,6 +234,8 @@ export class Rider {
     this.grab = null;
     this.held = null;
     this.grind = null;
+    this.loop = null;
+    this.loopFall = false;
     this.z = 0;
     this.clearBody();
     this.boardYaw = 0;
@@ -234,7 +248,7 @@ export class Rider {
   private get wall() { return this.opts.pipe ? Infinity : WALL_SLOPE; }
 
   get bailing() { return this.bailTimer > 0; }
-  get speed() { return this.grounded || this.grind ? Math.abs(this.v) : Math.hypot(this.vx, this.vy); }
+  get speed() { return this.grounded || this.grind || this.loop ? Math.abs(this.v) : Math.hypot(this.vx, this.vy); }
 
   pump() {
     if (this.bailing) return;
@@ -344,6 +358,45 @@ export class Rider {
   /** Points the grind in progress is worth so far. */
   get grindPoints() {
     return this.grind ? Math.round((GRIND_POINTS + GRIND_POINTS_PER_SEC * this.grind.t) * GRIND_STYLE_POINTS[this.grind.style] / 10) * 10 : 0;
+  }
+
+  /** Riding round a loop: gravity along the curve, and fall off the top if too slow. */
+  private stepLoop(dt: number) {
+    const lp = this.loop!, L = lp.L;
+    this.v -= (GRAVITY * Math.sin(lp.phi) + LOOP_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v) * dt;
+    lp.phi += (this.v / L.r) * dt;
+    this.x = L.x + L.r * Math.sin(lp.phi);
+    this.y = L.y + L.r - L.r * Math.cos(lp.phi);
+    this.angle = lp.phi;
+    // The loop drifts back on the track as it goes round, so the exit clears the entry.
+    this.z = -LOOP_SHIFT * Math.min(1, lp.phi / (Math.PI * 2));
+    if (lp.phi >= Math.PI * 2) {
+      // Round! Back on the flat, past the entry.
+      this.loop = null;
+      this.x = L.x + 0.02;
+      this.y = this.track.height(this.x);
+      this.angle = 0;
+      this.grounded = true;
+      this.ev.loop?.(true);
+      this.ev.trick({ name: 'Loop', duration: 0, points: LOOP_POINTS, axis: 'loop', dir: 1 });
+      return;
+    }
+    // Too slow to stay on (the curve can't hold you up), or rolling back: you fall off.
+    if (this.v * this.v / L.r < -GRAVITY * Math.cos(lp.phi) || this.v <= 0) {
+      this.loop = null;
+      this.vx = this.v * Math.cos(lp.phi);
+      this.vy = this.v * Math.sin(lp.phi);
+      this.grounded = false;
+      this.loopFall = true;
+      this.falling = true;
+      // Pick up past the loop, as you would past a gap.
+      this.fallPit = { x0: L.x, x1: L.x, lipY: L.y, landY: L.y, floorY: L.y };
+      this.current = null;
+      this.grab = null;
+      this.spin = null;
+      this.flipping = false;
+      this.ev.fall();
+    }
   }
 
   private endGrind() {
@@ -465,9 +518,12 @@ export class Rider {
       this.x += this.vx * 0.5 * dt;
       this.y += this.vy * dt;
       this.angle -= dt * 3;
+      // Off a loop there's ground to land on: lie there until the respawn.
+      if (this.loopFall && this.y < tr.height(this.x)) { this.y = tr.height(this.x); this.vx = 0; this.vy = 0; }
       return;
     }
 
+    if (this.loop) { this.stepLoop(dt); return; }
     this.z += ((this.grind ? this.grind.rail.z : 0) - this.z) * Math.min(1, dt * 14);
 
     if (this.grind) {
@@ -563,9 +619,21 @@ export class Rider {
         return;
       }
 
+      const before = this.x;
       this.x += this.v * cos * dt;
       this.y = tr.height(this.x);
       this.angle = th;
+      // Rolled into a loop: ride round it.
+      const L = this.v > 0 && !this.bailing ? tr.loops.find((l) => before < l.x && this.x >= l.x) : undefined;
+      if (L) {
+        this.endManual();
+        this.manual = null;
+        this.x = L.x;
+        this.loop = { L, phi: 0 };
+        this.grounded = false;
+        this.ev.loop?.(false);
+        return;
+      }
       if (this.opts.pipe && this.y >= tr.maxY - 1e-3 && Math.abs(k) < 0.05) {
         // Never ride out onto the deck of a half pipe: turn back at the lip.
         this.x -= this.v * cos * dt * 2;

@@ -95,7 +95,7 @@ const rider = new Rider(track, {
   },
   bail() { score.lose(); popup('BAIL!', 'bad'); loseLife(); },
   pump(good) { if (good) popup('Pump!', 'good'); },
-  fall() { score.lose(); popup(world.biome.fallText, 'bad'); respawnTimer = 1.2; loseLife(); },
+  fall() { score.lose(); popup(rider.loopFall ? 'WIPEOUT!' : world.biome.fallText, 'bad'); respawnTimer = 1.2; loseLife(); },
 });
 let respawnTimer = 0;
 

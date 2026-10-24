@@ -34,6 +34,19 @@ export interface Stairs {
   run: number;
 }
 
+/**
+ * A loop-the-loop standing on flat ground: you enter at (x, y) and ride a full circle of
+ * radius r, coming out at the same spot a little further back on the track.
+ */
+export interface Loop {
+  x: number;
+  y: number;
+  r: number;
+}
+
+/** How far back on the track a loop's exit is from its entry. */
+export const LOOP_SHIFT = 1.1;
+
 /** Rails sit this far back on the track, so you roll past them unless you grind. */
 export const RAIL_Z = -0.6;
 
@@ -61,11 +74,13 @@ export class Track {
   readonly pits: Pit[];
   readonly rails: Rail[];
   readonly stairs: Stairs[];
+  readonly loops: Loop[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = []) {
     this.pits = pits;
     this.rails = rails;
     this.stairs = stairs;
+    this.loops = loops;
     this.heights = Float32Array.from(heights);
     this.length = (heights.length - 1) * DX;
     this.startX = startX;
@@ -131,6 +146,7 @@ export class TrackBuilder {
   pits: Pit[] = [];
   rails: Rail[] = [];
   stairSets: Stairs[] = [];
+  loops: Loop[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -225,6 +241,13 @@ export class TrackBuilder {
     return this.run(len, (t) => -drop * t);
   }
 
+  /** A loop-the-loop of radius r on flat ground. You need speed to get round. */
+  loop(r = 2.4): this {
+    this.flat(r * 1.2);
+    this.loops.push({ x: this.x, y: this.y, r });
+    return this.flat(r * 1.2);
+  }
+
   /** Abrupt step back up (a ledge face). */
   rise(dy: number): this { return this.drop(dy); }
 
@@ -239,6 +262,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops);
   }
 }

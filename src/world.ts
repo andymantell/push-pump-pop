@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Track, DX } from './track';
+import { Track, DX, LOOP_SHIFT } from './track';
 import { Biome, Surface } from './biomes';
 import { toon } from './toon';
 
@@ -160,6 +160,7 @@ export class World {
     this.buildPitFills();
     this.buildStairs();
     this.buildRails();
+    this.buildLoops();
     this.buildGround();
     this.buildFar();
     this.buildProps();
@@ -290,6 +291,46 @@ export class World {
         const nose = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, TRACK_W + 0.04), toon(this.biome.band));
         nose.position.set(st.x0 + i * st.run + 0.03, top - 0.015, 0);
         this.group.add(nose);
+      }
+    }
+  }
+
+  /** Loop-the-loops: a banded ribbon you ride on the inside of, drifting back as it goes round. */
+  private buildLoops() {
+    const W = 0.6, T = 0.22, N = 96;
+    const inner = toon(0xffffff, { map: surfaceTexture(this.biome.top), side: THREE.DoubleSide });
+    const band = toon(this.biome.band, { side: THREE.DoubleSide });
+    for (const L of this.track.loops) {
+      // Rings of four corners: inner/outer radius by front/back edge.
+      const pos: number[] = [];
+      for (let i = 0; i <= N; i++) {
+        const phi = (i / N) * Math.PI * 2;
+        const zc = -LOOP_SHIFT * (i / N);
+        for (const [rad, dz] of [[L.r, W], [L.r, -W], [L.r + T, -W], [L.r + T, W]]) {
+          pos.push(L.x + rad * Math.sin(phi), L.y + L.r - rad * Math.cos(phi), zc + dz);
+        }
+      }
+      // Faces between consecutive rings: 0-1 inner, 1-2 back, 2-3 outer, 3-0 front.
+      const face = (a: number, b: number) => {
+        const idx: number[] = [];
+        for (let i = 0; i < N; i++) {
+          const p = i * 4, q = (i + 1) * 4;
+          idx.push(p + a, q + a, p + b, p + b, q + a, q + b);
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        g.setIndex(idx);
+        g.computeVertexNormals();
+        return g;
+      };
+      const ribbon = face(0, 1);
+      // Texture runs along the loop.
+      const uv: number[] = [];
+      for (let i = 0; i <= N; i++) { const u = (i / N) * L.r * Math.PI * 2 / 3; uv.push(u, 0, u, 1, u, 1, u, 0); }
+      ribbon.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      for (const m of [new THREE.Mesh(ribbon, inner), new THREE.Mesh(face(1, 2), band), new THREE.Mesh(face(2, 3), band), new THREE.Mesh(face(3, 0), band)]) {
+        (m.material as THREE.Material).userData.outlineParameters = { visible: false };
+        this.group.add(m);
       }
     }
   }
