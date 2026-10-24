@@ -131,13 +131,25 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
   color: #fff; background: #2f8fd8; box-shadow: 0 4px 0 #1e5f94; cursor: pointer;
 }
 #update.hidden { display: none; }
-/* Where to swipe for spins: kept up off the bottom edge, where iPadOS takes swipes to switch apps. */
-#spinzone {
-  position: absolute; left: 0; right: 0; pointer-events: none;
-  bottom: max(10vh, calc(env(safe-area-inset-bottom) + 48px)); top: 60vh;
-  background: rgba(255, 255, 255, 0.06);
-  border-top: 2px dashed rgba(255, 255, 255, 0.18); border-bottom: 2px dashed rgba(255, 255, 255, 0.18);
-  display: flex; align-items: center; justify-content: center;
+/* Swipe zones: grabs on the left, flips on the right, spins along the bottom, kept up off
+   the bottom edge, where iPadOS takes swipes to switch apps. Must match the zones in input.ts. */
+#zones { position: absolute; inset: 0; pointer-events: none; opacity: 0.5; }
+#zones.hidden { display: none; }
+.zone {
+  position: absolute; box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.08); border: 2px dashed rgba(255, 255, 255, 0.45); border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
-#spinzone span { font-weight: 900; font-size: 18px; letter-spacing: 0.2em; color: rgba(255, 255, 255, 0.35); }
-#spinzone.hidden { display: none; }
+.zone b { font-weight: 900; font-size: 18px; letter-spacing: 0.2em; }
+.zone small { font-size: 12px; font-weight: 700; margin-top: 2px; }
+#grabzone, #flipzone { top: calc(max(12px, env(safe-area-inset-top)) + 96px); bottom: 41vh; }
+#grabzone { left: 8px; right: calc(50% + 4px); }
+#flipzone { left: calc(50% + 4px); right: 8px; }
+#spinzone { left: 8px; right: 8px; top: 60vh; bottom: max(10vh, calc(env(safe-area-inset-bottom) + 48px)); }
+.dirs { position: absolute; inset: 6px; font-size: 13px; font-weight: 800; }
+.dirs i { position: absolute; font-style: normal; white-space: nowrap; }
+.dirs .u { top: 0; left: 50%; transform: translateX(-50%); }
+.dirs .d { bottom: 0; left: 50%; transform: translateX(-50%); }
+.dirs .l { left: 0; top: 50%; transform: translateY(-50%); }
+.dirs .r { right: 0; top: 50%; transform: translateY(-50%); }
