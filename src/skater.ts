@@ -19,6 +19,8 @@ const UPPER_ARM = 0.29;
 const FOREARM = 0.3;
 const DECK_TOP = 0.115;
 const ANKLE = 0.075;
+/** Ankle joint height above the bottom of the sole. */
+const SOLE = 0.09;
 const STAND_HIP = DECK_TOP + ANKLE + (THIGH + SHIN) * 0.97;
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -122,6 +124,7 @@ export class Skater {
   private armRaise = 0.5;
   private pumpAnim = 0;
   private pushT = 0;
+  private pushW = 0;
   private bailT = 0;
   private bailBoard = new THREE.Vector3();
   /** 0..1 blend into the grab pose, and the last grab for easing out. */
@@ -164,6 +167,19 @@ export class Skater {
   }
 
   get shadowMesh() { return this.shadow; }
+
+  /** World positions of the points that should never go below the ground: knees, heels and toes. */
+  legPoints(): THREE.Vector3[] {
+    const p = this.p;
+    this.root.updateMatrixWorld(true);
+    const pts: THREE.Vector3[] = [];
+    for (const side of ['L', 'R'] as const) {
+      pts.push(p[`shin_${side}`].getWorldPosition(new THREE.Vector3()));
+      const shoe = p[`shoe_${side}`];
+      pts.push(shoe.localToWorld(v3(0, -0.085, 0.17)), shoe.localToWorld(v3(0, -0.085, -0.11)));
+    }
+    return pts;
+  }
 
   pumpKick() { this.pumpAnim = 1; }
 
@@ -209,7 +225,16 @@ export class Skater {
     const ca = Math.cos(r.angle), sa = Math.sin(r.angle), cb = Math.cos(r.angle + pitch), sb = Math.sin(r.angle + pitch);
     const ox = (ca * pivot.x - sa * pivot.y) - (cb * pivot.x - sb * pivot.y);
     const oy = (sa * pivot.x + ca * pivot.y) - (sb * pivot.x + cb * pivot.y);
-    this.root.position.set(r.x + ox, r.y + oy, 0);
+    // Next to the face of a ledge (bouncing off it, or dropping into a gap): draw the
+    // rider back from it so his front half doesn't go into the wall.
+    let wallX = 0;
+    for (const side of [1, -1]) {
+      if (groundY(r.x) - r.y > 0.4) continue;
+      let d = 0;
+      while (d < 0.6 && groundY(r.x - side * d + side * 0.6) - r.y > 0.4) d += 0.02;
+      wallX -= side * d;
+    }
+    this.root.position.set(r.x + ox + wallX, r.y + oy, 0);
     this.root.rotation.set(0, yaw, r.angle + pitch, 'ZYX');
 
     // Board tricks.
@@ -238,16 +263,23 @@ export class Skater {
     const front = v3(0.24, footY + Math.sin(tilt) * 0.24, 0.02);
     const back = v3(-0.21, footY - Math.sin(tilt) * 0.21, 0.02);
 
-    if (r.pushing && r.grounded) {
+    // Ease in and out of pushing so the foot never snaps between the ground and the board.
+    this.pushW += ((r.pushing && r.grounded && !r.bailing ? 1 : 0) - this.pushW) * (1 - Math.exp(-dt * 12));
+    if (this.pushW > 0.01) {
       this.pushT = (this.pushT + dt * 1.6) % 1;
       const t = this.pushT;
+      const foot = v3();
       if (t < 0.55) {
         const s = t / 0.55;
-        back.set(0.1 - 0.6 * s, ANKLE - 0.03, 0.26);
+        foot.set(0.1 - 0.6 * s, ANKLE - 0.03, 0.26);
       } else {
         const s = (t - 0.55) / 0.45;
-        back.set(-0.5 + 0.6 * s, ANKLE + Math.sin(s * Math.PI) * 0.15, 0.26 - 0.1 * Math.sin(s * Math.PI));
+        foot.set(-0.5 + 0.6 * s, ANKLE + Math.sin(s * Math.PI) * 0.15, 0.26 - 0.1 * Math.sin(s * Math.PI));
       }
+      back.lerp(foot, this.pushW);
+      // The push foot follows the real ground, which curves away from the board's line
+      // on rollers and dips: never plant it below the surface.
+      back.y = Math.max(back.y, this.groundLocalY(back.x, back.z, groundY) + SOLE);
     } else {
       this.pushT = 0;
     }
@@ -287,6 +319,15 @@ export class Skater {
       this.body.visible = true;
     }
 
+    // Last resort for any pose (a bail on a slope, a crouch in a dip): lift the body so
+    // no knee, heel or toe goes into the ground. Deeper than a body length is a wall, not a dip.
+    let sink = 0, wall = false;
+    for (const pt of this.legPoints()) {
+      sink = Math.max(sink, groundY(pt.x) - pt.y);
+      if (Math.abs(groundSlope(pt.x)) > 1.5) wall = true;
+    }
+    if (sink > 0 && !wall) this.body.position.y += Math.min(sink, 0.6);
+
     // Blob shadow on the ground below.
     const gy = groundY(r.x);
     const height = Math.max(0, r.y - gy);
@@ -322,6 +363,13 @@ export class Skater {
     const qF = new THREE.Quaternion().setFromUnitVectors(DOWN, foreDir);
     upper.quaternion.slerp(qU, w);
     fore.quaternion.slerp(qF, w);
+  }
+
+  /** Height of the ground in the rider's own frame, below a point in that frame. */
+  private groundLocalY(x: number, z: number, groundY: (x: number) => number) {
+    this.root.updateMatrixWorld(true);
+    const w = this.root.localToWorld(v3(x, 0, z));
+    return this.root.worldToLocal(w.set(w.x, groundY(w.x), w.z)).y;
   }
 
   private leg(thigh: THREE.Object3D, shin: THREE.Object3D, shoe: THREE.Object3D, hip: THREE.Vector3, foot: THREE.Vector3, pole: THREE.Vector3) {

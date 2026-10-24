@@ -12,6 +12,17 @@ import { TRACKS, PIPE_TIME } from '../src/tracks';
 import { BIOMES } from '../src/biomes';
 import { Rider, Swipe } from '../src/rider';
 import { Track } from '../src/track';
+import * as THREE from 'three';
+import { Skater } from '../src/skater';
+
+/** Runs per track that also pose the skater and check his legs stay above the ground. */
+const LEG_RUNS = 24;
+/** How far a knee, heel or toe may dip into the ground before it shows. */
+const LEG_SINK = 0.04;
+/** How far a knee, heel or toe may move against the body in one frame. */
+const LEG_JUMP = 0.12;
+/** Where legs went through the ground: rider state -> worst case seen. */
+const legHits = new Map<string, { depth: number; where: string }>();
 
 const RUNS = 24;
 const REACTION = 0.22; // seconds from decision to input
@@ -62,7 +73,46 @@ function nextLip(track: Track, x: number, range: number): number | null {
   return null;
 }
 
-function play(trackId: string, seed: number, pumpOnly = false): Result {
+function checkLegs(skater: Skater, r: Rider, track: Track, trackId: string, t: number) {
+  skater.update(DT, r, (x) => track.height(x), (x) => track.slope(x));
+  if (r.falling) return; // tumbling into a gap goes below the ground on purpose
+  // Crashing into the far wall of a gap you didn't clear isn't a pose to judge.
+  if (skater.legPoints().some((p) => Math.abs(track.slope(p.x)) > 1.5) || Math.abs(track.slope(r.x)) > 1.5) { lastLegs.delete(skater); return; }
+  // Legs snapping between poses from one frame to the next read as a glitch too.
+  const pts = skater.legPoints().map((p) => skater.root.worldToLocal(p));
+  const prev = lastLegs.get(skater);
+  lastLegs.set(skater, pts);
+  // Snapping back upright when a bail ends is meant to be sudden.
+  const wasBailing = bailedLast.get(skater) ?? false;
+  bailedLast.set(skater, r.bailing);
+  if (prev && !r.bailing && !wasBailing) {
+    const jump = Math.max(...pts.map((p, i) => p.distanceTo(prev[i])));
+    if (jump > LEG_JUMP) note(`jump ${state(r)}`, jump, r, track, trackId, t);
+  }
+  let depth = 0;
+  for (const p of skater.legPoints()) depth = Math.max(depth, track.height(p.x) - p.y);
+  if (depth > LEG_SINK) note(`sink ${state(r)}`, depth, r, track, trackId, t);
+}
+
+const lastLegs = new WeakMap<Skater, THREE.Vector3[]>();
+const bailedLast = new WeakMap<Skater, boolean>();
+
+function state(r: Rider) {
+  return [
+    r.bailing ? 'bailing' : r.grounded ? 'ground' : 'air',
+    r.pushing && 'pushing', r.manual, r.pumpTimer > 0 && 'pumping', r.flipping && 'flipping',
+    r.spin && 'spinning', r.grab, r.current?.name, r.bodyYaw && 'fakie',
+  ].filter(Boolean).join(' ');
+}
+
+function note(key: string, size: number, r: Rider, track: Track, trackId: string, t: number) {
+  const prev = legHits.get(key);
+  if (!prev || size > prev.depth) {
+    legHits.set(key, { depth: size, where: `${trackId} x=${r.x.toFixed(1)} t=${t.toFixed(2)} slope=${track.slope(r.x).toFixed(2)} curv=${track.curvature(r.x).toFixed(2)} v=${r.v.toFixed(1)}` });
+  }
+}
+
+function play(trackId: string, seed: number, pumpOnly = false, legs = false): Result {
   const def = TRACKS.find((t) => t.id === trackId)!;
   const biome = BIOMES[def.biome];
   const track = def.build();
@@ -78,6 +128,7 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
     fall() { respawnAt = t + 1.2; res.livesLost++; },
   });
   const isPipe = def.kind === 'pipe';
+  const skater = legs ? new Skater() : null;
   r.opts = { friction: biome.friction, maxSpeed: isPipe ? 12.5 : biome.maxSpeed, pipe: isPipe };
   if (isPipe) r.v = 6;
   let peakAboveLip = 0, tricks = 0;
@@ -165,6 +216,7 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
 
     const before = r.x;
     r.update(DT);
+    if (skater) checkLegs(skater, r, track, trackId, t);
     t += DT;
     if (!r.grounded) peakAboveLip = Math.max(peakAboveLip, r.y - track.maxY);
     if (r.grounded && track.slope(r.x) < -0.12) downT += DT;
@@ -202,8 +254,8 @@ let failed = false;
 
 for (const def of TRACKS) {
   if (only && !def.id.startsWith(only)) continue;
-  const results = Array.from({ length: RUNS }, (_, i) => play(def.id, 1000 + i * 7919));
-  const pumpers = Array.from({ length: RUNS / 4 }, (_, i) => play(def.id, 5000 + i * 7919, true));
+  const results = Array.from({ length: RUNS }, (_, i) => play(def.id, 1000 + i * 7919, false, i < LEG_RUNS));
+  const pumpers = Array.from({ length: RUNS / 4 }, (_, i) => play(def.id, 5000 + i * 7919, true, true));
   const stops = [...results, ...pumpers].flatMap((r) => r.stops);
   const finishRate = results.filter((r) => r.finished).length / RUNS;
   const cleanRate = results.filter((r) => r.finished && r.livesLost === 0).length / RUNS;
@@ -236,6 +288,15 @@ for (const def of TRACKS) {
   if (verbose) {
     console.log(`       times ${times.map((x) => x.toFixed(0)).join(' ')}`);
     track.pits.forEach((_, i) => console.log(`       gap ${i} lip speeds ${results.map((r) => r.lipSpeeds[i].join('/')).join(' ')}`));
+  }
+}
+
+// The skater's legs should never poke through the ground.
+if (legHits.size) {
+  failed = true;
+  console.log('\nleg glitches (sink: into the ground, jump: snapping between frames):');
+  for (const [state, h] of [...legHits].sort((a, b) => b[1].depth - a[1].depth)) {
+    console.log(`  ${(h.depth * 100).toFixed(0).padStart(3)} cm  ${state.padEnd(34)} ${h.where}`);
   }
 }
 
