@@ -56,7 +56,7 @@ export function railY(r: Rail, x: number): number {
 
 /**
  * A named place on the track that challenges can point at: 'kicker' lips, roller 'crest's,
- * valley 'lip's (the far edge you ride out over), and any tag a level adds with sign-like
+ * valley 'lip's (the far edge you ride out over), the tops of 'stairs', and any tag a level adds with sign-like
  * `spot()` calls, such as 'bigair'.
  */
 export interface Spot {
@@ -292,6 +292,7 @@ export class TrackBuilder {
   stairs(steps: number, rise = 0.17, run = 0.32, handrail = true): this {
     const x0 = this.x, y0 = this.y, len = steps * run, drop = steps * rise;
     this.stairSets.push({ x0, y0, steps, rise, run });
+    this.spot('stairs');
     // The rail starts out over the top landing so there's room to ollie onto it.
     const lead = 0.5, above = 0.55;
     if (handrail) this.rails.push({ x0: x0 - lead, y0: y0 + above + lead * drop / len, x1: x0 + len, y1: y0 - drop + above, z: RAIL_Z, kind: 'handrail' });

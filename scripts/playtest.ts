@@ -305,9 +305,13 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     if (filters.overGap && !track.pits.some((p) => p.x0 > takeoffX - 0.6 && p.x1 < f.x)) return true;
     if (filters.from && !track.spots.some((sp) => sp.tag === filters.from && takeoffX > sp.x - 2.5 && takeoffX < sp.x + 1)) return true;
     const hold = Math.max(0.3, (filters.minTime ?? 0) + 0.15);
-    const need = Math.max(...airNames.map((n) => trickTime(n, hold))) + (airNames.length > 1 ? 0.1 : 0);
+    // Two tricks in one air: the second a moment later, as a thumb can't do both at once.
+    // With two to do, wait until the taps before the ollie are out of the tap-rate window.
+    const gap = 0.3;
+    const wait = airNames.length > 1 && inputTimes.length >= 2 ? Math.max(0, inputTimes[inputTimes.length - 2] + 1.05 + JITTER - t - REACTION) : 0;
+    const need = wait + Math.max(...airNames.map((n, k) => trickTime(n, hold) + k * gap));
     if (f.time - REACTION - JITTER < need) return true;
-    airNames.forEach((n, k) => { for (const [a, d] of trickActs(n, hold)) press(a, d + k * 0.06); });
+    airNames.forEach((n, k) => { for (const [a, d] of trickActs(n, hold)) press(a, wait + d + k * gap); });
     trickPlanned = true;
     return true;
   }
