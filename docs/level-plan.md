@@ -1,9 +1,9 @@
-# Push Pump Pop: level plan (70 tracks + 7 half pipes)
+# Push Pump Pop: level plan (70 tracks + 7 bonus levels)
 
 Status: **plan for review**. Nothing here is built yet. Numbers marked *(verify)* are
 design targets that must be checked with `scripts/sim.ts` / `npm test` when the track is built.
 
-7 biomes x 10 run tracks, plus one half-pipe bonus per biome. The game is played on an
+7 biomes x 10 run tracks, plus one bonus level per biome (a half pipe or a mega ramp, see the Bonus levels section). The game is played on an
 iPad by a young child, so the first biome teaches one thing per track and nothing in the
 first six tracks can make you lose a life by accident.
 
@@ -76,7 +76,7 @@ Confirmed by Andy (2026-10-24): the next biome opens after track 5.
 - **Finishing track 5 of a biome unlocks track 1 of the next biome.** So there are always two
   biomes on the go and a stuck child can go somewhere new. Biome order stays
   Park, Beach, Rooftops, Snow, Desert, Jungle, Volcano.
-- **Finishing track 3 of a biome unlocks its half pipe.**
+- **Finishing track 3 of a biome unlocks its bonus level** (half pipe or mega ramp).
 - Because of the T5 rule, anything taught in tracks 6 to 10 of a biome (e.g. grinds in
   Park 8) can't be relied on in the next biome's tracks 1 to 5. Those stay optional there.
 - A parent/debug "unlock all" (e.g. long-press the title) is worth having for testing.
@@ -178,7 +178,7 @@ and rails.
 | 9 | rooftops-9 | Skyline Sprint | 560 | 6 | gaps in a row | rhythm | Gap, one roller, gap, one roller, gap: four of these sets. | 29,000 |
 | 10 | rooftops-10 | Penthouse Plunge | 640 | 7 | - | everything | Start at the top of a tower, drop down stairs and rails, finish with a 6 m gap to a lower roof. | 34,000 |
 
-Half pipe: **Rooftop Halfpipe** (existing `rooftops-pipe`).
+Bonus: **Skyscraper Mega Ramp** (`rooftops-mega`, replaces Rooftop Halfpipe).
 
 ### Snowy Mountain: ice and huge air (snowboard)
 
@@ -199,7 +199,7 @@ crevasse gaps at speed and long flat ice where you keep what you have. Rollers a
 | 9 | snow-9 | Yeti Ridge | 740 | 7 | - | flips, spins, gaps | Giant kickers (2.6 m+) with room for a flip plus a grab; two crevasses. | 40,000 |
 | 10 | snow-10 | Summit Send | 820 | 7 | - | everything | Top to bottom: big drop, rails, crevasses, and a giant final `HUGE AIR`. | 45,000 |
 
-Half pipe: **Ice Pipe** (existing `snow-pipe`).
+Bonus: **Ski Jump Mega Ramp** (`snow-mega`, replaces Ice Pipe).
 
 ### Desert Canyon: steep valleys
 
@@ -220,7 +220,7 @@ here (track 8) as the next step after "steep".
 | 9 | desert-9 | Canyon Run | 640 | 8 | - | loops, valleys, gaps | Two loops, deep valleys, three gaps. | 32,000 |
 | 10 | desert-10 | Grand Gully | 720 | 8 | - | everything | The deepest valley (7 m), a loop out of it, and a big final gap. | 38,000 |
 
-Half pipe: **Canyon Pipe** (existing `desert-pipe`).
+Bonus: **Canyon Mega Ramp** (`desert-mega`, replaces Canyon Pipe).
 
 ### Jungle Ruins: rhythm
 
@@ -261,14 +261,55 @@ it, so the final biome is a tour of the whole game.
 | 9 | volcano-9 | Pyroclastic Dash | 800 | 10 | - | everything | Few rests: two loops, rails over lava, eight gaps. | 50,000 |
 | 10 | volcano-10 | Into the Crater | 900 | 10 | - | everything | Grand finale: one section per biome, then the longest gap in the game *(verify)* into the crater and the finish. | 60,000 |
 
-Half pipe: **Magma Pipe** (existing `volcano-pipe`).
+Bonus: **Volcano Mega Ramp** (`volcano-mega`, replaces Magma Pipe).
 
-### Half pipes
+### Bonus levels: half pipes and mega ramps
 
-All seven already exist (60 s score attack, no lives, pending Andy's confirmation). Each
-unlocks after track 3 of its biome. Par is calibrated the same way (bot 75th percentile);
-today's bot medians are about 22.5k (Sunny), 21.3k (Boardwalk), 23.5k (Rooftop),
-17.0k (Ice), 16.9k (Canyon), 23.6k (Temple), 15.8k (Magma). No layout changes planned.
+Andy (2026-10-24): some bonus levels should be mega ramps instead of half pipes. The big-air
+biomes get mega ramps, the others keep their half pipes:
+
+| Biome | Bonus | Kind |
+|-------|-------|------|
+| Sunny Park | Sunny Halfpipe (existing `park-pipe`) | half pipe |
+| Beach Boardwalk | Boardwalk Bowl (existing `beach-pipe`) | half pipe |
+| Downtown Rooftops | Skyscraper Mega Ramp (`rooftops-mega`) | mega ramp, smallest |
+| Snowy Mountain | Ski Jump Mega Ramp (`snow-mega`) | mega ramp |
+| Desert Canyon | Canyon Mega Ramp (`desert-mega`) | mega ramp |
+| Jungle Ruins | Temple Pipe (existing `jungle-pipe`) | half pipe |
+| Volcano | Volcano Mega Ramp (`volcano-mega`) | mega ramp, biggest |
+
+Every bonus level unlocks after track 3 of its biome and has no lives.
+
+**Half pipes** stay as they are: 60 s score attack. Par is calibrated the same way as run
+tracks (bot 75th percentile). Today's bot medians: about 22.5k (Sunny), 21.3k (Boardwalk),
+23.6k (Temple).
+
+**Mega ramps** (new kind, `kind: 'mega'`): three drops, and the score is the total of all three.
+One drop is:
+
+1. Start on a tall platform and roll in down a long steep ramp. No pushing; speed comes from
+   the roll-in (pumping still works).
+2. A run-out, then a huge kicker over a big gap onto a long downhill landing ramp. Come up
+   short and you fall in the gap: that drop ends with no score, but it doesn't cost a life.
+3. A flat, then a giant quarter pipe for a second air, then you roll back and the drop ends.
+4. The game puts you back at the top for the next drop.
+
+The combo stays alive from the kicker through the quarter pipe, so a drop with tricks on both
+airs scores best. The four mega ramps grow through the game:
+
+| Mega ramp | Roll-in drop | Gap | Quarter pipe | Theme |
+|-----------|-------------:|----:|-------------:|-------|
+| Skyscraper | ~12 m | ~8 m | ~5 m | scaffold ramp off a tower roof |
+| Ski Jump | ~16 m | ~10 m | ~6 m | ski-jump in-run, ice quarter pipe |
+| Canyon | ~18 m | ~12 m | ~6 m | across a canyon between mesas |
+| Volcano | ~20 m | ~14 m, over lava | ~7 m | down the volcano's side |
+
+All sizes are *(verify)*: none of them has been checked against the physics, and the
+playtest should require the bot to clear the gap on at least 60% of drops. Par is the
+bot's 75th percentile, as for everything else.
+
+The old Rooftop, Ice, Canyon and Magma half pipes are removed; their best scores are dropped
+because a mega ramp score isn't comparable.
 
 ---
 
@@ -300,6 +341,9 @@ The current DSL (`flat`, `ease`, `kicker`, `rollers`, `valley`, `drop`, `rise`, 
 - **Manual pad**: a low flat box. Can be a helper over `rise`, `flat` and `drop`
   (or `kicker`/`ease` for soft edges). Needed from Park 6.
 - **Unlocks and stars**: new level select logic (section 2), plus paging per biome.
+- **Mega ramps**: a `quarterpipe` piece (half of `halfpipe`), a three-drop mode that puts the
+  rider back at the top after each drop, and a camera that zooms out for very big airs (half
+  pipe airs are capped at about 3 m today so the camera can keep up).
 - **Pump-only gate**: the extra playtest check for difficulty 1 to 3 (section 1).
   Tracks would need a `difficulty` field on `TrackDef` for this.
 
@@ -314,6 +358,7 @@ The current DSL (`flat`, `ease`, `kicker`, `rollers`, `valley`, `drop`, `rise`, 
 3. Park 8 to 10 and the rest of Beach and Rooftops once rails and stairs have landed.
 4. Snow, then Desert 1 to 7.
 5. Loops, then Desert 8 to 10, Jungle, Volcano.
+6. Mega ramps can be built any time after step 1; they don't depend on the run tracks.
 
 Per track: build it in `src/tracks.ts`, add its signs, run `npm test` (fix the layout until
 it passes), calibrate the par, and add a changelog line for the batch.
