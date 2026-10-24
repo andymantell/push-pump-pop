@@ -1,8 +1,8 @@
-# Pumped Skate
+# Push Pump Pop
 
 A mobile-friendly side-on skateboarding game inspired by Pumped BMX, built with three.js.
 
-**Play:** https://andymantell.github.io/pumped-skateboard/
+**Play:** on this repo's GitHub Pages site (Settings → Pages shows the URL).
 
 ## Controls
 

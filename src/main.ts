@@ -8,7 +8,7 @@ import { World } from './world';
 import { Skater } from './skater';
 
 const $ = (id: string) => document.getElementById(id)!;
-const BEST_KEY = 'pumped-skate-best-1';
+const BEST_KEY = 'push-pump-pop-best-1';
 
 function loadBest(): number {
   try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch { return 0; }
