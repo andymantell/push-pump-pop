@@ -214,6 +214,12 @@ export class TrackBuilder {
     return this.spot('lip');
   }
 
+  /** A valley with a rail bridging it at the height of its rims: grind across or ride through. */
+  bridge(len: number, depth: number, height = 0.5): this {
+    this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + len, y1: this.y + height, z: RAIL_Z, kind: 'rail' });
+    return this.valley(len, depth);
+  }
+
   /**
    * A low box to manual along: `len` of flat top, `height` up. The edges are long ramps so
    * riding onto it at speed doesn't throw you into the air (where a tilt would be a flip).

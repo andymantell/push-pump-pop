@@ -294,7 +294,19 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         case 'everyKicker': airNames = g.match ? [pickFrom(members(g.match))] : ['Ollie']; break;
         case 'bothAirs': airNames = [pickFrom(pool)]; break;
         case 'variety': airNames = [pickFrom(pool.filter((n) => !landed.has(n)))]; break;
-        case 'combo': airNames = [pickFrom(g.include?.filter((m) => !['grind', 'manual', 'loop'].includes(m)).flatMap((m) => members(m)) ?? pool)]; break;
+        case 'combo': {
+          // The asked tricks the combo going now doesn't have yet.
+          const sofar = [...(chal as unknown as { combo: { name: TrickName }[] }).combo.map((e) => e.name)];
+          const left = g.include?.filter((m) => !['grind', 'manual', 'loop'].includes(m)).filter((m) => {
+            const k = sofar.findIndex((n) => members(m).includes(n));
+            if (k < 0) return true;
+            sofar.splice(k, 1);
+            return false;
+          });
+          const air = (left?.length ? left : g.include?.filter((m) => !['grind', 'manual', 'loop'].includes(m)))?.flatMap((m) => members(m));
+          airNames = [pickFrom(air?.length ? air : pool)];
+          break;
+        }
         default: return undefined;
       }
       airNames = airNames.filter((n) => n !== 'Ollie');
