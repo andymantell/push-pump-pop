@@ -431,7 +431,7 @@ function frame(now: number) {
   } else {
     const c = score.combo;
     // Show a grab or manual building up as you hold it.
-    const holding = rider.grab ?? rider.manual ?? (rider.grind ? '50-50' : null);
+    const holding = rider.grab ?? rider.manual ?? (rider.grind?.style ?? null);
     const pts = rider.grab ? rider.grabPoints : rider.manual ? rider.manualPoints : rider.grindPoints;
     if (holding) {
       const live = c ?? { names: [], base: 0, mult: 0 };

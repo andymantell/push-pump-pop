@@ -32,7 +32,7 @@ export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
 export type FlipName = 'Backflip' | 'Frontflip';
 /** Manuals on a skateboard, presses on a snowboard: nose up first. */
 export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press';
-export type GrindName = '50-50';
+export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind';
 type BoardTrick = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee';
 export type TrickName = BoardTrick | GrabName | SpinName | FlipName | ManualName | GrindName;
 /** Tilt of the device: +1 nose up (manual, backflip), -1 nose down (nose manual, frontflip). */
@@ -58,6 +58,15 @@ export const TRICKS: Record<BoardTrick, Trick> = {
   'FS Shifty': { name: 'FS Shifty', duration: 0.42, points: 450, axis: 'shifty', dir: 1 },
   'Tuck Knee': { name: 'Tuck Knee', duration: 0.45, points: 400, axis: 'tuck', dir: 1 },
 };
+
+/** Flip-side swipes while grinding: change grind. */
+const SWIPE_GRIND: Record<Exclude<Swipe, 'up'>, GrindName> = {
+  left: 'Boardslide',
+  right: 'Nosegrind',
+  down: '5-0',
+};
+/** The fancier grinds are worth more than a plain 50-50. */
+const GRIND_STYLE_POINTS: Record<GrindName, number> = { '50-50': 1, 'Boardslide': 1.2, '5-0': 1.3, 'Nosegrind': 1.4 };
 
 /** Flip-side swipes on a snowboard, where flipping the board out from under you can't happen. */
 const SWIPE_TRICK_SNOW: Record<Swipe, BoardTrick> = {
@@ -171,7 +180,7 @@ export class Rider {
   crouch = 0;
 
   /** Grind in progress: the rail, and how long you've been on it. */
-  grind: { rail: Rail; t: number } | null = null;
+  grind: { rail: Rail; t: number; style: GrindName } | null = null;
   /** Depth: 0 on the riding line, the rail's z while grinding. */
   z = 0;
 
@@ -238,6 +247,15 @@ export class Rider {
 
   swipe(dir: Swipe) {
     if (this.bailing || this.grab) return;
+    // On a rail the flip-side swipes change how you grind it (up still ollies off).
+    if (this.grind && dir !== 'up') {
+      const style = SWIPE_GRIND[dir];
+      if (style === this.grind.style) return;
+      const rail = this.grind.rail;
+      this.endGrind();
+      this.grind = { rail, t: 0, style };
+      return;
+    }
     const name = (this.opts.snow ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir];
     if (!name) return;
     const canPop = this.grounded || this.grind !== null || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
@@ -325,16 +343,16 @@ export class Rider {
 
   /** Points the grind in progress is worth so far. */
   get grindPoints() {
-    return this.grind ? Math.round((GRIND_POINTS + GRIND_POINTS_PER_SEC * this.grind.t) / 10) * 10 : 0;
+    return this.grind ? Math.round((GRIND_POINTS + GRIND_POINTS_PER_SEC * this.grind.t) * GRIND_STYLE_POINTS[this.grind.style] / 10) * 10 : 0;
   }
 
   private endGrind() {
     if (!this.grind) return;
-    const points = this.grindPoints, t = this.grind.t;
+    const points = this.grindPoints, t = this.grind.t, style = this.grind.style;
     this.grind = null;
     // Barely touched it: no grind.
     if (t < 0.12) return;
-    this.ev.trick({ name: '50-50', duration: t, points, axis: 'grind', dir: 1 });
+    this.ev.trick({ name: style, duration: t, points, axis: 'grind', dir: 1 });
   }
 
   /** Come down onto a rail: lock into a grind, finishing any trick that's nearly done. */
@@ -352,7 +370,7 @@ export class Rider {
     this.angle = th;
     this.held = null;
     this.ollied = false;
-    this.grind = { rail, t: 0 };
+    this.grind = { rail, t: 0, style: '50-50' };
     this.ev.grind?.(rail);
   }
 

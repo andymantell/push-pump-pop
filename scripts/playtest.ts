@@ -160,6 +160,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   type Act = 'pump' | Swipe | 'spin' | 'grab' | 'let go' | 'lean+' | 'lean-' | 'lean0';
   const queue: { at: number; act: Act }[] = [];
   let manualPlanned = -10;
+  let grindStyled = false;
   const inputTimes: number[] = [];
   let lastPumpDecision = -1;
   let lipPlanned = -1;
@@ -208,6 +209,12 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
     if (!r.falling && !r.bailing) {
       const dir = Math.sign(r.v) || 1;
       const lead = Math.abs(r.v) * REACTION;
+      // On a rail, sometimes switch to a fancier grind.
+      if (r.grind && r.grind.t < 0.05 && !grindStyled && rand() < 0.5) {
+        press((['left', 'right', 'down'] as const)[Math.floor(rand() * 3)]);
+        grindStyled = true;
+      }
+      if (!r.grind) grindStyled = false;
       if (r.grounded) {
         trickPlanned = false;
         if (t - railOllieAt > REACTION + JITTER + 0.1) railOllie = false;
@@ -343,7 +350,7 @@ if (legHits.size) {
 // The bots should be able to land every kind of move, not just survive.
 if (!only) {
   console.log(`\ntricks landed: ${[...seen].map(([n, c]) => `${n} ${c}`).join(', ')}`);
-  const missing = ['Manual', 'Nose Manual', 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360', 'Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'BS Shifty', 'Tuck Knee', 'Tail Press', 'Nose Press'].filter((n) => !seen.get(n));
+  const missing = ['Manual', 'Nose Manual', 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360', 'Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'BS Shifty', 'Tuck Knee', 'Tail Press', 'Nose Press', '50-50', 'Boardslide', '5-0', 'Nosegrind'].filter((n) => !seen.get(n));
   if (missing.length) { console.log(`never landed: ${missing.join(', ')}`); failed = true; }
 }
 

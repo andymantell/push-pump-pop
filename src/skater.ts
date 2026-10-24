@@ -169,6 +169,7 @@ export class Skater {
   /** 0..1 blend into the grab pose, and the last grab for easing out. */
   private grabW = 0;
   private manualPitch = 0;
+  private slideW = 0;
   private lastGrab: GrabName = 'Indy';
   private snowParts: Record<SnowPartName, THREE.Object3D>;
   private snow = false;
@@ -262,8 +263,10 @@ export class Skater {
       crouchT = r.current ? 0.45 : 0.35;
       armT = 0.9;
     }
-    // Grinding: stand on the rail, arms out for balance (the tricks thread owns the full grind pose).
-    if (r.grind) { crouchT = 0.3; liftT = 0; armT = 0.75; }
+    // Grinding: knees soft, arms out for balance; lower and wider on a boardslide.
+    const style = r.grind?.style;
+    if (r.grind) { crouchT = style === 'Boardslide' ? 0.45 : 0.32; liftT = 0; armT = 0.75; }
+    this.slideW += ((style === 'Boardslide' ? 1 : 0) - this.slideW) * (1 - Math.exp(-dt * 16));
     if (r.flipping) { crouchT = 0.8; liftT = 0.4; armT = 0.2; }
     if (r.manual) crouchT = 0.3;
     // Tuck knee: knees pulled right up, board with them.
@@ -284,7 +287,9 @@ export class Skater {
     // Spins turn the whole rider about the vertical; flips and manuals pitch it,
     // flips about the middle of the body, manuals about the wheels left on the ground.
     const noseUp = r.manual === 'Manual' || r.manual === 'Tail Press', noseDown = r.manual === 'Nose Manual' || r.manual === 'Nose Press';
-    this.manualPitch += ((noseUp ? 0.3 : noseDown ? -0.3 : 0) - this.manualPitch) * k;
+    // A 5-0 rides the back truck with the nose up, a nosegrind the front truck: the same pitch as manuals.
+    const tailDown = noseUp || style === '5-0', noseLow = noseDown || style === 'Nosegrind';
+    this.manualPitch += ((tailDown ? 0.3 : noseLow ? -0.3 : 0) - this.manualPitch) * k;
     const flip = r.flipAngle;
     const pitch = flip + this.manualPitch;
     // A skateboard pivots on its wheels, a snowboard on its tail or nose.
@@ -316,8 +321,11 @@ export class Skater {
     if (trick && trick.axis === 'flip') this.boardPivot.rotation.x = trick.dir * prog * Math.PI * 2;
     if (trick && trick.axis === 'spin') this.boardPivot.rotation.y = r.boardYaw + prog * Math.PI;
     // Shifty: twist the board across and back, feet still strapped to it.
-    const shifty = trick && trick.axis === 'shifty' ? trick.dir * Math.sin(prog * Math.PI) * 1.1 : 0;
+    // A boardslide turns the board across the rail, the deck resting on it.
+    const shifty = (trick && trick.axis === 'shifty' ? trick.dir * Math.sin(prog * Math.PI) * 1.1 : 0) + this.slideW * Math.PI / 2;
     this.boardPivot.rotation.y += shifty;
+    const slideDrop = this.slideW * (this.snow ? 0.02 : 0.09);
+    this.boardPivot.position.y -= slideDrop;
     this.boardPivot.rotation.z = grab.tilt * gw;
 
     // Body.
@@ -335,7 +343,7 @@ export class Skater {
     // lands (or locks onto a rail) at 80% round doesn't snap the feet down.
     this.flipLift += ((trick && (trick.axis === 'flip' || trick.axis === 'spin') ? Math.sin(prog * Math.PI) * 0.22 : 0) - this.flipLift) * k;
     const flipLift = this.flipLift;
-    const footY = deckTop + ANKLE + this.lift + flipLift;
+    const footY = deckTop + ANKLE + this.lift + flipLift - slideDrop;
     // Feet ride the board as it tilts for a nose or tail grab, or twists for a shifty.
     const tilt = grab.tilt * gw;
     const front = v3(FRONT_X * Math.cos(shifty), footY + Math.sin(tilt) * FRONT_X, 0.02 - FRONT_X * Math.sin(shifty));
