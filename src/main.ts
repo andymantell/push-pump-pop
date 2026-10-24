@@ -146,7 +146,7 @@ input.onLean = (l) => { keyLean = l; applyLean(); };
 const tilt = new Tilt();
 tilt.onLean = (l) => { tiltLean = l; applyLean(); };
 
-const panels = ['title', 'select', 'results'];
+const panels = ['title', 'select', 'results', 'guide'];
 function show(panel: string | null) {
   for (const p of panels) $(p).classList.toggle('hidden', p !== panel);
   $('menu').classList.toggle('hidden', panel !== null);
@@ -223,6 +223,8 @@ function finish(out = false) {
 }
 
 $('play').addEventListener('click', openSelect);
+$('guidebtn').addEventListener('click', () => show('guide'));
+$('guideback').addEventListener('click', () => show('title'));
 $('again').addEventListener('click', () => start(def));
 $('next').addEventListener('click', () => start(nextTrack()));
 $('tracks').addEventListener('click', openSelect);

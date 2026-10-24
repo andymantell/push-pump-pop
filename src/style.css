@@ -144,28 +144,22 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 #update.pill { padding: 8px 14px; border-radius: 999px; }
 #update.pill b { font-size: 14px; }
 #update.hidden { display: none; }
-/* Swipe zones: grabs on the left, flips on the right, spins along the bottom, kept up off
-   the bottom edge, where iPadOS takes swipes to switch apps. Must match the zones in input.ts. */
-#zones { position: absolute; inset: 0; pointer-events: none; opacity: 0.5; }
+/* Faint reminders of the swipe zones: grabs on the left, flips on the right, spins along
+   the bottom (kept up off the edge, where iPadOS takes swipes to switch apps). See input.ts. */
+#zones { position: absolute; inset: 0; pointer-events: none; }
 #zones.hidden { display: none; }
-.zone {
-  position: absolute; box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.08); border: 2px dashed rgba(255, 255, 255, 0.45); border-radius: 14px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+#zones span {
+  position: absolute; font-weight: 900; font-size: 13px; letter-spacing: 0.3em;
+  color: rgba(255, 255, 255, 0.3);
 }
-.zone b { font-weight: 900; font-size: 18px; letter-spacing: 0.2em; }
-.zone small { font-size: 12px; font-weight: 700; margin-top: 2px; }
-#grabzone, #flipzone { top: calc(max(12px, env(safe-area-inset-top)) + 96px); bottom: 41vh; }
-#grabzone { left: 8px; right: calc(50% + 4px); }
-#flipzone { left: calc(50% + 4px); right: 8px; }
-#spinzone { left: 8px; right: 8px; top: 60vh; bottom: max(10vh, calc(env(safe-area-inset-bottom) + 48px)); }
-.dirs { position: absolute; inset: 6px; font-size: 13px; font-weight: 800; }
-.dirs i { position: absolute; font-style: normal; white-space: nowrap; }
-.dirs .u { top: 0; left: 50%; transform: translateX(-50%); }
-.dirs .d { bottom: 0; left: 50%; transform: translateX(-50%); }
-.dirs .l { left: 0; top: 50%; transform: translateY(-50%); }
-.dirs .r { right: 0; top: 50%; transform: translateY(-50%); }
+#grabzone { left: calc(env(safe-area-inset-left) + 6px); top: 45%; transform: translateY(-50%) rotate(-90deg); transform-origin: left center; margin-left: 8px; }
+#flipzone { right: calc(env(safe-area-inset-right) + 6px); top: 45%; transform: translateY(-50%) rotate(90deg); transform-origin: right center; margin-right: 8px; }
+#spinzone { left: 50%; bottom: max(10vh, calc(env(safe-area-inset-bottom) + 48px)); transform: translateX(-50%); }
+.guide { text-align: left; max-width: 560px; max-height: 62vh; overflow-y: auto; margin: 0 auto 12px; padding: 0 4px; }
+.guide section { margin: 0 0 12px; }
+.guide h3 { margin: 0 0 2px; font-size: 18px; font-weight: 900; }
+.guide h3 small { font-size: 13px; font-weight: 700; opacity: 0.75; margin-left: 6px; }
+.guide p { margin: 2px 0; font-size: 15px; }
 /* In a run: a small chip beside the menu button, clear of the swipe zones below. */
 #update.compact {
   left: calc(50% + 28px); transform: none; bottom: auto; top: calc(max(12px, env(safe-area-inset-top)) + 22px);

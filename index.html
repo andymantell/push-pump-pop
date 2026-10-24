@@ -19,15 +19,9 @@
     <div id="combo"></div>
     <div id="popups"></div>
     <div id="zones">
-      <div class="zone" id="grabzone">
-        <b>GRAB</b><small>swipe &amp; hold</small>
-        <div class="dirs"><i class="u">&uarr; Indy</i><i class="l">&larr; Nose</i><i class="r">Tail &rarr;</i><i class="d">&darr; Melon</i></div>
-      </div>
-      <div class="zone" id="flipzone">
-        <b>FLIP</b><small>swipe</small>
-        <div class="dirs"><i class="u">&uarr; Ollie</i><i class="l">&larr; Kickflip</i><i class="r">Heelflip &rarr;</i><i class="d">&darr; Shove-it</i></div>
-      </div>
-      <div class="zone" id="spinzone"><b>&#8634; SPIN &#8635;</b></div>
+      <span id="grabzone">GRAB</span>
+      <span id="flipzone">FLIP</span>
+      <span id="spinzone">SPIN</span>
     </div>
     <div id="pumpcue">TAP!</div>
     <div class="bottom">
@@ -39,14 +33,29 @@
     <h1>PUSH PUMP<br /><span>POP!</span></h1>
     <div class="howto">
       <p><b>TAP</b> on the way <b>down</b> a slope to pump and build speed</p>
-      <p><b>SWIPE ON THE RIGHT:</b> up to ollie, <b>LEFT</b> kickflip, <b>RIGHT</b> heelflip, <b>DOWN</b> shove-it</p>
-      <p><b>SWIPE AND HOLD ON THE LEFT</b> to grab: let go before you land</p>
-      <p><b>SWIPE ACROSS THE BOTTOM</b> to spin: go further for a 360</p>
-      <p><b>TILT</b> to manual on the ground, or flip in the air</p>
-      <p>Chain tricks into combos. Land before the board stops spinning or you bail!</p>
-      <p class="keys">Keyboard: Space to pump, arrow keys for tricks</p>
+      <p><b>SWIPE</b> to do tricks. Chain them into combos!</p>
     </div>
     <button id="play">TAP TO PLAY</button>
+    <button id="guidebtn" class="small">TRICK GUIDE</button>
+  </div>
+  <div id="guide" class="panel hidden">
+    <h2>TRICK GUIDE</h2>
+    <div class="guide">
+      <section><h3>PUMP</h3><p>Tap anywhere on the way <b>down</b> a slope to build speed.</p></section>
+      <section><h3>FLIP <small>swipe on the right half</small></h3>
+        <p><b>&uarr;</b> Ollie &nbsp; <b>&larr;</b> Kickflip &nbsp; <b>&rarr;</b> Heelflip &nbsp; <b>&darr;</b> Pop Shove-it</p>
+        <p>Land before the board stops spinning or you bail!</p></section>
+      <section><h3>GRAB <small>swipe and hold on the left half</small></h3>
+        <p><b>&uarr;</b> Indy &nbsp; <b>&darr;</b> Melon &nbsp; <b>&larr;</b> Nosegrab &nbsp; <b>&rarr;</b> Tailgrab</p>
+        <p>The longer you hold, the more it scores. Let go before you land!</p></section>
+      <section><h3>SPIN <small>swipe sideways along the bottom</small></h3>
+        <p><b>&rarr;</b> Frontside &nbsp; <b>&larr;</b> Backside. Swipe further for a 360.</p></section>
+      <section><h3>TILT <small>tip the iPad like a steering wheel</small></h3>
+        <p>On the ground: right side up for a <b>Manual</b>, down for a <b>Nose Manual</b>. Manuals keep your combo going.</p>
+        <p>In the air: the same tilt does a <b>Backflip</b> or <b>Frontflip</b>.</p></section>
+      <p class="keys">Keyboard: Space pump, arrows flip, hold I J K L to grab, Z X spin, hold Q E to tilt</p>
+    </div>
+    <button id="guideback" class="small">BACK</button>
   </div>
   <div id="select" class="panel hidden">
     <h2>PICK A TRACK</h2>
