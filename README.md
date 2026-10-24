@@ -26,7 +26,7 @@ npm test                 # human-speed bot plays every track; fails if one is to
 npx tsx scripts/sim.ts   # quick physics stats per track, for tuning
 ```
 
-The deploy workflow runs `npm test` first, so a track that's too hard blocks the deploy.
+The deploy workflow runs `npm test` first, so a track that is too hard, or that brings the rider to a sudden stop (losing over half their speed in a moment without a bail or fall), blocks the deploy.
 Pushing to `main` deploys to GitHub Pages via `.github/workflows/deploy.yml`.
 
 ## Tracks and biomes

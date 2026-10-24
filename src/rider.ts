@@ -14,6 +14,12 @@ const COYOTE_TIME = 0.14;
 const BAIL_TIME = 1.3;
 /** Arcade grip: the board sticks to convex ground more than real gravity would allow. */
 const STICK = 2.2;
+/** Share of forward speed always kept on a clean landing. */
+const LAND_KEEP = 0.9;
+/** Steeper than this is a wall (a drop or gap edge), not something you ride. */
+const WALL_SLOPE = 1.5;
+/** Grace after take-off before touching the ground counts as a landing. */
+const TAKEOFF_TIME = 0.06;
 
 export type TrickName = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it';
 export type Swipe = 'up' | 'down' | 'left' | 'right';
@@ -121,6 +127,9 @@ export class Rider {
     this.falling = false;
   }
 
+  /** Half pipe walls go vertical at the lips and are meant to be ridden. */
+  private get wall() { return this.opts.pipe ? Infinity : WALL_SLOPE; }
+
   get bailing() { return this.bailTimer > 0; }
   get speed() { return this.grounded ? Math.abs(this.v) : Math.hypot(this.vx, this.vy); }
 
@@ -154,7 +163,8 @@ export class Rider {
       this.v += Math.sign(this.v || 1) * 1.5;
     } else if (this.grounded) {
       const th = Math.atan(this.track.slope(this.x));
-      this.vx = this.v * Math.cos(th) - OLLIE_POP * Math.sin(th) * 0.5;
+      // Pop straight up: tipping the pop back off a kicker face would stall you mid-jump.
+      this.vx = this.v * Math.cos(th);
       this.vy = this.v * Math.sin(th) + OLLIE_POP * Math.cos(th);
       this.y += 0.02;
       this.leaveGround();
@@ -237,7 +247,8 @@ export class Rider {
       // The ground falls away faster than gravity can hold us: take off.
       const kappa = -tr.curvature(this.x) / Math.pow(1 + k * k, 1.5);
       // Leave along the face we were riding, not the drop ahead of it.
-      const face = Math.atan(tr.slope(this.x - Math.sign(this.v) * 0.15));
+      const behind = tr.slope(this.x - Math.sign(this.v) * 0.15);
+      const face = Math.atan(Math.abs(behind) > this.wall ? k : behind);
       const lookX = this.x + this.v * Math.cos(face) * dt * 3;
       const cliff = tr.height(lookX) < this.y + Math.tan(face) * (lookX - this.x) - 0.15;
       if ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > GRAVITY * cos * STICK && (this.opts.pipe || Math.abs(this.v) > 4))) {
@@ -283,14 +294,26 @@ export class Rider {
       }
 
       const gy = tr.height(this.x);
-      if (this.y <= gy) {
-        if (gy - this.y > 0.4) {
+      const k = tr.slope(this.x);
+      // Over the top of a drop or a gap edge: the ground is falling away, so keep flying.
+      // Landing here would use the wall's slope and kill (or reverse) the speed.
+      const overEdge = k * Math.sign(this.vx || 1) < -this.wall && gy - this.y < 0.4;
+      if (this.y <= gy && !overEdge) {
+        if (!this.opts.pipe && this.airTime < TAKEOFF_TIME && gy - this.y < 0.4) {
+          // Just left the lip and still skimming it: slide along it rather than "landing"
+          // on the edge, which would read the drop's slope and throw the speed away.
+          this.y = gy;
+        } else if (gy - this.y > 0.4) {
           // Hit the face of a ledge: bounce off it.
           this.x -= this.vx * dt * 1.5;
           this.vx = -this.vx * 0.05;
           this.vy = Math.min(this.vy, 0);
         } else {
-          this.land(gy);
+          // Clipping the top corner of a rising wall lands on the flat beyond it,
+          // not on the wall, where you would crawl to a stop.
+          const dir = Math.sign(this.vx || 1);
+          for (let d = 0; d < 0.4 && Math.abs(tr.slope(this.x)) > this.wall; d += 0.02) this.x += dir * 0.02;
+          this.land(tr.height(this.x), Math.atan(tr.slope(this.x)));
         }
       }
     }
@@ -308,9 +331,7 @@ export class Rider {
     if (this.x < 0.5) { this.x = 0.5; this.v = Math.abs(this.v) * 0.3; this.vx = Math.abs(this.vx) * 0.3; }
   }
 
-  private land(gy: number) {
-    const tr = this.track;
-    const th = Math.atan(tr.slope(this.x));
+  private land(gy: number, th: number) {
     const tang = this.vx * Math.cos(th) + this.vy * Math.sin(th);
     // Angle between the flight line and the ground, ignoring direction.
     const flight = Math.abs(this.vx) < 1e-3 ? Math.PI / 2 : Math.atan(this.vy / this.vx);
@@ -336,7 +357,11 @@ export class Rider {
       this.ev.trick(done);
     }
     const smooth = diff < 0.3 && this.airTime > 0.35;
-    this.v = tang * (smooth ? 1.04 : 1);
+    // Arcade landing: coming down onto an upslope (the back of a roller, a kicker) would
+    // shed most of the speed and feel like hitting a wall, so keep most of the forward speed.
+    const dir = Math.sign(this.vx) || 1;
+    const kept = Math.max(tang * dir, Math.abs(this.vx) * LAND_KEEP);
+    this.v = dir * kept * (smooth ? 1.04 : 1);
     this.ev.land({ airTime: this.airTime, smooth, hadTricks: this.tricksThisAir > 0 || this.ollied, peakY: this.peakY });
     this.ollied = false;
   }

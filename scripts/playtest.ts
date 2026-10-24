@@ -5,6 +5,9 @@
 //
 // The bot "sees" the track ahead like a player does, but its inputs land after a
 // reaction delay with random jitter, and it can't tap faster than a person.
+// A second bot only pumps and never ollies, like a new player, and every run is
+// checked for sudden stops: losing over half your speed in a moment for no reason
+// (not a bail or a fall) feels like hitting an invisible wall.
 import { TRACKS, PIPE_TIME } from '../src/tracks';
 import { BIOMES } from '../src/biomes';
 import { Rider, Swipe } from '../src/rider';
@@ -19,6 +22,9 @@ const MIN_FINISH_RATE = 1.0;
 /** Median time spent rolling down a slope: below this, pumping can't be timed. */
 const MIN_DOWNSLOPE_TIME = 0.3;
 const TIME_LIMIT = 120;
+/** A sudden stop: speed falls below this share of its recent peak within STOP_WINDOW. */
+const STOP_SHARE = 0.5;
+const STOP_WINDOW = 0.25;
 const DT = 1 / 60;
 
 interface Result {
@@ -29,6 +35,8 @@ interface Result {
   bails: number;
   lipSpeeds: number[][];
   downs: number[];
+  /** Where the rider suddenly stopped. */
+  stops: number[];
 }
 
 function rng(seed: number) {
@@ -45,12 +53,13 @@ function nextLip(track: Track, x: number, range: number): number | null {
   return null;
 }
 
-function play(trackId: string, seed: number): Result {
+function play(trackId: string, seed: number, pumpOnly = false): Result {
   const def = TRACKS.find((t) => t.id === trackId)!;
   const biome = BIOMES[def.biome];
   const track = def.build();
   const rand = rng(seed);
-  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, lipSpeeds: track.pits.map(() => []), downs: [] };
+  const res: Result = { finished: false, time: 0, pitAttempts: track.pits.map(() => 0), pitClears: track.pits.map(() => 0), bails: 0, lipSpeeds: track.pits.map(() => []), downs: [], stops: [] };
+  let recent: { t: number; s: number }[] = [];
   let downT = 0;
   let t = 0;
   let respawnAt = -1;
@@ -82,6 +91,7 @@ function play(trackId: string, seed: number): Result {
       const p = r.fallPit!;
       r.respawn(p.x1 + 1.5, 6);
       respawnAt = -1;
+      recent = [];
     }
 
     // Deliver inputs that are due, respecting the tap-rate cap.
@@ -103,12 +113,12 @@ function play(trackId: string, seed: number): Result {
         const slopeThen = track.slope(r.x + lead * dir) * dir;
         if (slopeThen < -0.12 && t - lastPumpDecision > 0.45) { press('pump'); lastPumpDecision = t; }
         // Pop at the lip: decide when the lip is about one reaction-time away.
-        const lip = isPipe ? null : nextLip(track, r.x, lead + 1.5);
+        const lip = isPipe || pumpOnly ? null : nextLip(track, r.x, lead + 1.5);
         if (lip !== null && t - lipPlanned > 0.6 && Math.abs(lip - lead) < 0.6 + r.v * 0.04) {
           press('up');
           lipPlanned = t;
         }
-      } else if (!trickPlanned && r.vy > 3 && r.airTime > 0.05) {
+      } else if (!pumpOnly && !trickPlanned && r.vy > 3 && r.airTime > 0.05) {
         // Only trick on a big air, like a sensible player.
         press(rand() > 0.5 ? 'left' : 'down');
         trickPlanned = true;
@@ -121,6 +131,15 @@ function play(trackId: string, seed: number): Result {
     if (!r.grounded) peakAboveLip = Math.max(peakAboveLip, r.y - track.maxY);
     if (r.grounded && track.slope(r.x) < -0.12) downT += DT;
     else if (downT > 0) { if (downT > 0.1) res.downs.push(downT); downT = 0; }
+    // Sudden stops, measured on forward (horizontal) speed so landings don't count.
+    const fwd = r.grounded ? Math.abs(r.v) * Math.cos(Math.atan(track.slope(r.x))) : Math.abs(r.vx);
+    if (r.falling || r.bailing || track.pitAt(r.x)) recent = [];
+    else {
+      recent.push({ t, s: fwd });
+      while (recent[0].t < t - STOP_WINDOW) recent.shift();
+      const peak = Math.max(...recent.map((e) => e.s));
+      if (!isPipe && peak > 5 && fwd < peak * STOP_SHARE) { res.stops.push(+r.x.toFixed(1)); recent = []; }
+    }
     track.pits.forEach((p, i) => { if (before < p.x0 - 0.3 && r.x >= p.x0 - 0.3) res.lipSpeeds[i].push(+r.speed.toFixed(1)); });
 
     // Track gap attempts and clears.
@@ -145,6 +164,8 @@ let failed = false;
 for (const def of TRACKS) {
   if (only && !def.id.startsWith(only)) continue;
   const results = Array.from({ length: RUNS }, (_, i) => play(def.id, 1000 + i * 7919));
+  const pumpers = Array.from({ length: RUNS / 4 }, (_, i) => play(def.id, 5000 + i * 7919, true));
+  const stops = [...results, ...pumpers].flatMap((r) => r.stops);
   const finishRate = results.filter((r) => r.finished).length / RUNS;
   const times = results.filter((r) => r.finished).map((r) => r.time).sort((a, b) => a - b);
   const median = times.length ? times[Math.floor(times.length / 2)] : NaN;
@@ -162,6 +183,7 @@ for (const def of TRACKS) {
   pitRates.forEach((rate, i) => {
     if (rate < MIN_PIT_CLEAR_RATE) problems.push(`gap at ${track.pits[i].x0.toFixed(0)} m cleared ${(rate * 100).toFixed(0)}%`);
   });
+  if (stops.length) problems.push(`sudden stops at ${[...new Set(stops.map((x) => Math.round(x)))].join(', ')} m`);
   const bails = results.reduce((s, r) => s + r.bails, 0) / RUNS;
   const status = problems.length ? 'FAIL' : 'ok  ';
   console.log(`${status} ${def.id.padEnd(12)} median ${median.toFixed(1)}s  bails/run ${bails.toFixed(1)}  downslope ${downMedian.toFixed(2)}s  gaps ${pitRates.map((r) => (r * 100).toFixed(0) + '%').join(' ') || '-'}`);
