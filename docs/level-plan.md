@@ -69,6 +69,8 @@ hardest thing on it, using these knobs:
 
 ## 2. Unlock order
 
+Confirmed by Andy (2026-10-24): the next biome opens after track 5.
+
 - The game opens with **Sunny Park 1** only.
 - Finishing a track (reaching the finish with a life left) unlocks the next track in that biome.
 - **Finishing track 5 of a biome unlocks track 1 of the next biome.** So there are always two
