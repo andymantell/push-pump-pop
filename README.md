@@ -38,6 +38,14 @@ npx tsx scripts/sim.ts   # quick physics stats per track, for tuning
 The deploy workflow runs `npm test` first, so a track that is too hard, or that brings the rider to a sudden stop (losing over half their speed in a moment without a bail or fall), blocks the deploy.
 Pushing to `main` deploys to GitHub Pages via `.github/workflows/deploy.yml`.
 
+### Release notes
+
+**Every change a player would notice needs a line in `changelog.json`.** Add it to the
+top entry if it has today's date, or add a new entry at the top: `{ "date": "YYYY-MM-DD", "items": [...] }`.
+Write it in plain words for a kid, starting with `New:`, `Better:` or `Fixed:`, e.g.
+`"New: grind rails!"`. When a new deploy goes live, the game shows a reload prompt
+listing every line the running copy doesn't have yet, so don't reword old lines.
+
 ## Tracks and biomes
 
 - `src/biomes.ts`: look and feel of each biome (sky, surfaces, scenery, friction).
