@@ -1,4 +1,4 @@
-import { TrackDef, layout, pipe } from './common';
+import { TrackDef, layout, mega } from './common';
 
 export const DESERT: TrackDef[] = [
   {
@@ -18,5 +18,13 @@ export const DESERT: TrackDef[] = [
       b.sign('BIG AIR').ease(8, -2).kicker(5, 2.0).flat(3).ease(8, -2).flat(6);
     }),
   },
-  { id: 'desert-pipe', biome: 'desert', name: 'Canyon Pipe', kind: 'pipe', build: pipe(4.8, 5) },
+  {
+    id: 'desert-mega', biome: 'desert', name: 'Canyon Mega Ramp', kind: 'mega', par: 16000,
+    challenges: [
+      { text: 'Clear the gap on all 3 drops', kind: 'drops', count: 3 },
+      { text: 'A trick on both airs of one drop', kind: 'bothAirs' },
+      { text: 'Score 16,000', kind: 'score', points: 16000 },
+    ],
+    build: mega(18, 12, 6),
+  },
 ];

@@ -13,6 +13,7 @@ import { BIOMES, BIOME_ORDER } from '../src/biomes';
 import { requiredCount } from '../src/challenges';
 import { Rider, Swipe, TrickName, GRAVITY } from '../src/rider';
 import { Score } from '../src/score';
+import { MegaRun } from '../src/mega';
 import { ChallengeRun, Challenge, members } from '../src/challenges';
 import { Track, Rail, railY } from '../src/track';
 import * as THREE from 'three';
@@ -222,13 +223,16 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       if (!isPipe && !r.ollied && takeoffSlope < 0.15 && airTime > 0.3 && up > DIP_LAUNCH_SLOPE) res.dipLaunches.push(+r.x.toFixed(1));
     },
     bail() { if (TRACE) console.log(`  t=${t.toFixed(1)} x=${r.x.toFixed(1)} BAIL was: ${prevState}`); if (alive()) chal.bail(); score.lose(); res.bails++; res.livesLost++; },
-    fall() { if (alive()) chal.fall(r.x); score.lose(); respawnAt = t + 1.2; res.livesLost++; },
+    // On a mega ramp a fall ends the drop, with no life to lose.
+    fall() { if (alive()) chal.fall(r.x); score.lose(); if (!isMega) { respawnAt = t + 1.2; res.livesLost++; } },
   });
-  const isPipe = def.kind === 'pipe';
+  const isPipe = def.kind === 'pipe', isMega = def.kind === 'mega';
   const skater = legs ? new Skater() : null;
-  r.opts = { friction: biome.friction, maxSpeed: isPipe ? 12.5 : biome.maxSpeed, pipe: isPipe, snow: def.biome === 'snow' };
+  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : biome.maxSpeed, pipe: isPipe, mega: isMega, snow: def.biome === 'snow' };
   skater?.setSnow(def.biome === 'snow');
-  if (isPipe) r.perch();
+  if (isPipe || isMega) r.perch();
+  const mega = new MegaRun();
+  let dropsDone = 0;
   let peakAboveLip = 0, tricks = 0;
   let wasGrounded = true, takeoffSlope = 0, prevState = '';
 
@@ -243,7 +247,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   let trickPlanned = false;
   // Rails are optional: this player goes for them on most runs, and they never block the finish.
   // Going for something that means staying on your feet: no tricks beyond ollies.
-  const careful = !!G && (['finish', 'noLives', 'gaps', 'climb', 'pumps'].includes(G.kind) || (G.kind === 'score' && !!G.noLives));
+  const careful = !!G && (['finish', 'noLives', 'gaps', 'climb', 'pumps', 'drops'].includes(G.kind) || (G.kind === 'score' && !!G.noLives));
   const wantRails = !!G && (G.kind === 'grind' || ('fromRail' in G && !!G.fromRail) || (G.kind === 'combo' && !!G.include?.includes('grind')));
   // Ollie off the end of a rail to trick in the air after it.
   const popOffRail = !!G && (('fromRail' in G && !!G.fromRail) || (G.kind === 'combo' && !!G.include?.includes('grind') && !!G.gaps));
@@ -288,6 +292,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         case 'sameAir': airNames = g.match.map((m) => pickFrom(members(m))); break;
         case 'allOf': { const left = g.names.filter((n) => !landed.has(n)); airNames = left.length ? [pickFrom(left)] : [pickFrom(g.names)]; break; }
         case 'everyKicker': airNames = g.match ? [pickFrom(members(g.match))] : ['Ollie']; break;
+        case 'bothAirs': airNames = [pickFrom(pool)]; break;
         case 'variety': airNames = [pickFrom(pool.filter((n) => !landed.has(n)))]; break;
         case 'combo': airNames = [pickFrom(g.include?.filter((m) => !['grind', 'manual', 'loop'].includes(m)).flatMap((m) => members(m)) ?? pool)]; break;
         default: return undefined;
@@ -307,7 +312,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     return true;
   }
 
-  while (isPipe ? t < PIPE_TIME : t < TIME_LIMIT && r.x < track.finishX) {
+  while (isPipe ? t < PIPE_TIME : isMega ? dropsDone < 3 && t < TIME_LIMIT : t < TIME_LIMIT && r.x < track.finishX) {
     // Respawn after a fall, as the game does.
     if (respawnAt > 0 && t >= respawnAt) {
       const p = r.fallPit!;
@@ -344,7 +349,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     // Decide. Looks ahead by where it will be when the input lands.
     // Tap to drop in, a moment after the run starts.
     if (r.perched && !queue.some((q) => q.act === 'pump')) press('pump');
-    if (!r.falling && !r.bailing && !r.perched && r.dropT < 0) {
+    if (isMega && mega.ending) { score.bank(); queue.length = 0; }
+    if (!r.falling && !r.bailing && !r.perched && r.dropT < 0 && !(isMega && mega.ending)) {
       const dir = Math.sign(r.v) || 1;
       const lead = Math.abs(r.v) * REACTION;
       // On a rail, sometimes switch to a fancier grind.
@@ -450,7 +456,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       recent.push({ t, s: fwd });
       while (recent[0].t < t - STOP_WINDOW) recent.shift();
       const peak = Math.max(...recent.map((e) => e.s));
-      if (!isPipe && peak > 5 && fwd < peak * STOP_SHARE) { res.stops.push(+r.x.toFixed(1)); stopNotes.push(`${trackId} x=${r.x.toFixed(1)} ${peak.toFixed(1)}->${fwd.toFixed(1)} ${state(r)}`); recent = []; }
+      if (!isPipe && !r.inPipe && peak > 5 && fwd < peak * STOP_SHARE) { res.stops.push(+r.x.toFixed(1)); stopNotes.push(`${trackId} x=${r.x.toFixed(1)} ${peak.toFixed(1)}->${fwd.toFixed(1)} ${state(r)}`); recent = []; }
     }
     track.pits.forEach((p, i) => { if (before < p.x0 - 0.3 && r.x >= p.x0 - 0.3) res.lipSpeeds[i].push(+r.speed.toFixed(1)); });
 
@@ -461,11 +467,21 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       else if (r.x > p.x1 + 0.5 && !r.falling) { res.pitAttempts[i]++; res.pitClears[i]++; passed.add(i); }
     });
     // Allow a gap to count again after a respawn past it? No: one attempt per run.
+    // Mega ramps: each drop is a new go at the gap, from the top.
+    if (isMega && mega.update(DT, r)) {
+      score.bank();
+      if (alive()) chal.newDrop();
+      dropsDone++;
+      mega.next(r);
+      passed.clear();
+      recent = [];
+      if (skater) lastLegs.delete(skater);
+    }
   }
   // A half pipe counts as done if you can get a proper air (1 m over the lip) and a few tricks.
   // A run only counts as finished if it got there before running out of lives.
   if (TRACE && isPipe) console.log("peak", peakAboveLip.toFixed(2));
-  res.finished = isPipe ? peakAboveLip >= 1 && tricks >= 5 : r.x >= track.finishX && res.livesLost < LIVES;
+  res.finished = isPipe ? peakAboveLip >= 1 && tricks >= 5 : isMega ? dropsDone >= 3 : r.x >= track.finishX && res.livesLost < LIVES;
   score.bank();
   if (isPipe || res.finished) chal.finish();
   res.chal = [...chal.done];

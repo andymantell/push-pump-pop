@@ -37,6 +37,10 @@ export type Challenge = { text: string } & (
   | { kind: 'score'; points: number; noLives?: boolean }
   /** Land this many different tricks. */
   | { kind: 'variety'; count: number }
+  /** Mega ramp: clear the gap on this many drops. */
+  | { kind: 'drops'; count: number }
+  /** Mega ramp: a trick off the kicker and off the quarter pipe in the same drop. */
+  | { kind: 'bothAirs' }
 );
 
 const GROUPS: Record<Group, TrickName[]> = {
@@ -91,6 +95,8 @@ export function icon(c: Challenge): string {
     case 'climb': return '&#9968;';
     case 'noLives': return '&#10084;';
     case 'score': return '&#11088;';
+    case 'drops': return '&#11157;';
+    case 'bothAirs': return '&#9729;';
   }
   return '&#9733;';
 }
@@ -131,6 +137,9 @@ export class ChallengeRun {
   private lostLife = false;
   private rolledBack = false;
   private passed = new Set<number>();
+  /** Mega ramps: drops that cleared the gap so far, and where this drop's trick airs took off. */
+  private dropClears = 0;
+  private dropAirs = new Set<string>();
   private fellIn = new Set<number>();
 
   constructor(readonly list: Challenge[], private track: Track, before: boolean[] = [], private pipe = false) {
@@ -154,6 +163,7 @@ export class ChallengeRun {
       case 'pumps': return of(this.pumps, c.count);
       case 'gaps': return of(this.gapsFor(c).filter((g) => this.passed.has(g)).length, c.count ?? this.gapsFor(c).length);
       case 'everyKicker': return of(this.sets[i].size, this.kickers().length);
+      case 'drops': return of(this.dropClears, c.count);
     }
     return null;
   }
@@ -286,6 +296,17 @@ export class ChallengeRun {
     this.each('score', (c) => this.total >= c.points && !this.lostLife);
   }
 
+  /** Mega ramps: one drop is over and the next starts from the top. */
+  newDrop() {
+    this.closeAir(false);
+    this.pending = [];
+    if (this.track.pits.length && this.passed.size === this.track.pits.length) this.dropClears++;
+    this.each('drops', (c) => this.dropClears >= c.count);
+    this.passed.clear();
+    this.fellIn.clear();
+    this.dropAirs.clear();
+  }
+
   /** Called every step, after the rider moves. */
   tick(dt: number, r: Rider) {
     this.now += dt;
@@ -347,6 +368,8 @@ export class ChallengeRun {
       if ((c.from && !a.spots.has(c.from)) || (c.fromRail && !a.fromRail) || !this.gapOk(c.overGap, gaps)) return;
       return airTime >= (c.seconds ?? 0) && a.peak >= (c.metres ?? 0);
     });
+    if (names.some((n) => n !== 'Ollie')) for (const tag of a.spots) this.dropAirs.add(tag);
+    this.each('bothAirs', () => this.dropAirs.has('kicker') && this.dropAirs.has('qp'));
     if (a.kicker >= 0) this.each('everyKicker', (c, i) => {
       if (c.match ? names.some((n) => matches(c.match, n)) : names.length > 0) this.sets[i].add(a.kicker);
       return this.sets[i].size >= this.kickers().length;

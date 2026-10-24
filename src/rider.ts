@@ -145,6 +145,8 @@ export interface RiderOptions {
   pipe?: boolean;
   /** Snowboard: strapped-in tricks and presses instead of flips and manuals. */
   snow?: boolean;
+  /** Mega ramp: no pushing, and its quarter pipe rides like a half pipe wall. */
+  mega?: boolean;
 }
 
 export class Rider {
@@ -283,7 +285,14 @@ export class Rider {
   }
 
   /** Half pipe walls go vertical at the lips and are meant to be ridden. */
-  private get wall() { return this.opts.pipe ? Infinity : WALL_SLOPE; }
+  private get wall() { return this.inPipe ? Infinity : WALL_SLOPE; }
+  /** On a half pipe, or on a mega ramp's quarter pipe: walls are ridden, airs come back in. */
+  get inPipe() {
+    if (this.opts.pipe) return true;
+    if (!this.opts.mega) return false;
+    const qp = this.track.spots.find((s) => s.tag === 'qpstart');
+    return !!qp && this.x >= qp.x - 0.5;
+  }
 
   get bailing() { return this.bailTimer > 0; }
   get speed() { return this.grounded || this.grind || this.loop ? Math.abs(this.v) : Math.hypot(this.vx, this.vy); }
@@ -313,7 +322,7 @@ export class Rider {
     }
     const name = (this.opts.snow ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir];
     if (!name) return;
-    const canPop = this.grounded || this.grind !== null || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) {
       // An ollie with a rail coming up hops you straight onto it.
       if (!(name === 'Ollie' && this.railHop())) this.pop();
@@ -338,7 +347,7 @@ export class Rider {
   spinSwipe(dir: 'left' | 'right') {
     if (this.perched || this.dropT >= 0) return;
     if (this.bailing || this.spin) return;
-    const canPop = this.grounded || this.grind !== null || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) this.pop();
     if (this.grounded) return;
     this.spin = { dir: dir === 'right' ? 1 : -1, deg: 180, t: 0 };
@@ -476,7 +485,7 @@ export class Rider {
     if (this.bailing || this.grab) return;
     this.held = dir;
     this.heldT = 0;
-    const canPop = this.grounded || this.grind !== null || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) this.pop();
   }
 
@@ -503,7 +512,7 @@ export class Rider {
    * onto the rail near its start. Returns false if there's no rail to hop onto.
    */
   private railHop(): boolean {
-    if (!this.grounded || this.opts.pipe || this.v < 2) return false;
+    if (!this.grounded || this.inPipe || this.v < 2) return false;
     const rail = this.track.rails.find((r) => r.x0 - this.x < this.v * RAIL_REACH && this.x < r.x1 - RAIL_ROOM);
     if (!rail) return false;
     const y0 = this.y;
@@ -535,7 +544,7 @@ export class Rider {
       this.y += 0.02;
       this.endGrind();
       this.leaveGround();
-    } else if (this.grounded && this.opts.pipe && Math.abs(this.track.slope(this.x)) > 0.6) {
+    } else if (this.grounded && this.inPipe && Math.abs(this.track.slope(this.x)) > 0.6) {
       // On a steep wall an ollie would throw you off it: give a kick up the wall instead.
       this.v += Math.sign(this.v || 1) * 1.5;
     } else if (this.grounded) {
@@ -557,7 +566,8 @@ export class Rider {
     this.grounded = false;
     this.airTime = 0;
     this.peakY = this.y;
-    if (this.opts.pipe && Math.abs(this.vx) < Math.abs(this.vy)) {
+    // (Only off a near-vertical wall: a mega ramp's kicker is ridden in pipe mode too.)
+    if (this.inPipe && Math.abs(this.vx) < Math.abs(this.vy) * 0.5) {
       // Cap pipe airs at about 3 m over the lip so the camera can keep you in view.
       this.vy = Math.min(this.vy, 8.5);
       // Going up past a lip: drift back over the ramp so you land on the wall.
@@ -673,7 +683,7 @@ export class Rider {
 
       // Auto push on flat ground when slow, so you never get stuck.
       this.pushing = false;
-      if (!this.bailing && !this.manual && !this.opts.pipe && this.v < MIN_PUSH_SPEED) {
+      if (!this.bailing && !this.manual && !this.opts.pipe && !this.opts.mega && this.v < MIN_PUSH_SPEED) {
         a += 4 + GRAVITY * Math.max(0, sin);
         this.pushing = true;
       }
@@ -688,7 +698,7 @@ export class Rider {
       const face = Math.atan(Math.abs(behind) > this.wall ? k : behind);
       const lookX = this.x + this.v * Math.cos(face) * dt * 3;
       const cliff = tr.height(lookX) < this.y + Math.tan(face) * (lookX - this.x) - 0.15;
-      if ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > GRAVITY * cos * STICK && (this.opts.pipe || Math.abs(this.v) > 4))) {
+      if ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > GRAVITY * cos * STICK && (this.inPipe || Math.abs(this.v) > 4))) {
         this.vx = this.v * Math.cos(face);
         this.vy = this.v * Math.sin(face);
         if (this.pumpTimer > 0) this.vy += 1.2; // pumping into a lip pops you a little higher
@@ -712,7 +722,8 @@ export class Rider {
         this.ev.loop?.(false);
         return;
       }
-      if (this.opts.pipe && this.y >= tr.maxY - 1e-3 && Math.abs(k) < 0.05) {
+      const lip = this.opts.pipe ? null : tr.spots.find((s) => s.tag === 'qp');
+      if (this.inPipe && (lip ? this.x >= lip.x : this.y >= tr.maxY - 1e-3) && Math.abs(k) < 0.05) {
         // Never ride out onto the deck of a half pipe: turn back at the lip.
         this.x -= this.v * cos * dt * 2;
         this.y = tr.height(this.x);
@@ -730,7 +741,7 @@ export class Rider {
       this.peakY = Math.max(this.peakY, this.y);
       // Visual pitch drifts towards the flight path so landings line up.
       const target = Math.max(-0.9, Math.min(0.9, Math.atan2(this.vy, Math.abs(this.vx)) * 0.75)) * Math.sign(this.vx || 1);
-      if (!this.opts.pipe) this.angle += (target - this.angle) * Math.min(1, dt * 3);
+      if (!this.inPipe) this.angle += (target - this.angle) * Math.min(1, dt * 3);
 
       if (this.held) {
         this.heldT += dt;
@@ -790,7 +801,7 @@ export class Rider {
       // Landing here would use the wall's slope and kill (or reverse) the speed.
       const overEdge = k * Math.sign(this.vx || 1) < -this.wall && gy - this.y < 0.4;
       if (this.y <= gy && !overEdge) {
-        if (!this.opts.pipe && this.airTime < TAKEOFF_TIME && gy - this.y < 0.4) {
+        if (!this.inPipe && this.airTime < TAKEOFF_TIME && gy - this.y < 0.4) {
           // Just left the lip and still skimming it: slide along it rather than "landing"
           // on the edge, which would read the drop's slope and throw the speed away.
           this.y = gy;
@@ -884,7 +895,7 @@ export class Rider {
     this.dropT = Math.min(1, this.dropT + dt / DROP_TIME);
     const e = this.dropT * this.dropT;
     // Tip forward over the coping onto the top of the wall, already moving, then ride away.
-    const x0 = this.lipX + PERCH_OVER, x1 = this.lipX + 0.06;
+    const x0 = this.lipX + PERCH_OVER, x1 = this.lipX + 0.2;
     const y0 = tr.maxY + PERCH_OVER * Math.sin(PERCH_ANGLE);
     const th = Math.atan(tr.slope(x1));
     this.x = x0 + (x1 - x0) * e;

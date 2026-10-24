@@ -1,4 +1,4 @@
-import { TrackDef, layout, pipe } from './common';
+import { TrackDef, layout, mega } from './common';
 
 export const ROOFTOPS: TrackDef[] = [
   {
@@ -20,5 +20,13 @@ export const ROOFTOPS: TrackDef[] = [
       b.sign('BIG GAP').ease(6, -1.5).kicker(5, 1.8).pit(6, -3).ease(5, -1).flat(8);
     }),
   },
-  { id: 'rooftops-pipe', biome: 'rooftops', name: 'Rooftop Halfpipe', kind: 'pipe', build: pipe(4.2, 5) },
+  {
+    id: 'rooftops-mega', biome: 'rooftops', name: 'Skyscraper Mega Ramp', kind: 'mega', par: 20500,
+    challenges: [
+      { text: 'Clear the gap on all 3 drops', kind: 'drops', count: 3 },
+      { text: 'A trick on both airs of one drop', kind: 'bothAirs' },
+      { text: 'Score 20,500', kind: 'score', points: 20500 },
+    ],
+    build: mega(12, 8, 5),
+  },
 ];

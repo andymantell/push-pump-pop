@@ -1,4 +1,4 @@
-import { TrackDef, layout, pipe } from './common';
+import { TrackDef, layout, mega } from './common';
 
 export const VOLCANO: TrackDef[] = [
   {
@@ -18,5 +18,13 @@ export const VOLCANO: TrackDef[] = [
       b.sign('FINAL LEAP').ease(10, -3).kicker(5, 2.0).pit(7, -2).ease(6, -1).flat(8);
     }),
   },
-  { id: 'volcano-pipe', biome: 'volcano', name: 'Magma Pipe', kind: 'pipe', build: pipe(5, 5) },
+  {
+    id: 'volcano-mega', biome: 'volcano', name: 'Volcano Mega Ramp', kind: 'mega', par: 15500,
+    challenges: [
+      { text: 'Clear the gap on all 3 drops', kind: 'drops', count: 3 },
+      { text: 'A trick on both airs of one drop', kind: 'bothAirs' },
+      { text: 'Score 15,500', kind: 'score', points: 15500 },
+    ],
+    build: mega(20, 14, 7),
+  },
 ];

@@ -10,6 +10,7 @@ import { Skater } from './skater';
 import { loadAssets } from './assets';
 import { TRACKS, TrackDef, PIPE_TIME } from './tracks';
 import { Progress } from './progress';
+import { MegaRun, MEGA_DROPS } from './mega';
 import { ChallengeRun, icon } from './challenges';
 import { BIOMES, BIOME_ORDER } from './biomes';
 import { Track } from './track';
@@ -46,6 +47,7 @@ world.applyEnvironment(scene, hemi, sun);
 scene.add(world.group);
 
 const score = new Score();
+const timeLabel = document.querySelector('#hud .time small') as HTMLElement;
 const hud = {
   score: $('score'), time: $('time'), combo: $('combo'), popups: $('popups'),
   speed: $('speedbar'), progress: $('progressbar'), cue: $('pumpcue'),
@@ -95,9 +97,14 @@ const rider = new Rider(track, {
   },
   bail() { chal.bail(); score.lose(); popup('BAIL!', 'bad'); loseLife(); },
   pump(good) { chal.pump(good); if (good) popup('Pump!', 'good'); },
-  fall() { chal.fall(rider.x); score.lose(); popup(rider.loopFall ? 'WIPEOUT!' : world.biome.fallText, 'bad'); respawnTimer = 1.2; loseLife(); },
+  fall() {
+    chal.fall(rider.x); score.lose(); popup(rider.loopFall ? 'WIPEOUT!' : world.biome.fallText, 'bad');
+    // On a mega ramp a fall just ends that drop.
+    if (def.kind !== 'mega') { respawnTimer = 1.2; loseLife(); }
+  },
 });
 let respawnTimer = 0;
+let mega = new MegaRun();
 
 // This run's challenges: saved the moment each one is done, even if you then run out of lives.
 let chal = new ChallengeRun([], track);
@@ -165,13 +172,14 @@ function loadTrack(d: TrackDef) {
   }
   const b = BIOMES[d.biome];
   rider.track = track;
-  const isPipe = d.kind === 'pipe';
+  const isPipe = d.kind === 'pipe', isMega = d.kind === 'mega';
   const snow = d.biome === 'snow';
-  rider.opts = { friction: b.friction, maxSpeed: isPipe ? 12.5 : b.maxSpeed, pipe: isPipe, snow };
+  // Mega ramps are smooth and fast.
+  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow };
   skater.setSnow(snow);
   rider.reset();
   // Half pipes start up on the coping: the first tap drops you in.
-  if (isPipe) rider.perch();
+  if (isPipe || isMega) rider.perch();
   camPos.set(track.startX + 3, track.height(track.startX) + 2, 12);
 }
 
@@ -230,7 +238,7 @@ let finishTimer = 0;
 
 const input = new Input(canvas);
 // Gameplay input only reaches the rider while you're riding with lives left.
-const canRide = () => state === 'playing' && resumeTimer <= 0 && lives.controllable;
+const canRide = () => state === 'playing' && resumeTimer <= 0 && lives.controllable && !(def.kind === 'mega' && mega.ending);
 input.onPump = () => { if (canRide()) { rider.pump(); skater.pumpKick(); } };
 input.onSwipe = (d) => { if (canRide()) rider.swipe(d); };
 input.onGrab = (d) => { if (canRide()) rider.grabSwipe(d); };
@@ -256,7 +264,8 @@ function start(d: TrackDef = def) {
   time = 0;
   finishTimer = 0;
   respawnTimer = 0;
-  lives.reset(d.kind !== 'pipe');
+  lives.reset((d.kind ?? 'run') === 'run');
+  mega = new MegaRun();
   replays.reset();
   hideChip();
   resumeTimer = 0;
@@ -363,14 +372,14 @@ function finish(out = false) {
   $('next').classList.toggle('hidden', !next);
   $('again').textContent = out ? 'TRY AGAIN' : 'RIDE AGAIN';
   $('again').classList.toggle('alt', !out);
-  $('r-title').textContent = out ? 'OUT OF LIVES!' : def.kind === 'pipe' ? "TIME'S UP!" : 'FINISHED!';
+  $('r-title').textContent = out ? 'OUT OF LIVES!' : def.kind === 'pipe' ? "TIME'S UP!" : def.kind === 'mega' ? 'ALL DROPS DONE!' : 'FINISHED!';
   $('r-track').textContent = def.name;
   $('r-score').textContent = fmt(total);
   $('r-time').textContent = time.toFixed(1) + 's';
   $('r-combo').textContent = fmt(score.bestCombo);
   $('r-chal').innerHTML = challengeList(def, chal.done, chal.fresh);
   const m = progress.missing(def);
-  const todo = !out && def.kind !== 'pipe' && m.challenges.length
+  const todo = !out && (def.kind ?? 'run') === 'run' && m.challenges.length
     ? `<br><span class="todo">Do challenge ${m.challenges.map((i) => i + 1).join(' and ')} to open the next track</span>` : '';
   const kept = chal.fresh.some(Boolean) ? 'Your new challenges are saved!<br>' : '';
   $('r-best').innerHTML = out ? `${kept}Start the level again to finish it`
@@ -456,10 +465,12 @@ function updateCamera(dt: number) {
   }
   const spd = rider.speed;
   const portrait = aspect < 1 ? 1 / aspect : 1;
-  const dist = (10 + spd * 0.25) * Math.min(1.9, portrait * 0.85 + 0.15);
+  // Mega ramps: pull right back for the huge airs, keeping the ground below in view.
+  const high = def.kind === 'mega' ? Math.max(0, rider.y - track.height(rider.x)) : 0;
+  const dist = (10 + spd * 0.25 + high * 1.3) * Math.min(1.9, portrait * 0.85 + 0.15);
   const ahead = (2.5 + spd * 0.18) * (aspect < 1 ? 0.45 : 1);
   const ground = track.height(rider.x + ahead);
-  const focusY = Math.max(rider.y, ground) * 0.6 + Math.min(rider.y, ground) * 0.4;
+  const focusY = Math.max(rider.y, ground) * 0.6 + Math.min(rider.y, ground) * 0.4 - high * 0.3;
   const target = new THREE.Vector3(rider.x + ahead, focusY + (aspect < 1 ? 0.2 : 1.6), dist);
   const k = 1 - Math.exp(-dt * 4);
   camPos.x += (target.x - camPos.x) * (1 - Math.exp(-dt * 10));
@@ -516,6 +527,15 @@ function frame(now: number) {
     score.update(dt, rider.grounded && !rider.manual);
     if (def.kind === 'pipe') {
       if (time >= PIPE_TIME) { time = PIPE_TIME; finish(); }
+    } else if (def.kind === 'mega') {
+      const over = mega.update(dt, rider);
+      if (mega.ending) score.bank();
+      if (over) {
+        score.bank();
+        chal.newDrop();
+        if (mega.next(rider)) popup(`DROP ${mega.drop}!`, 'big');
+        else finish();
+      }
     } else if (rider.x >= track.finishX && finishTimer === 0 && !lives.out) finishTimer = 0.001;
     if (finishTimer > 0) {
       finishTimer += dt;
@@ -558,9 +578,10 @@ function frame(now: number) {
   $('zones').classList.toggle('hidden', state !== 'playing');
   if (state === 'playing') drawChallenges();
   hud.score.textContent = fmt(score.total);
-  hud.time.textContent = def.kind === 'pipe' ? Math.max(0, PIPE_TIME - time).toFixed(1) : time.toFixed(1);
+  hud.time.textContent = def.kind === 'pipe' ? Math.max(0, PIPE_TIME - time).toFixed(1) : def.kind === 'mega' ? `${mega.drop}/${MEGA_DROPS}` : time.toFixed(1);
+  timeLabel.textContent = def.kind === 'mega' ? 'DROP' : 'TIME';
   hud.speed.style.width = `${Math.min(100, (rider.speed / 20) * 100)}%`;
-  const prog = def.kind === 'pipe' ? time / PIPE_TIME : (rider.x - track.startX) / (track.finishX - track.startX);
+  const prog = def.kind === 'pipe' ? time / PIPE_TIME : def.kind === 'mega' ? (mega.drop - 1 + Math.max(0, Math.min(1, rider.x / track.length))) / MEGA_DROPS : (rider.x - track.startX) / (track.finishX - track.startX);
   hud.progress.style.width = `${Math.min(100, prog * 100)}%`;
 
   effect.render(scene, camera);

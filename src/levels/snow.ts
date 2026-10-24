@@ -1,4 +1,4 @@
-import { TrackDef, layout, pipe } from './common';
+import { TrackDef, layout, mega } from './common';
 
 export const SNOW: TrackDef[] = [
   {
@@ -18,5 +18,13 @@ export const SNOW: TrackDef[] = [
       b.sign('HUGE AIR').ease(12, -4).kicker(6, 2.6).drop(-0.6).ease(16, -6).flat(10);
     }),
   },
-  { id: 'snow-pipe', biome: 'snow', name: 'Ice Pipe', kind: 'pipe', build: pipe(5, 6) },
+  {
+    id: 'snow-mega', biome: 'snow', name: 'Ski Jump Mega Ramp', kind: 'mega', par: 22000,
+    challenges: [
+      { text: 'Clear the gap on all 3 drops', kind: 'drops', count: 3 },
+      { text: 'A trick on both airs of one drop', kind: 'bothAirs' },
+      { text: 'Score 22,000', kind: 'score', points: 22000 },
+    ],
+    build: mega(16, 10, 6),
+  },
 ];

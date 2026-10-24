@@ -257,6 +257,25 @@ export class TrackBuilder {
     return this.flat(deck);
   }
 
+  /** A straight slope. */
+  ramp(len: number, dy: number): this { return this.run(len, (t) => dy * t); }
+
+  /** A mega ramp roll-in: steepest at the top, curving out flat at the bottom. */
+  rollIn(len: number, drop: number): this {
+    return this.run(len, (t) => -drop * (1 - (1 - t) * (1 - t)));
+  }
+
+  /** One wall of a half pipe on its own, going up, then a deck. Tagged 'qpstart' and 'qp' (the lip). */
+  quarterpipe(radius: number, deck = 6): this {
+    const umax = radius * 0.96;
+    this.spot('qpstart');
+    this.run(umax, (t) => {
+      const u = umax * t;
+      return radius - Math.sqrt(radius * radius - u * u);
+    });
+    return this.spot('qp').flat(deck);
+  }
+
   /** A flat grind rail `height` above flat ground, `len` long. */
   rail(len: number, height = 0.6): this {
     this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + len, y1: this.y + height, z: RAIL_Z, kind: 'rail' });

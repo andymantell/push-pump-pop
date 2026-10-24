@@ -32,6 +32,24 @@ export function layout(startY: number, startX: number, fn: (b: TrackBuilder) => 
   };
 }
 
+/**
+ * A mega ramp: a platform, a roll-in dropping `drop` metres, a run-out, a huge kicker over a
+ * `gap`, a long landing ramp, then a quarter pipe of radius `qp` for a second air.
+ */
+export function mega(drop: number, gap: number, qp: number): () => Track {
+  return () => {
+    const kick = 2.6 + gap * 0.12;
+    const land = drop * 0.55;
+    const b = new TrackBuilder(drop);
+    b.flat(6).rollIn(drop * 1.7, drop).flat(14);
+    b.sign('GAP!').kicker(7, kick, 1.8).pit(gap, -1.2);
+    // Steepest where you come down, curving out flat at the bottom.
+    b.rollIn(land / 0.3, land).flat(18);
+    b.sign('QUARTER PIPE').quarterpipe(qp, 8);
+    return b.build(3, Infinity);
+  };
+}
+
 /** Half pipe bonus level: ride back and forth for PIPE_TIME seconds. */
 export const PIPE_TIME = 60;
 export function pipe(radius: number, flatLen: number): () => Track {
