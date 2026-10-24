@@ -159,6 +159,9 @@ export class Rider {
   pushing = false;
   bailTimer = 0;
   ollied = false;
+  /** Counts pops off the ground or a rail, and the height popped from, for the ollie animation. */
+  pops = 0;
+  popY = 0;
   tricksThisAir = 0;
   /** Trick in progress: the board is spinning. */
   current: Trick | null = null;
@@ -477,6 +480,8 @@ export class Rider {
     const t = T();
     this.vx = this.v;
     this.vy = (railY(rail, xt) - y0 + GRAVITY * t * t / 2) / t;
+    this.popY = this.y;
+    this.pops++;
     this.y += 0.02;
     this.leaveGround();
     this.ollied = true;
@@ -489,6 +494,8 @@ export class Rider {
       const th = Math.atan(this.grindSlope);
       this.vx = this.v * Math.cos(th);
       this.vy = this.v * Math.sin(th) + OLLIE_POP;
+      this.popY = this.y;
+      this.pops++;
       this.y += 0.02;
       this.endGrind();
       this.leaveGround();
@@ -500,6 +507,8 @@ export class Rider {
       // Pop straight up: tipping the pop back off a kicker face would stall you mid-jump.
       this.vx = this.v * Math.cos(th);
       this.vy = this.v * Math.sin(th) + OLLIE_POP * Math.cos(th);
+      this.popY = this.y;
+      this.pops++;
       this.y += 0.02;
       this.leaveGround();
     } else {

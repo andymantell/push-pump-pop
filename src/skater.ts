@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { Rider, GrabName } from './rider';
+import { Rider, GrabName, GRAVITY } from './rider';
 import { toon } from './toon';
+import { railY } from './track';
 
 // Rigid-part skater posed procedurally: two-bone IK keeps the feet on the
 // board while the body crouches, pumps, pops and tucks.
@@ -32,6 +33,19 @@ const STAND_HIP = DECK_TOP + ANKLE + (THIGH + SHIN) * 0.97;
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const DOWN = v3(0, -1, 0);
+const smooth = (a: number, b: number, t: number) => {
+  const u = Math.max(0, Math.min(1, (t - a) / (b - a)));
+  return u * u * (3 - 2 * u);
+};
+/** Board flips and shove-its start and finish a little gentler than they spin mid-air. */
+const flipEase = (p: number) => 0.5 * p + 0.5 * p * p * (3 - 2 * p);
+
+// Ollie: how far the pop tips the board nose up, pivoting on the back wheels
+// (on a snowboard, on the tail where it leaves the snow).
+const OLLIE_PITCH = 0.48, PRESS_PITCH = 0.3;
+const OLLIE_PIVOT = 0.25, PRESS_PIVOT = 0.35;
+/** Time to the top of a flat-ground ollie, which the ollie's timing is scaled against. */
+const OLLIE_PEAK = 0.4;
 
 // Where each grab takes hold of the deck (deck space: +x nose, +z toe edge),
 // which hand does it, how the board tilts (nose up is +), which way the elbow
@@ -154,6 +168,8 @@ export class Skater {
   readonly root = new THREE.Group();
   private body = new THREE.Group();
   private boardPivot = new THREE.Group();
+  /** Tips the whole board about its tail for the ollie pop. */
+  private boardTilt = new THREE.Group();
   private p: Record<PartName, THREE.Object3D>;
   private shadow: THREE.Mesh;
 
@@ -174,6 +190,18 @@ export class Skater {
   private lastGrab: GrabName = 'Indy';
   private snowParts: Record<SnowPartName, THREE.Object3D>;
   private snow = false;
+  /** Ollie in progress: time since the pop (-1 for none), the height popped from, and the timing scale. */
+  private pops = 0;
+  private olT = -1;
+  private olPopY = 0;
+  private olS = 1;
+  private olW = 0;
+  private ol = { pitch: 0, pin: 0, slide: 0, load: 0, ext: 0 };
+  /** Knees bending to soak up a landing. */
+  private wasAir = false;
+  private airBefore = 0;
+  private landT = -1;
+  private landW = 0;
 
   constructor(parts?: Partial<Record<PartName | SnowPartName, THREE.Object3D>>) {
     const ph = placeholderParts();
@@ -182,7 +210,8 @@ export class Skater {
     this.snowParts = { ...placeholderSnowParts(), ...(parts ?? {}) } as Record<SnowPartName, THREE.Object3D>;
 
     this.root.add(this.body);
-    this.body.add(this.boardPivot);
+    this.body.add(this.boardTilt);
+    this.boardTilt.add(this.boardPivot);
     this.boardPivot.position.y = 0.08;
     p.deck.position.y = -0.08;
     this.boardPivot.add(p.deck);
@@ -242,7 +271,7 @@ export class Skater {
 
   /** Everything update() moves, for recording replays. */
   get joints(): THREE.Object3D[] {
-    return [this.root, this.body, this.boardPivot, ...Object.values(this.p), ...Object.values(this.snowParts), this.shadow];
+    return [this.root, this.body, this.boardTilt, this.boardPivot, ...Object.values(this.p), ...Object.values(this.snowParts), this.shadow];
   }
 
   pumpKick() { this.pumpAnim = 1; }
@@ -272,6 +301,13 @@ export class Skater {
     if (r.loop) { crouchT = 0.5; liftT = 0; armT = 0.4; }
     if (r.flipping) { crouchT = 0.8; liftT = 0.4; armT = 0.2; }
     if (r.manual) crouchT = 0.3;
+    const ollie = this.ollieUpdate(dt, r, groundY);
+    // A plain ollie: knees tuck up at the top, then the legs reach down for the landing.
+    if (ollie && !r.current && !r.flipping) {
+      const tk = ollie.tuck * (1 - ollie.reach);
+      crouchT = 0.3 + 0.32 * tk;
+      liftT = 0.12 + 0.22 * tk;
+    }
     // Tuck knee: knees pulled right up, board with them.
     const tuck = r.current?.axis === 'tuck' ? Math.sin(r.trickProgress * Math.PI) : 0;
     crouchT += (0.85 - crouchT) * tuck;
@@ -283,9 +319,15 @@ export class Skater {
     // Grabbing: knees up, board pulled in to the hand.
     crouchT += (0.85 - crouchT) * gw;
     liftT += (0.5 - liftT) * gw;
-    this.crouch += (crouchT - this.crouch) * k;
-    this.lift += (liftT - this.lift) * k;
+    // Eased, and never faster than the legs can follow from one frame to the next.
+    const cap = (d: number, rate: number) => Math.max(-rate * dt, Math.min(rate * dt, d));
+    this.crouch += cap((crouchT - this.crouch) * k, 5);
+    this.lift += cap((liftT - this.lift) * k, 3);
     this.armRaise += (armT - this.armRaise) * k;
+    const absorb = this.landUpdate(dt, r);
+    // Knees dip as the tail snaps down, the legs straighten springing off it,
+    // and they bend again to soak up the landing.
+    const crouch = this.crouch + (0.3 * this.ol.load - 0.05 * this.ol.ext) * this.olW + 0.5 * absorb;
 
     // Spins turn the whole rider about the vertical; flips and manuals pitch it,
     // flips about the middle of the body, manuals about the wheels left on the ground.
@@ -321,8 +363,8 @@ export class Skater {
     const trick = r.current;
     this.boardPivot.position.y = 0.08 + this.lift;
     this.boardPivot.rotation.set(0, r.boardYaw, 0);
-    if (trick && trick.axis === 'flip') this.boardPivot.rotation.x = trick.dir * prog * Math.PI * 2;
-    if (trick && trick.axis === 'spin') this.boardPivot.rotation.y = r.boardYaw + prog * Math.PI;
+    if (trick && trick.axis === 'flip') this.boardPivot.rotation.x = trick.dir * flipEase(prog) * Math.PI * 2;
+    if (trick && trick.axis === 'spin') this.boardPivot.rotation.y = r.boardYaw + flipEase(prog) * Math.PI;
     // Shifty: twist the board across and back, feet still strapped to it.
     // A boardslide turns the board across the rail, the deck resting on it.
     // Smoothed like flipLift, so a shifty that lands at 80% round doesn't snap the feet back.
@@ -333,16 +375,36 @@ export class Skater {
     this.boardPivot.position.y -= slideDrop;
     this.boardPivot.rotation.z = grab.tilt * gw;
 
+    // Ollie pop: the board tips up about its tail end (the nose end, riding fakie),
+    // that end held down on the ground for a moment as the rider springs up, then
+    // levels out as it rises to his feet.
+    const back = Math.cos(r.bodyYaw) >= 0 ? 1 : -1;
+    const w = r.bailing ? 0 : this.olW;
+    const tiltX = -back * (this.snow ? PRESS_PIVOT : OLLIE_PIVOT) * Math.min(1, w * 4);
+    const tiltY = this.boardPivot.position.y - 0.08;
+    const popGround = (this.olPopY - r.y) * Math.cos(r.angle);
+    const pin = Math.max(-0.05, Math.min(0, popGround - tiltY)) * this.ol.pin * w;
+    // Flipping or shoving it, the board is kicked out of the pop sooner: less tip.
+    const flick = trick && (trick.axis === 'flip' || trick.axis === 'spin') ? 0.6 : 1;
+    const olPitch = back * (this.snow ? PRESS_PITCH : OLLIE_PITCH) * this.ol.pitch * w * flick;
+    this.boardTilt.position.set(tiltX, tiltY + pin, 0);
+    this.boardTilt.rotation.set(0, 0, olPitch);
+    const onBoard = (f: THREE.Vector3) => {
+      const dx = f.x - tiltX, dy = f.y - tiltY, c = Math.cos(olPitch), sn = Math.sin(olPitch);
+      f.x = tiltX + dx * c - dy * sn;
+      f.y = tiltY + pin + dx * sn + dy * c;
+    };
+
     // Body.
     const deckTop = this.snow ? SNOW_TOP : DECK_TOP;
-    const hipY = STAND_HIP - (DECK_TOP - deckTop) - this.crouch * 0.42 + this.lift * 0.4;
+    const hipY = STAND_HIP - (DECK_TOP - deckTop) - crouch * 0.42 + this.lift * 0.4;
     p.pelvis.position.set(0.02, hipY, 0);
     // Look where you're going: riding fakie after a 180, the shoulders open up
     // and the head turns the other way. cos(yaw) is +1 regular, -1 fakie.
     const facing = Math.cos(yaw);
     const twist = 0.3 * (facing - 1) / 2;
-    p.torso.rotation.set(0.18 + this.crouch * 0.55 + gw * 0.25, twist, 0);
-    p.head.rotation.set(-0.15 - this.crouch * 0.4, 1.0 * facing - twist, 0);
+    p.torso.rotation.set(0.18 + crouch * 0.55 + gw * 0.25, twist, 0);
+    p.head.rotation.set(-0.15 - crouch * 0.4, 1.0 * facing - twist, 0);
 
     // Feet lift off the board to let it flip or spin under them. Smoothed, so a flip that
     // lands (or locks onto a rail) at 80% round doesn't snap the feet down.
@@ -351,8 +413,15 @@ export class Skater {
     const footY = deckTop + ANKLE + this.lift + flipLift - slideDrop;
     // Feet ride the board as it tilts for a nose or tail grab, or twists for a shifty.
     const tilt = grab.tilt * gw;
-    const front = v3(FRONT_X * Math.cos(shifty), footY + Math.sin(tilt) * FRONT_X, 0.02 - FRONT_X * Math.sin(shifty));
-    const back = v3(BACK_X * Math.cos(shifty), footY + Math.sin(tilt) * BACK_X, 0.02 - BACK_X * Math.sin(shifty));
+    // Popping, the back foot stands on the tail and the front foot in the middle of the
+    // board, then slides up the grip to level it. Snowboard bindings keep the feet put.
+    const slide = this.snow ? 0 : this.ol.slide * w;
+    const frontX = FRONT_X + slide * (back > 0 ? -0.16 : 0.05);
+    const backX = BACK_X + slide * (back > 0 ? -0.07 : 0.16);
+    const front = v3(frontX * Math.cos(shifty), footY + Math.sin(tilt) * frontX, 0.02 - frontX * Math.sin(shifty));
+    const backFoot = v3(backX * Math.cos(shifty), footY + Math.sin(tilt) * backX, 0.02 - backX * Math.sin(shifty));
+    onBoard(front);
+    onBoard(backFoot);
 
     // Ease in and out of pushing so the foot never snaps between the ground and the board.
     // No pushing on a snowboard: both feet are strapped in.
@@ -368,10 +437,10 @@ export class Skater {
         const s = (t - 0.55) / 0.45;
         foot.set(-0.5 + 0.6 * s, ANKLE + Math.sin(s * Math.PI) * 0.15, 0.26 - 0.1 * Math.sin(s * Math.PI));
       }
-      back.lerp(foot, this.pushW);
+      backFoot.lerp(foot, this.pushW);
       // The push foot follows the real ground, which curves away from the board's line
       // on rollers and dips: never plant it below the surface.
-      back.y = Math.max(back.y, this.groundLocalY(back.x, back.z, groundY) + SOLE);
+      backFoot.y = Math.max(backFoot.y, this.groundLocalY(backFoot.x, backFoot.z, groundY) + SOLE);
     } else {
       this.pushT = 0;
     }
@@ -381,7 +450,7 @@ export class Skater {
     // Knees point forward, splaying apart for a grab between the legs.
     const splay = grab.splay * gw;
     this.leg(p.thigh_L, p.shin_L, p.shoe_L, hipL, front, v3(splay, 0, 1));
-    this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, back, v3(-splay, 0, 1));
+    this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, backFoot, v3(-splay, 0, 1));
 
     // Arms out for balance, higher in the air, swinging when pushing.
     const swing = r.pushing ? Math.sin(this.pushT * Math.PI * 2) * 0.5 : 0;
@@ -403,12 +472,16 @@ export class Skater {
       this.boardPivot.position.y = 0.08 + Math.max(0, Math.sin(t * 4) * 0.8);
       const blink = t > 0.9 && Math.floor(t * 14) % 2 === 0;
       this.body.visible = !blink;
+      this.boardTilt.position.set(0, 0, 0);
+      this.boardTilt.rotation.set(0, 0, 0);
     } else {
       this.bailT = 0;
       this.body.rotation.z = 0;
       this.body.position.set(0, 0, 0);
       this.boardPivot.position.x = 0;
       this.body.visible = true;
+      this.boardPivot.position.x -= tiltX;
+      this.boardPivot.position.y -= tiltY;
     }
 
     // Last resort for any pose (a bail on a slope, a crouch in a dip): lift the body so
@@ -429,6 +502,67 @@ export class Skater {
     const s = Math.max(0.3, 1 - height * 0.12);
     this.shadow.scale.set(1.3 * s, 0.5 * s, 1);
     (this.shadow.material as THREE.MeshBasicMaterial).opacity = 0.25 * s;
+  }
+
+  /**
+   * Follow an ollie from the pop to the landing. Its timing scales with how hard the pop
+   * launched the rider, so a quick low hop goes through it faster. Returns how far the knees
+   * have tucked and how far the legs reach down for the landing, or null with no ollie.
+   */
+  private ollieUpdate(dt: number, r: Rider, groundY: (x: number) => number) {
+    if (r.pops !== this.pops) {
+      this.pops = r.pops;
+      if (!r.grounded) {
+        this.olT = 0;
+        this.olPopY = r.popY;
+        this.olS = Math.max(0.7, Math.min(1, r.vy / GRAVITY / OLLIE_PEAK));
+      }
+    }
+    if (this.olT < 0 || r.grounded || r.grind || r.loop || r.bailing || r.falling) {
+      this.olT = -1;
+      this.olW *= Math.exp(-dt * 18);
+      return null;
+    }
+    this.olT += dt;
+    this.olW = 1;
+    const t = this.olT, s = this.olS;
+    // Kept to a few frames each at 60 fps, so nothing snaps.
+    const snap = smooth(0, 0.08, t);
+    const level = smooth(0.07 + 0.02 * s, 0.07 + 0.15 * s, t);
+    this.ol.pitch = snap * (1 - level);
+    // Eased in, so the feet never jump to the pop pose.
+    this.ol.pin = smooth(0, 0.06, t) * (1 - smooth(0.06, 0.06 + 0.1 * s, t));
+    this.ol.slide = smooth(0, 0.12, t) * (1 - level);
+    this.ol.load = smooth(0, 0.05, t) * (1 - smooth(0.05, 0.05 + 0.08 * s, t));
+    this.ol.ext = smooth(0.05, 0.05 + 0.08 * s, t) * (1 - level);
+    const tuck = smooth(0.06 + 0.04 * s, 0.1 + 0.15 * s, t);
+    // Coming down: straighten out in the last moments before touching down.
+    let reach = 0;
+    if (r.vy < 0) {
+      // Hopping onto a rail, it's the rail you come down on.
+      const rail = r.track.railAt(r.x);
+      const railTop = rail ? railY(rail, r.x) : -Infinity;
+      const below = r.y > railTop ? Math.max(groundY(r.x), railTop) : groundY(r.x);
+      const toLand = (r.y - below) / Math.max(1, -r.vy);
+      reach = 1 - smooth(0.15, 0.35, toLand);
+    }
+    return { tuck, reach };
+  }
+
+  /** Knee bend after touching down, harder after a bigger air. */
+  private landUpdate(dt: number, r: Rider) {
+    const air = !r.grounded && !r.grind && !r.loop;
+    if (air) this.airBefore = r.airTime;
+    if (this.wasAir && !air && !r.bailing) {
+      this.landT = 0;
+      this.landW = Math.max(0.35, Math.min(1, (this.airBefore - 0.1) / 0.5));
+    }
+    this.wasAir = air;
+    if (this.landT < 0 || r.bailing) { this.landT = -1; return 0; }
+    const t = this.landT;
+    this.landT += dt;
+    if (this.landT > 1) this.landT = -1;
+    return this.landW * Math.sin(Math.min(1, t / 0.07) * Math.PI / 2) * Math.exp(-Math.max(0, t - 0.07) * 4.5);
   }
 
   /** Reach the grabbing hand to the deck with two-bone IK, blended by w. */

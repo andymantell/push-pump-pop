@@ -68,3 +68,5 @@ python3 -m venv .venv && .venv/bin/pip install bpy
 
 To check the skater from all sides, run `npm run dev` and open `/art/preview.html`
 (`?pose=crouch`, `?pose=air`, `?close=1` for the head, or `?t=<height>&d=<distance>`).
+To judge trick animation frame by frame, open `/art/ollie.html`: a filmstrip of a real ollie from the physics
+(`?swipe=left` for a kickflip, `?grab=up`, `?spin=right`, `?snow=1`, `?rail=1`, `?at=0,0.05,...` for the frame times).
