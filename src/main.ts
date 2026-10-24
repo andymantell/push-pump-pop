@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
-import { Rider, Trick } from './rider';
+import { Rider, Trick, Lean } from './rider';
 import { Score, ComboView } from './score';
 import { Input } from './input';
+import { Tilt } from './tilt';
 import { World } from './world';
 import { Skater } from './skater';
 import { loadAssets } from './assets';
@@ -69,8 +70,9 @@ score.onBank = (pts, v) => { showCombo(v, 'banked'); comboHold = 1.1; if (v.mult
 score.onLost = (v) => { showCombo(v, 'lost'); comboHold = 1.1; };
 
 const rider = new Rider(track, {
-  trick(t: Trick) { score.addTrick(t); if (t.axis !== 'grab') popup(t.name); },
+  trick(t: Trick) { score.addTrick(t); if (t.axis !== 'grab' && t.axis !== 'manual') popup(t.name); },
   grab(name) { popup(name + '!'); },
+  manual(name) { popup(name + '!'); },
   land({ airTime, smooth, peakY }) {
     if (def.kind === 'pipe') {
       const h = peakY - track.maxY;
@@ -134,6 +136,14 @@ const input = new Input(canvas);
 input.onPump = () => { if (state === 'playing') { rider.pump(); skater.pumpKick(); } };
 input.onSwipe = (d) => { if (state === 'playing') rider.swipe(d); };
 input.onRelease = () => { if (state === 'playing') rider.release(); };
+input.onSpin = (d) => { if (state === 'playing') rider.spinSwipe(d); };
+input.onSpinMore = () => { if (state === 'playing') rider.spinMore(); };
+// Lean from the keyboard or from tilting the device, whichever is tipped.
+let keyLean: Lean = 0, tiltLean: Lean = 0;
+const applyLean = () => rider.setLean(keyLean || tiltLean);
+input.onLean = (l) => { keyLean = l; applyLean(); };
+const tilt = new Tilt();
+tilt.onLean = (l) => { tiltLean = l; applyLean(); };
 
 const panels = ['title', 'select', 'results'];
 function show(panel: string | null) {
@@ -151,6 +161,8 @@ function start(d: TrackDef = def) {
   outTimer = 0;
   drawLives();
   showCombo(null);
+  // However the device is being held right now counts as level.
+  tilt.calibrate();
   $('trackname').textContent = d.name;
   show(null);
   state = 'playing';
@@ -304,7 +316,8 @@ function frame(now: number) {
         else rider.respawn(rider.x, 6);
       }
     }
-    score.update(dt, rider.grounded);
+    // A manual keeps the combo going on the ground.
+    score.update(dt, rider.grounded && !rider.manual);
     if (def.kind === 'pipe') {
       if (time >= PIPE_TIME) { time = PIPE_TIME; finish(); }
     } else if (rider.x >= track.finishX && finishTimer === 0 && outTimer === 0) finishTimer = 0.001;
@@ -325,10 +338,12 @@ function frame(now: number) {
     if (comboHold <= 0) showCombo(null);
   } else {
     const c = score.combo;
-    if (rider.grab) {
-      // Show the grab building up as you hold it.
+    // Show a grab or manual building up as you hold it.
+    const holding = rider.grab ?? rider.manual;
+    const pts = rider.grab ? rider.grabPoints : rider.manualPoints;
+    if (holding) {
       const live = c ?? { names: [], base: 0, mult: 0 };
-      showCombo({ names: [...live.names, `${rider.grab} ${fmt(rider.grabPoints)}`], base: live.base + rider.grabPoints, mult: live.mult + 1 }, 'grabbing');
+      showCombo({ names: [...live.names, `${holding} ${fmt(pts)}`], base: live.base + pts, mult: live.mult + 1 }, 'grabbing');
     } else showCombo(c);
   }
   // Tutorial cue: light up while the rider is heading down a slope and could pump.

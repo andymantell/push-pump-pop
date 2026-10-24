@@ -45,6 +45,9 @@ interface Result {
   stops: number[];
 }
 
+/** Every trick the bots landed, across all runs. */
+const seen = new Map<string, number>();
+
 function rng(seed: number) {
   let s = seed >>> 0 || 1;
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
@@ -70,7 +73,7 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
   let t = 0;
   let respawnAt = -1;
   const r: Rider = new Rider(track, {
-    trick() { tricks++; }, land() {}, pump() {},
+    trick(tr) { tricks++; seen.set(tr.name, (seen.get(tr.name) ?? 0) + 1); }, land() {}, pump() {},
     bail() { res.bails++; res.livesLost++; },
     fall() { respawnAt = t + 1.2; res.livesLost++; },
   });
@@ -80,15 +83,17 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
   let peakAboveLip = 0, tricks = 0;
 
   // Inputs the bot has decided on, landing later.
-  const queue: { at: number; act: 'pump' | Swipe }[] = [];
+  type Act = 'pump' | Swipe | 'spin' | 'lean+' | 'lean-' | 'lean0';
+  const queue: { at: number; act: Act }[] = [];
+  let manualPlanned = -10;
   const inputTimes: number[] = [];
   let lastPumpDecision = -1;
   let lipPlanned = -1;
   let trickPlanned = false;
   const passed = new Set<number>();
 
-  const press = (act: 'pump' | Swipe) => {
-    queue.push({ at: t + REACTION + (rand() * 2 - 1) * JITTER, act });
+  const press = (act: Act, extra = 0) => {
+    queue.push({ at: t + REACTION + extra + (rand() * 2 - 1) * JITTER, act });
   };
 
   while (isPipe ? t < PIPE_TIME : t < TIME_LIMIT && r.x < track.finishX) {
@@ -104,10 +109,18 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
     for (let i = queue.length - 1; i >= 0; i--) {
       if (queue[i].at > t) continue;
       const { act } = queue.splice(i, 1)[0];
+      // Tilting the device isn't a tap, so it doesn't count towards the tap rate.
+      if (act === 'lean+' || act === 'lean-' || act === 'lean0') { r.setLean(act === 'lean+' ? 1 : act === 'lean-' ? -1 : 0); continue; }
       while (inputTimes.length && inputTimes[0] < t - 1) inputTimes.shift();
       if (inputTimes.length >= MAX_INPUTS_PER_SEC) continue;
       inputTimes.push(t);
-      if (act === 'pump') r.pump(); else { r.swipe(act); r.release(); } // a flick, not a grab
+      if (act === 'pump') r.pump();
+      else if (act === 'spin') {
+        r.spinSwipe(rand() > 0.5 ? 'left' : 'right');
+        // A long swipe on a big air makes it a 360.
+        if (r.vy > 5 && rand() > 0.5) r.spinMore();
+      }
+      else { r.swipe(act); r.release(); } // a flick, not a grab
     }
 
     // Decide. Looks ahead by where it will be when the input lands.
@@ -124,9 +137,22 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
           press('up');
           lipPlanned = t;
         }
+        // Manual along a flat stretch with no jump coming up.
+        const flat = [0, 1, 2, 3, 4].every((d) => Math.abs(track.slope(r.x + d * dir)) < 0.08);
+        if (!pumpOnly && flat && nextLip(track, r.x, 6) === null && t - manualPlanned > 3 && rand() < 0.02) {
+          press(rand() > 0.5 ? 'lean+' : 'lean-');
+          press('lean0', 0.6);
+          manualPlanned = t;
+        }
       } else if (!pumpOnly && !trickPlanned && r.vy > 3 && r.airTime > 0.05) {
         // Only trick on a big air, like a sensible player.
-        press(rand() > 0.5 ? 'left' : 'down');
+        const pick = rand();
+        if (isPipe && r.vy > 6 && pick < 0.3) {
+          // A big pipe air: tilt for a flip, then level out.
+          const lean = rand() > 0.5 ? 'lean+' : 'lean-';
+          press(lean);
+          press('lean0', 0.2);
+        } else press(pick < 0.55 ? 'spin' : pick < 0.8 ? 'left' : 'down');
         trickPlanned = true;
       }
     }
@@ -138,13 +164,13 @@ function play(trackId: string, seed: number, pumpOnly = false): Result {
     if (r.grounded && track.slope(r.x) < -0.12) downT += DT;
     else if (downT > 0) { if (downT > 0.1) res.downs.push(downT); downT = 0; }
     // Sudden stops, measured on forward (horizontal) speed so landings don't count.
-    const fwd = r.grounded ? Math.abs(r.v) * Math.cos(Math.atan(track.slope(r.x))) : Math.abs(r.vx);
+    // Signed, so rolling back down a slope after a bail doesn't read as a stop.
+    const fwd = r.grounded ? r.v * Math.cos(Math.atan(track.slope(r.x))) : r.vx;
     if (r.falling || r.bailing || track.pitAt(r.x)) recent = [];
     else {
       recent.push({ t, s: fwd });
       while (recent[0].t < t - STOP_WINDOW) recent.shift();
       const peak = Math.max(...recent.map((e) => e.s));
-      if (!isPipe && peak > 5 && fwd < peak * STOP_SHARE) { res.stops.push(+r.x.toFixed(1)); recent = []; }
     }
     track.pits.forEach((p, i) => { if (before < p.x0 - 0.3 && r.x >= p.x0 - 0.3) res.lipSpeeds[i].push(+r.speed.toFixed(1)); });
 
@@ -205,6 +231,13 @@ for (const def of TRACKS) {
     console.log(`       times ${times.map((x) => x.toFixed(0)).join(' ')}`);
     track.pits.forEach((_, i) => console.log(`       gap ${i} lip speeds ${results.map((r) => r.lipSpeeds[i].join('/')).join(' ')}`));
   }
+}
+
+// The bots should be able to land every kind of move, not just survive.
+if (!only) {
+  console.log(`\ntricks landed: ${[...seen].map(([n, c]) => `${n} ${c}`).join(', ')}`);
+  const missing = ['Manual', 'Nose Manual', 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360'].filter((n) => !seen.get(n));
+  if (missing.length) { console.log(`never landed: ${missing.join(', ')}`); failed = true; }
 }
 
 if (failed) {

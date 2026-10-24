@@ -22,7 +22,12 @@ const WALL_SLOPE = 1.5;
 const TAKEOFF_TIME = 0.06;
 
 export type GrabName = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
-export type TrickName = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | GrabName;
+export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
+export type FlipName = 'Backflip' | 'Frontflip';
+export type ManualName = 'Manual' | 'Nose Manual';
+export type TrickName = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | GrabName | SpinName | FlipName | ManualName;
+/** Tilt of the device: +1 nose up (manual, backflip), -1 nose down (nose manual, frontflip). */
+export type Lean = -1 | 0 | 1;
 export type Swipe = 'up' | 'down' | 'left' | 'right';
 
 export interface Trick {
@@ -30,11 +35,11 @@ export interface Trick {
   duration: number;
   points: number;
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
-  axis: 'none' | 'flip' | 'spin' | 'grab';
+  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual';
   dir: 1 | -1;
 }
 
-export const TRICKS: Record<Exclude<TrickName, GrabName>, Trick> = {
+export const TRICKS: Record<'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it', Trick> = {
   'Ollie': { name: 'Ollie', duration: 0, points: 100, axis: 'none', dir: 1 },
   'Kickflip': { name: 'Kickflip', duration: 0.42, points: 500, axis: 'flip', dir: 1 },
   'Heelflip': { name: 'Heelflip', duration: 0.42, points: 500, axis: 'flip', dir: -1 },
@@ -53,7 +58,21 @@ const GRAB_HOLD = 0.16;
 const GRAB_POINTS = 250;
 const GRAB_POINTS_PER_SEC = 900;
 
-const SWIPE_TRICK: Record<Swipe, Exclude<TrickName, GrabName> | null> = {
+/** Body spins: a swipe across the bottom of the screen. Right is frontside. */
+const SPIN_TIME = 0.42;
+const SPIN_POINTS = { 180: 400, 360: 900 };
+/** Body flips from tilting in the air: one full turn takes this long. */
+const FLIP_TIME = 0.75;
+const FLIP_POINTS = 1200;
+/** Landing this far into a flip still counts; less than FLIP_SAFE is just a wobble. */
+const FLIP_LAND = 0.85;
+const FLIP_SAFE = 0.12;
+const MANUAL_POINTS = 100;
+const MANUAL_POINTS_PER_SEC = 450;
+/** Manuals only hold on gentle ground. */
+const MANUAL_SLOPE = 0.45;
+
+const SWIPE_TRICK: Record<Swipe, keyof typeof TRICKS | null> = {
   up: 'Ollie',
   left: 'Kickflip',
   right: 'Heelflip',
@@ -65,6 +84,7 @@ export interface RiderEvents {
   land(info: { airTime: number; smooth: boolean; hadTricks: boolean; peakY: number }): void;
   bail(): void;
   grab?(name: GrabName): void;
+  manual?(name: ManualName): void;
   pump(good: boolean): void;
   fall(): void;
 }
@@ -106,6 +126,20 @@ export class Rider {
   /** Grab in progress, and how long it has been held. */
   grab: GrabName | null = null;
   grabT = 0;
+  /** Body spin in progress: direction (+1 frontside), size in degrees, and time. */
+  spin: { dir: 1 | -1; deg: 180 | 360; t: number } | null = null;
+  /** Facing from completed spins (0 or PI: riding fakie), for visuals. */
+  bodyYaw = 0;
+  /** Device tilt, and whether it has been back to level since take-off. */
+  lean: Lean = 0;
+  private leanArmed = false;
+  /** Body flip in progress (+1 backflip), and how far round it is in turns. */
+  flipDir: 1 | -1 = 1;
+  flipT = 0;
+  flipping = false;
+  /** Manual in progress and how long it has been held. */
+  manual: ManualName | null = null;
+  manualT = 0;
   /** Spin of the board from completed shove-its, kept for visuals. */
   boardYaw = 0;
   /** Smoothed values for animation. */
@@ -130,6 +164,7 @@ export class Rider {
     this.current = null;
     this.grab = null;
     this.held = null;
+    this.clearBody();
     this.bailTimer = 0;
     this.boardYaw = 0;
     this.angle = Math.atan(this.track.slope(x));
@@ -145,6 +180,7 @@ export class Rider {
     this.current = null;
     this.grab = null;
     this.held = null;
+    this.clearBody();
     this.boardYaw = 0;
     this.airTime = 0;
     this.pumpTimer = 0;
@@ -181,6 +217,73 @@ export class Rider {
     if (this.grounded || this.current) return;
     this.current = TRICKS[name];
     this.trickT = 0;
+  }
+
+  private clearBody() {
+    this.spin = null;
+    this.bodyYaw = 0;
+    this.flipping = false;
+    this.flipT = 0;
+    this.manual = null;
+    this.lean = 0;
+  }
+
+  /** Swipe across the bottom of the screen: spin the body, popping first if on the ground. */
+  spinSwipe(dir: 'left' | 'right') {
+    if (this.bailing || this.spin) return;
+    const canPop = this.grounded || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    if (canPop) this.pop();
+    if (this.grounded) return;
+    this.spin = { dir: dir === 'right' ? 1 : -1, deg: 180, t: 0 };
+  }
+
+  /** The spin swipe kept going: make it a 360 if there's still time. */
+  spinMore() {
+    if (this.spin && this.spin.deg === 180 && this.spin.t < SPIN_TIME * 0.7) this.spin.deg = 360;
+  }
+
+  /** 0..1 progress of the body spin. */
+  get spinProgress() {
+    return this.spin ? Math.min(1, this.spin.t / this.spinDuration) : 0;
+  }
+
+  private get spinDuration() {
+    return this.spin && this.spin.deg === 360 ? SPIN_TIME * 1.7 : SPIN_TIME;
+  }
+
+  private finishSpin() {
+    const sp = this.spin!;
+    if (sp.deg === 180) this.bodyYaw = this.bodyYaw ? 0 : Math.PI;
+    this.spin = null;
+    this.tricksThisAir++;
+    const name = `${sp.dir > 0 ? 'FS' : 'BS'} ${sp.deg}` as SpinName;
+    this.ev.trick({ name, duration: SPIN_TIME, points: SPIN_POINTS[sp.deg], axis: 'body', dir: sp.dir });
+  }
+
+  /** Device tilt changed. */
+  setLean(l: Lean) {
+    if (l === this.lean) return;
+    this.lean = l;
+    if (l === 0) this.leanArmed = true;
+  }
+
+  private endManual() {
+    if (!this.manual) return;
+    const name = this.manual;
+    const points = this.manualPoints;
+    this.manual = null;
+    // Too short to count as a manual: a wobble.
+    if (this.manualT < 0.25) return;
+    this.ev.trick({ name, duration: this.manualT, points, axis: 'manual', dir: 1 });
+  }
+
+  get manualPoints() {
+    return this.manual ? Math.round((MANUAL_POINTS + MANUAL_POINTS_PER_SEC * this.manualT) / 10) * 10 : 0;
+  }
+
+  /** Body pitch from a flip in progress, radians (+ is nose up / backwards). */
+  get flipAngle() {
+    return this.flipping ? this.flipDir * this.flipT * Math.PI * 2 : 0;
   }
 
   /** Finger lifted: let go of any grab and score it. */
@@ -227,6 +330,9 @@ export class Rider {
       this.vx = -Math.sign(this.vx) * 0.35;
     }
     this.tricksThisAir = 0;
+    this.endManual();
+    // A tilt held through take-off doesn't flip you: level out, then tilt.
+    this.leanArmed = this.lean === 0;
   }
 
   update(dt: number) {
@@ -260,6 +366,15 @@ export class Rider {
     if (this.grounded) {
       this.timeSinceGround = 0;
       const k = tr.slope(this.x);
+      // Tilted on gentle ground: balance on two wheels.
+      // Too slow and you'd stall without pushing, so it drops back onto four wheels.
+      const want: ManualName | null = this.lean && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.8)
+        ? (this.lean > 0 ? 'Manual' : 'Nose Manual') : null;
+      if (want !== this.manual) {
+        this.endManual();
+        if (want) { this.manual = want; this.manualT = 0; this.ev.manual?.(want); }
+      }
+      if (this.manual) this.manualT += dt;
       const th = Math.atan(k);
       const sin = Math.sin(th), cos = Math.cos(th);
       const dir = Math.sign(this.v) || 1;
@@ -278,7 +393,7 @@ export class Rider {
 
       // Auto push on flat ground when slow, so you never get stuck.
       this.pushing = false;
-      if (!this.bailing && !this.opts.pipe && this.v < MIN_PUSH_SPEED) {
+      if (!this.bailing && !this.manual && !this.opts.pipe && this.v < MIN_PUSH_SPEED) {
         a += 4 + GRAVITY * Math.max(0, sin);
         this.pushing = true;
       }
@@ -335,6 +450,27 @@ export class Rider {
       }
       if (this.grab) this.grabT += dt;
 
+      if (this.spin) {
+        this.spin.t += dt;
+        if (this.spin.t >= this.spinDuration) this.finishSpin();
+      }
+
+      // Tilt in the air: flip the whole body. Each full turn scores; keep tilting for more.
+      if (!this.flipping && this.lean && this.leanArmed && !this.bailing) {
+        this.flipping = true;
+        this.flipDir = this.lean;
+        this.flipT = 0;
+      }
+      if (this.flipping) {
+        this.flipT += dt / FLIP_TIME;
+        if (this.flipT >= 1) {
+          this.tricksThisAir++;
+          this.ev.trick({ name: this.flipDir > 0 ? 'Backflip' : 'Frontflip', duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
+          if (this.lean === this.flipDir) this.flipT -= 1;
+          else { this.flipping = false; this.flipT = 0; }
+        }
+      }
+
       if (this.current) {
         this.trickT += dt;
         if (this.trickT >= this.current.duration) {
@@ -379,6 +515,9 @@ export class Rider {
       this.fallPit = pit;
       this.current = null;
       this.grab = null;
+      this.spin = null;
+      this.flipping = false;
+      this.manual = null;
       this.ev.fall();
     }
 
@@ -399,8 +538,20 @@ export class Rider {
     // Still holding the board when you touch down: you can't stand on it.
     const grabbing = this.grab !== null;
     this.grab = null;
-    if (grabbing || midTrick || (diff > 1.3 && this.airTime > 0.2 && Math.hypot(this.vx, this.vy) > 7)) {
+    const midSpin = this.spin !== null && this.spinProgress < 0.8;
+    // Upside down or partway round a flip: no way to land that.
+    const midFlip = this.flipping && this.flipT > FLIP_SAFE && this.flipT < FLIP_LAND;
+    if (this.flipping && this.flipT >= FLIP_LAND) {
+      this.tricksThisAir++;
+      this.ev.trick({ name: this.flipDir > 0 ? 'Backflip' : 'Frontflip', duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
+    }
+    this.flipping = false;
+    this.flipT = 0;
+    if (this.spin && !midSpin) this.finishSpin();
+    this.spin = null;
+    if (grabbing || midTrick || midSpin || midFlip || (diff > 1.3 && this.airTime > 0.2 && Math.hypot(this.vx, this.vy) > 7)) {
       this.current = null;
+      this.bodyYaw = 0;
       this.v = tang * 0.35;
       this.bailTimer = BAIL_TIME;
       this.ev.bail();

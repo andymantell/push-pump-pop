@@ -29,7 +29,7 @@ const DOWN = v3(0, -1, 0);
 // bows, and how far the knees splay apart to leave room for the arm.
 const GRABS: Record<GrabName, { hand: 'L' | 'R'; at: THREE.Vector3; tilt: number; elbow: THREE.Vector3; splay: number }> = {
   Indy: { hand: 'R', at: v3(0.0, 0.1, 0.11), tilt: 0.1, elbow: v3(-0.3, 0, 1), splay: 0.9 },
-  Melon: { hand: 'L', at: v3(0.03, 0.1, -0.11), tilt: -0.05, elbow: v3(0.3, 0, -1), splay: 0.9 },
+  Melon: { hand: 'L', at: v3(0.32, 0.1, -0.1), tilt: -0.05, elbow: v3(1, 0, -0.6), splay: 0.4 },
   Nosegrab: { hand: 'L', at: v3(0.4, 0.13, 0.04), tilt: 0.45, elbow: v3(1, 0.3, -0.4), splay: 0 },
   Tailgrab: { hand: 'R', at: v3(-0.4, 0.13, 0.04), tilt: -0.45, elbow: v3(-1, 0.3, -0.4), splay: 0 },
 };
@@ -126,6 +126,7 @@ export class Skater {
   private bailBoard = new THREE.Vector3();
   /** 0..1 blend into the grab pose, and the last grab for easing out. */
   private grabW = 0;
+  private manualPitch = 0;
   private lastGrab: GrabName = 'Indy';
 
   constructor(parts?: Partial<Record<PartName, THREE.Object3D>>) {
@@ -183,6 +184,8 @@ export class Skater {
       crouchT = r.current ? 0.45 : 0.35;
       armT = 0.9;
     }
+    if (r.flipping) { crouchT = 0.8; liftT = 0.4; armT = 0.2; }
+    if (r.manual) crouchT = 0.3;
     if (r.grab) this.lastGrab = r.grab;
     this.grabW += ((r.grab ? 1 : 0) - this.grabW) * (1 - Math.exp(-dt * 18));
     const gw = this.grabW;
@@ -194,8 +197,20 @@ export class Skater {
     this.lift += (liftT - this.lift) * k;
     this.armRaise += (armT - this.armRaise) * k;
 
-    this.root.position.set(r.x, r.y, 0);
-    this.root.rotation.set(0, 0, r.angle);
+    // Spins turn the whole rider about the vertical; flips and manuals pitch it,
+    // flips about the middle of the body, manuals about the wheels left on the ground.
+    this.manualPitch += ((r.manual === 'Manual' ? 0.3 : r.manual === 'Nose Manual' ? -0.3 : 0) - this.manualPitch) * k;
+    const flip = r.flipAngle;
+    const pitch = flip + this.manualPitch;
+    const pivot = r.flipping ? v3(0, 0.75, 0) : v3(this.manualPitch > 0 ? -0.25 : 0.25, 0.03, 0);
+    const spin = r.spin ? r.spin.dir * r.spinProgress * (r.spin.deg === 360 ? Math.PI * 2 : Math.PI) : 0;
+    const yaw = r.bodyYaw + spin;
+    // Keep the pivot where it would be unpitched.
+    const ca = Math.cos(r.angle), sa = Math.sin(r.angle), cb = Math.cos(r.angle + pitch), sb = Math.sin(r.angle + pitch);
+    const ox = (ca * pivot.x - sa * pivot.y) - (cb * pivot.x - sb * pivot.y);
+    const oy = (sa * pivot.x + ca * pivot.y) - (sb * pivot.x + cb * pivot.y);
+    this.root.position.set(r.x + ox, r.y + oy, 0);
+    this.root.rotation.set(0, yaw, r.angle + pitch, 'ZYX');
 
     // Board tricks.
     const prog = r.trickProgress;
