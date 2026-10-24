@@ -4,8 +4,8 @@ declare const __BUILD_ID__: string;
 
 const POLL_MS = 60_000;
 
-/** Starts polling. `canShow` says whether the prompt may appear now (not mid-run). */
-export function watchForUpdates(canShow: () => boolean) {
+/** Starts polling. `inRun` says whether a run is on, so the prompt shrinks to a small chip. */
+export function watchForUpdates(inRun: () => boolean) {
   // Drop the cache-busting ?v= left by a previous reload so the URL stays clean.
   const url = new URL(location.href);
   if (url.searchParams.has('v')) {
@@ -18,7 +18,6 @@ export function watchForUpdates(canShow: () => boolean) {
   const chip = document.createElement('button');
   chip.id = 'update';
   chip.className = 'hidden';
-  chip.textContent = 'New version! Tap to reload';
   chip.addEventListener('click', () => {
     // A query string makes iOS Safari and the GitHub Pages CDN fetch a fresh
     // index.html instead of the cached one that points at the old bundle.
@@ -39,6 +38,12 @@ export function watchForUpdates(canShow: () => boolean) {
   check();
   setInterval(check, POLL_MS);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
-  // Cheap check so the chip appears as soon as a run ends, and hides when one starts.
-  setInterval(() => chip.classList.toggle('hidden', !latest || !canShow()), 500);
+  // Cheap check so the chip swaps between its menu and in-run forms.
+  setInterval(() => {
+    chip.classList.toggle('hidden', !latest);
+    const compact = inRun();
+    if (compact === chip.classList.contains('compact') && chip.textContent) return;
+    chip.classList.toggle('compact', compact);
+    chip.textContent = compact ? '\u21bb Update' : 'New version! Tap to reload';
+  }, 500);
 }

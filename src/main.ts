@@ -234,7 +234,7 @@ window.addEventListener('keydown', (e) => {
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'finished') { e.preventDefault(); start(def); }
 });
 
-watchForUpdates(() => state !== 'playing');
+watchForUpdates(() => state === 'playing');
 
 // Camera follows from the side, pulling back and looking ahead with speed.
 const camPos = new THREE.Vector3(track.startX + 3, track.height(track.startX) + 2, 12);
