@@ -3,7 +3,8 @@
 // into this bundle, so any changelog line we don't have is news.
 declare const __BUILD_ID__: string;
 declare const __BUILD_TIME__: string;
-declare const __CHANGELOG__: { date: string; items: string[] }[];
+/** Release notes grouped into updates, newest first (see vite.config.ts). */
+declare const __CHANGELOG__: { time: string; items: string[] }[];
 
 const POLL_MS = 60_000;
 const MAX_NOTES = 4;
@@ -12,6 +13,9 @@ const TRIES_KEY = 'push-pump-pop-reload-tries';
 const MAX_TRIES = 3;
 /** A new build must stay the newest this long before we offer it, so a burst of deploys prompts once. */
 const SETTLE_MS = 90_000;
+/** localStorage key remembering the last build this device ran, to tell what's new since. */
+const LAST_KEY = 'push-pump-pop-last-build';
+const MAX_UPDATES = 12;
 
 async function fetchVersion(): Promise<{ id?: unknown; changelog?: unknown } | null> {
   try {
@@ -67,21 +71,37 @@ export function watchForUpdates(inRun: () => boolean, leaveRun: () => void) {
   label.textContent = `Version ${__BUILD_ID__.slice(0, 7)} \u00b7 ${built.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
   const title = document.getElementById('title');
 
-  // "What's new" on the title screen always lists the latest release notes.
+  // Which updates are new since the build this device last ran.
+  let last: { id?: string; time?: string } | null = null;
+  try {
+    last = JSON.parse(localStorage.getItem(LAST_KEY) ?? 'null');
+    localStorage.setItem(LAST_KEY, JSON.stringify({ id: __BUILD_ID__, time: __BUILD_TIME__ }));
+  } catch { /* storage unavailable */ }
+  const changed = !!last?.time && last.id !== __BUILD_ID__;
+  const fresh = changed ? __CHANGELOG__.filter((u) => u.time > last!.time!).length : 0;
+
+  // "What's new" lists the latest updates, one section per update, newest first,
+  // with the ones you've just got marked NEW.
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const news = document.createElement('div');
   news.id = 'whatsnew';
   news.className = 'panel hidden';
-  news.innerHTML = '<h2>WHAT\u2019S NEW</h2><div class="guide">'
-    + __CHANGELOG__.slice(0, 5).map((e) => `<section><h3>${esc(new Date(e.date).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }))}</h3><ul>${e.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></section>`).join('')
+  news.innerHTML = '<h2>WHAT\u2019S NEW</h2>'
+    + (fresh ? `<p class="since">You just got ${fresh === 1 ? '1 new update' : `${fresh} new updates`}!</p>` : '')
+    + '<div class="guide">'
+    + __CHANGELOG__.slice(0, Math.max(MAX_UPDATES, fresh)).map((u, i) => `<section${i < fresh ? ' class="fresh"' : ''}><h3>${i < fresh ? '<em>NEW</em> ' : ''}Update \u00b7 ${esc(when(u.time))}</h3><ul>${u.items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></section>`).join('')
     + '</div><button class="small">BACK</button>';
+  const openNews = () => { news.classList.remove('hidden'); title?.classList.add('hidden'); };
   news.querySelector('button')!.addEventListener('click', () => { news.classList.add('hidden'); title?.classList.remove('hidden'); });
   document.body.appendChild(news);
   const newsBtn = document.createElement('button');
   newsBtn.className = 'small alt';
   newsBtn.textContent = 'WHAT\u2019S NEW';
-  newsBtn.addEventListener('click', () => { news.classList.remove('hidden'); title?.classList.add('hidden'); });
+  newsBtn.addEventListener('click', openNews);
   title?.append(newsBtn, label);
+  // Got a new version (by the update button or any other reload): show what came in.
+  if (fresh) openNews();
   if (__BUILD_ID__ === 'dev') return;
 
   const known = new Set(__CHANGELOG__.flatMap((e) => e.items));
@@ -130,6 +150,7 @@ export function watchForUpdates(inRun: () => boolean, leaveRun: () => void) {
       if (id && id !== __BUILD_ID__ && tries < MAX_TRIES) { reloadTo(id, tries + 1); return; }
       try { sessionStorage.removeItem(TRIES_KEY); } catch { /* storage unavailable */ }
       if (id === __BUILD_ID__) {
+        if (!fresh) openNews();
         const done = document.createElement('div');
         done.id = 'updated';
         done.textContent = '\u2713 Updated to the latest version';

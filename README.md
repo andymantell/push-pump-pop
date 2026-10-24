@@ -43,11 +43,15 @@ Pushing to `main` deploys to GitHub Pages via `.github/workflows/deploy.yml`.
 
 ### Release notes
 
-**Every change a player would notice needs a line in `changelog.json`.** Add it to the
-top entry if it has today's date, or add a new entry at the top: `{ "date": "YYYY-MM-DD", "items": [...] }`.
-Write it in plain words for a kid, starting with `New:`, `Better:` or `Fixed:`, e.g.
-`"New: grind rails!"`. When a new deploy goes live, the game shows a reload prompt
-listing every line the running copy doesn't have yet, so don't reword old lines.
+**Every change a player would notice needs a line in `changelog.json`,** in the same
+commit as the change. Add it at the top of the top entry's `items`. Write it in plain
+words for a kid, starting with `New:`, `Better:` or `Fixed:`, e.g. `"New: grind rails!"`.
+
+The build groups lines into updates by the commit that added them (via `git blame`, so
+the deploy checks out full history), and the game shows them that way: the update
+prompt lists the lines the running copy doesn't have, and after an update the What's
+New screen opens with the new updates marked. Don't reword old lines: a reworded line
+moves to the commit that changed it and shows up as new.
 
 ## Tracks and biomes
 
