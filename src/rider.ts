@@ -29,6 +29,11 @@ const GRIND_CATCH = 0.3;
 /** Rolling friction on the loop is a bit higher: it's a tight curve. */
 const LOOP_FRICTION = 0.3;
 const LOOP_POINTS = 1000;
+/** Half pipe start: standing on the coping, nose up over the pipe. */
+const PERCH_ANGLE = 0.3;
+/** How far over the coping the board sits while perched, and how long dropping in takes. */
+const PERCH_OVER = 0.3;
+const DROP_TIME = 0.35;
 /** Rail assist: an ollie this many seconds before a rail starts hops you onto it. */
 const RAIL_REACH = 0.7;
 /** ...as long as there's this much rail left to land on. */
@@ -201,6 +206,12 @@ export class Rider {
   /** Fell off a loop: tumbling down inside it, landing on the ground. */
   loopFall = false;
 
+  /** Waiting on the coping of a half pipe for a tap to drop in. */
+  perched = false;
+  /** Dropping in: how far through leaning onto the wall (0 to 1), or -1. */
+  dropT = -1;
+  private lipX = 0;
+
   falling = false;
   /** The gap we last fell into. */
   fallPit: Pit | null = null;
@@ -249,6 +260,24 @@ export class Rider {
     this.airTime = 0;
     this.pumpTimer = 0;
     this.falling = false;
+    this.perched = false;
+    this.dropT = -1;
+  }
+
+  /** Stand on the coping of the first wall, tail on the deck, ready to drop in. */
+  perch() {
+    const tr = this.track;
+    let x = 0;
+    while (x < tr.length && tr.height(x) > tr.maxY - 0.005) x += 0.01;
+    this.lipX = x;
+    this.x = x + PERCH_OVER;
+    this.y = tr.maxY + PERCH_OVER * Math.sin(PERCH_ANGLE);
+    this.v = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.grounded = true;
+    this.angle = PERCH_ANGLE;
+    this.perched = true;
   }
 
   /** Half pipe walls go vertical at the lips and are meant to be ridden. */
@@ -258,7 +287,9 @@ export class Rider {
   get speed() { return this.grounded || this.grind || this.loop ? Math.abs(this.v) : Math.hypot(this.vx, this.vy); }
 
   pump() {
-    if (this.bailing) return;
+    // On the coping: lean forward and drop in.
+    if (this.perched) { this.perched = false; this.dropT = 0; return; }
+    if (this.bailing || this.dropT >= 0) return;
     this.pumpTimer = PUMP_TIME;
     if (this.grounded) {
       const s = Math.sin(Math.atan(this.track.slope(this.x))) * Math.sign(this.v || 1);
@@ -267,6 +298,7 @@ export class Rider {
   }
 
   swipe(dir: Swipe) {
+    if (this.perched || this.dropT >= 0) return;
     if (this.bailing || this.grab) return;
     // On a rail the flip-side swipes change how you grind it (up still ollies off).
     if (this.grind && dir !== 'up') {
@@ -302,6 +334,7 @@ export class Rider {
 
   /** Swipe across the bottom of the screen: spin the body, popping first if on the ground. */
   spinSwipe(dir: 'left' | 'right') {
+    if (this.perched || this.dropT >= 0) return;
     if (this.bailing || this.spin) return;
     const canPop = this.grounded || this.grind !== null || (!this.opts.pipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) this.pop();
@@ -437,6 +470,7 @@ export class Rider {
 
   /** Swipe on the grab side of the screen: pop if on the ground, then grab while held. */
   grabSwipe(dir: Swipe) {
+    if (this.perched || this.dropT >= 0) return;
     if (this.bailing || this.grab) return;
     this.held = dir;
     this.heldT = 0;
@@ -541,6 +575,8 @@ export class Rider {
 
   private step(dt: number) {
     const tr = this.track;
+    if (this.perched) return;
+    if (this.dropT >= 0) { this.stepDropIn(dt); return; }
     this.pumpTimer = Math.max(0, this.pumpTimer - dt);
 
     if (this.bailTimer > 0) {
@@ -838,6 +874,25 @@ export class Rider {
     this.v = dir * kept * (smooth ? 1.04 : 1);
     this.ev.land({ airTime: this.airTime, smooth, hadTricks: this.tricksThisAir > 0 || this.ollied, peakY: this.peakY });
     this.ollied = false;
+  }
+
+  /** Tip the nose down onto the wall, then roll away down it. */
+  private stepDropIn(dt: number) {
+    const tr = this.track;
+    this.dropT = Math.min(1, this.dropT + dt / DROP_TIME);
+    const e = this.dropT * this.dropT * (3 - 2 * this.dropT);
+    const x1 = this.lipX + PERCH_OVER + 0.15;
+    const th = Math.atan(tr.slope(x1));
+    this.x = this.lipX + PERCH_OVER + 0.15 * e;
+    const y0 = tr.maxY + PERCH_OVER * Math.sin(PERCH_ANGLE);
+    this.y = y0 + (tr.height(x1) - y0) * e;
+    this.angle = PERCH_ANGLE + (th - PERCH_ANGLE) * e;
+    if (this.dropT >= 1) {
+      this.dropT = -1;
+      this.x = x1;
+      this.y = tr.height(x1);
+      this.v = 1.5;
+    }
   }
 
   /** 0..1 progress of the current trick, for animation. */

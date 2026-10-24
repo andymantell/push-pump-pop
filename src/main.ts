@@ -130,7 +130,8 @@ function loadTrack(d: TrackDef) {
   rider.opts = { friction: b.friction, maxSpeed: isPipe ? 12.5 : b.maxSpeed, pipe: isPipe, snow };
   skater.setSnow(snow);
   rider.reset();
-  if (isPipe) rider.v = 6;
+  // Half pipes start up on the coping: the first tap drops you in.
+  if (isPipe) rider.perch();
   camPos.set(track.startX + 3, track.height(track.startX) + 2, 12);
 }
 
@@ -388,7 +389,8 @@ function frame(now: number) {
 
   if (resumeTimer > 0) resumeTimer -= dt;
   else if (state === 'playing') {
-    time += dt;
+    // The half pipe clock starts once you drop in.
+    if (!rider.perched) time += dt;
     if (lives.simulate(rider.bailing || rider.falling)) rider.update(dt);
     if (lives.out) {
       // Let the last crash play out, then show the Out of Lives screen.
@@ -441,7 +443,9 @@ function frame(now: number) {
   // Tutorial cue: light up while the rider is heading down a slope and could pump.
   const cue = state === 'playing' && !!def.tutorial && rider.grounded && !rider.bailing && rider.pumpTimer === 0
     && track.slope(rider.x + rider.v * 0.12) * Math.sign(rider.v || 1) < -0.12;
-  hud.cue.classList.toggle('on', cue);
+  const dropIn = state === 'playing' && rider.perched;
+  hud.cue.textContent = dropIn ? 'TAP TO DROP IN' : 'TAP!';
+  hud.cue.classList.toggle('on', cue || dropIn);
   $('zones').classList.toggle('hidden', state !== 'playing');
   hud.score.textContent = fmt(score.total);
   hud.time.textContent = def.kind === 'pipe' ? Math.max(0, PIPE_TIME - time).toFixed(1) : time.toFixed(1);

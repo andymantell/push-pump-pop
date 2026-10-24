@@ -159,7 +159,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
   const skater = legs ? new Skater() : null;
   r.opts = { friction: biome.friction, maxSpeed: isPipe ? 12.5 : biome.maxSpeed, pipe: isPipe, snow: def.biome === 'snow' };
   skater?.setSnow(def.biome === 'snow');
-  if (isPipe) r.v = 6;
+  if (isPipe) r.perch();
   let peakAboveLip = 0, tricks = 0;
   let wasGrounded = true, takeoffSlope = 0;
 
@@ -214,7 +214,9 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false): Re
     }
 
     // Decide. Looks ahead by where it will be when the input lands.
-    if (!r.falling && !r.bailing) {
+    // Tap to drop in, a moment after the run starts.
+    if (r.perched && !queue.some((q) => q.act === 'pump')) press('pump');
+    if (!r.falling && !r.bailing && !r.perched && r.dropT < 0) {
       const dir = Math.sign(r.v) || 1;
       const lead = Math.abs(r.v) * REACTION;
       // On a rail, sometimes switch to a fancier grind.
