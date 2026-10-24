@@ -1,6 +1,6 @@
 """Builds the game's models in headless Blender and exports them as glTF.
 
-Run with:  python art/build_assets.py   (needs the `bpy` package)
+Run with:  python art/build_assets.py [skater] [props]   (needs the `bpy` package)
 
 Conventions (Blender is Z-up, three.js Y-up; the glTF exporter converts):
   * Blender -Y becomes three.js +Z, the direction the skater faces (towards the camera).
@@ -321,81 +321,231 @@ def cap_parts(material):
     return [crown, band, peak, button]
 
 
+def loft(material, sections, segs=24, axis='z', cap0=True, cap1=True, name='loft'):
+    """Skin a run of rounded cross-sections into one closed mesh.
+
+    Each section is (pos, ra, rb, ca, cb, n): its position along `axis`, half sizes and
+    centre on the two other axes (x, y for a z loft; x, z for a y loft), and a
+    superellipse exponent (2 = ellipse, higher = boxier).
+    """
+    bm = bmesh.new()
+    rings = []
+    for pos, ra, rb, ca, cb, n in sections:
+        ring = []
+        for k in range(segs):
+            t = 2 * math.pi * k / segs
+            c, s = math.cos(t), math.sin(t)
+            a = ca + ra * math.copysign(abs(s) ** (2 / n), s)
+            b = cb - rb * math.copysign(abs(c) ** (2 / n), c)
+            ring.append(bm.verts.new((a, b, pos) if axis == 'z' else (a, pos, b)))
+        rings.append(ring)
+    for ra, rb in zip(rings, rings[1:]):
+        for k in range(segs):
+            bm.faces.new((ra[k], ra[(k + 1) % segs], rb[(k + 1) % segs], rb[k]))
+    for ring, (pos, _, _, ca, cb, _), on in ((rings[0], sections[0], cap0), (rings[-1], sections[-1], cap1)):
+        if on:
+            mid = bm.verts.new((ca, cb, pos) if axis == 'z' else (ca, pos, cb))
+            for k in range(segs):
+                bm.faces.new((ring[k], ring[(k + 1) % segs], mid))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    return finish(o, material, True)
+
+
+def surface_y(obj, x, z):
+    """Front surface (-Y) of a mesh at (x, z), found by casting a ray backwards."""
+    bpy.context.view_layer.update()
+    hit, loc, _, _ = obj.ray_cast(Vector((x, -1, z)), Vector((0, 1, 0)))
+    return loc.y if hit else 0.0
+
+
+def skull(material):
+    """Head with a narrower jaw and a little chin, same crown as the plain sphere the cap fits."""
+    o = sphere(material, 0.125, loc=(0, 0, 0.16), scale=(0.95, 1, 1.05), segs=32, rings=20)
+    for v in o.data.vertices:
+        below = max(0.0, 0.15 - v.co.z) / 0.13
+        v.co.x *= 1 - 0.22 * below
+        if v.co.y < 0:
+            v.co.y -= 0.02 * below * (1 - abs(v.co.x) / 0.12)
+        else:
+            v.co.y *= 1 - 0.25 * below
+    return o
+
+
+def face(head, skin, eye, white, hair, mouth):
+    """Eyes, brows, nose and mouth placed on the skull's surface."""
+    out = []
+    for s in (1, -1):
+        x = s * 0.043
+        y = surface_y(head, x, 0.152)
+        out.append(sphere(eye, 0.02, loc=(x, y + 0.006, 0.152), scale=(0.85, 0.5, 1.25), segs=12, rings=8))
+        out.append(sphere(white, 0.0055, loc=(x - 0.006, y - 0.004, 0.164), segs=8, rings=4))
+        yb = surface_y(head, s * 0.047, 0.186)
+        brow = cube(hair, (0.04, 0.014, 0.011), loc=(s * 0.047, yb - 0.001, 0.186), rot=(0, s * 0.15, 0), bevel=0.005)
+        out.append(brow)
+    yn = surface_y(head, 0, 0.135)
+    out.append(sphere(skin, 0.02, loc=(0, yn - 0.006, 0.133), scale=(0.8, 0.9, 1.0), segs=12, rings=8))
+    # Mouth: a short smile, a curved row of small beads.
+    beads = []
+    for i in range(13):
+        u = (i - 6) / 6
+        x, z = u * 0.026, 0.092 + 0.008 * u * u
+        beads.append(sphere(mouth, 0.0052, loc=(x, surface_y(head, x, z) + 0.002, z), scale=(1.2, 0.7, 1), segs=8, rings=4))
+    out.append(join('mouth', beads))
+    for s in (1, -1):
+        out.append(sphere(skin, 0.03, loc=(s * 0.118, 0.005, 0.15), scale=(0.45, 0.9, 1.15), segs=12, rings=8))
+    return out
+
+
+def hand(skin, side, wrist):
+    """Relaxed hand hanging from the wrist: palm, four curled fingers and a thumb."""
+    inward = -side  # towards the body's centre line
+    bits = [cube(skin, (0.04, 0.075, 0.075), loc=(0, 0, wrist - 0.04), bevel=0.016, segs=3)]
+    for i, y in enumerate((-0.027, -0.009, 0.009, 0.027)):
+        ln = (0.05, 0.056, 0.053, 0.044)[i]
+        f = capsule(skin, 0.0105, 0.0095, ln, loc=(0, 0, 0), segs=10)
+        f.rotation_euler = (0, inward * 0.45, 0)
+        f.location = (inward * 0.004, y, wrist - 0.068)
+        apply_tf(f)
+        bits.append(f)
+    th = capsule(skin, 0.013, 0.011, 0.05, segs=10)
+    th.rotation_euler = (0.6, inward * 0.3, 0)
+    th.location = (inward * 0.006, -0.03, wrist - 0.02)
+    apply_tf(th)
+    bits.append(th)
+    return bits
+
+
+def shoe(upper, sole_m, stripe, lace):
+    """Skate shoe: ankle at the origin, toes towards -Y, sole bottom at -0.075."""
+    st = -0.055  # top of the sole
+    plan = [  # y, half width, upper height
+        (0.095, 0.035, 0.05), (0.085, 0.05, 0.072), (0.05, 0.058, 0.082), (0.0, 0.06, 0.078),
+        (-0.06, 0.062, 0.06), (-0.12, 0.062, 0.045), (-0.165, 0.056, 0.036), (-0.19, 0.044, 0.028),
+        (-0.203, 0.026, 0.02), (-0.207, 0.01, 0.014),
+    ]
+    up = loft(upper, [(y, w, h / 2, 0, st + h / 2, 3.2) for y, w, h in plan], axis='y', name='upper')
+    sole = loft(sole_m, [(y + (0.006 if y > 0 else -0.006 if y < -0.15 else 0), w + 0.006, 0.011, 0, st - 0.009, 6)
+                         for y, w, _ in plan], axis='y', name='sole')
+    tread = loft(lace, [(y, w + 0.004, 0.004, 0, -0.073, 6) for y, w, _ in plan[1:-1]], axis='y', name='tread')
+    bits = [up, sole, tread]
+    # Side stripe swooping from the heel up towards the laces.
+    width = lambda y: next(pw for py, pw, _ in plan if py <= y)
+    for s in (1, -1):
+        bits.append(loft(stripe, [
+            (y, 0.004, 0.009 - 0.004 * u, s * (width(y) + 0.0015), -0.036 + 0.03 * u * u ** 0.5, 2)
+            for u, y in ((i / 6, 0.075 - 0.14 * i / 6) for i in range(7))
+        ], segs=10, axis='y', name='stripe'))
+    # Laces and tongue.
+    bits.append(cube(lace, (0.05, 0.075, 0.012), loc=(0, -0.05, st + 0.056), rot=(-0.38, 0, 0), bevel=0.005))
+    for i in range(3):
+        y = -0.03 - i * 0.025
+        bits.append(cube(upper, (0.056, 0.008, 0.008), loc=(0, y, st + 0.068 - i * 0.01), bevel=0.003))
+    # Padded collar round the ankle.
+    bits.append(cyl(upper, 0.05, 0.022, loc=(0, 0.04, st + 0.075), verts=16, bevel=0.008))
+    return bits
+
+
 def build_skater():
     reset()
     skin = mat('skin', (240, 192, 154))
     shirt = mat('shirt', (47, 143, 216))
     shirt_dk = mat('shirt_dark', (30, 104, 166))
+    string = mat('drawstring', (240, 240, 235))
     pants = mat('pants', (52, 62, 82))
     pants_dk = mat('pants_dark', (38, 45, 60))
     shoe_m = mat('shoe', (245, 245, 240))
-    sole = mat('sole', (60, 50, 45))
-    lace = mat('shoe_accent', (232, 64, 42))
+    sole = mat('sole', (236, 230, 214))
+    tread = mat('sole_tread', (60, 50, 45))
+    accent = mat('shoe_accent', (232, 64, 42))
     cap_m = mat('cap', (232, 64, 42))
     hair = mat('hair', (92, 58, 36))
     eye = mat('eye', (30, 30, 34))
+    white = mat('eye_white', (255, 255, 255))
+    mouth = mat('mouth', (150, 70, 60))
 
     parts = []
 
-    # Pelvis: centred on the hip line, belt and seat.
-    p = [
-        capsule(pants, 0.15, 0.15, 0.26, loc=(0, 0, 0.13), scale=(1.15, 0.85, 1)),
-        cyl(pants_dk, 0.165, 0.05, loc=(0, 0, 0.1), verts=24, r2=None),
-    ]
-    p[1].scale = (1.12, 0.84, 1)
-    apply_tf(p[1])
-    parts.append(join('pelvis', p))
+    # Pelvis: jeans from just under the hoodie to the crotch, thighs hinge at the hip line (0).
+    parts.append(join('pelvis', [
+        loft(pants, [
+            (0.07, 0.13, 0.075, 0.02, 0.0, 2.6), (0.02, 0.155, 0.09, 0.02, 0.0, 2.6), (-0.03, 0.155, 0.092, 0.02, 0.0, 2.4),
+            (-0.075, 0.12, 0.085, 0.02, 0.0, 2.2), (-0.105, 0.05, 0.06, 0.02, 0.0, 2),
+        ], name='hips'),
+    ]))
 
-    # Torso: hoodie-ish shirt from waist (0) to neck (0.5), shoulders at 0.44.
-    t = [
-        capsule(shirt, 0.19, 0.16, 0.55, loc=(0, 0, 0.55), scale=(1.2, 0.78, 1)),
-        cyl(shirt_dk, 0.17, 0.06, loc=(0, 0, 0.03), verts=24),
-        sphere(shirt, 0.08, loc=(0.2, 0, 0.43), segs=12, rings=8),
-        sphere(shirt, 0.08, loc=(-0.2, 0, 0.43), segs=12, rings=8),
-        cyl(skin, 0.05, 0.08, loc=(0, 0, 0.5), verts=12),
-    ]
-    t[1].scale = (1.12, 0.8, 1)
-    apply_tf(t[1])
+    # Torso: hoodie from the hem (just under the waist, 0) to the neck (0.5), shoulders at +-0.21, 0.44.
+    body = loft(shirt, [
+        (-0.005, 0.182, 0.12, 0.01, 0.0, 2.6), (0.08, 0.172, 0.114, 0.005, 0.0, 2.6), (0.18, 0.168, 0.112, 0, -0.004, 2.6),
+        (0.3, 0.182, 0.118, 0, -0.008, 2.6), (0.37, 0.19, 0.114, 0, -0.004, 2.8), (0.42, 0.178, 0.104, 0, 0.0, 2.8),
+        (0.46, 0.13, 0.088, 0, 0.004, 2.4), (0.49, 0.075, 0.064, 0, 0.004, 2),
+    ], cap0=False, name='hoodie')
+    hem = loft(shirt_dk, [
+        (-0.07, 0.186, 0.13, 0.015, -0.016, 2.6), (-0.06, 0.194, 0.14, 0.015, -0.016, 2.6),
+        (-0.01, 0.192, 0.134, 0.012, -0.01, 2.6), (0.0, 0.18, 0.118, 0.01, 0, 2.6),
+    ], name='hem')
+    t = [body, hem]
+    # Hood bunched behind the neck, and a ribbed collar.
+    t.append(loft(shirt_dk, [(0.43, 0.1, 0.075, 0, 0.03, 2.4), (0.5, 0.115, 0.085, 0, 0.035, 2.4), (0.545, 0.085, 0.07, 0, 0.045, 2.2)], name='hood'))
+    t.append(sphere(shirt, 0.07, loc=(0, 0.075, 0.5), scale=(1.45, 0.75, 0.9), segs=16, rings=10))
+    # Kangaroo pocket and drawstrings on the front.
+    fy = surface_y(body, 0, 0.14)
+    t.append(cube(shirt_dk, (0.2, 0.014, 0.12), loc=(0, fy - 0.003, 0.14), bevel=0.006))
+    for s in (1, -1):
+        t.append(cyl(string, 0.006, 0.12, loc=(s * 0.03, surface_y(body, s * 0.03, 0.41) - 0.006, 0.41), verts=6))
+        t.append(sphere(string, 0.009, loc=(s * 0.03, surface_y(body, s * 0.03, 0.35) - 0.006, 0.35), segs=8, rings=4))
+    t.append(cyl(skin, 0.048, 0.1, loc=(0, 0.005, 0.52), verts=14))
     parts.append(join('torso', t))
 
-    # Head: neck pivot at 0, skull centred at 0.16, cap with brim facing -Y.
-    h = [
-        sphere(skin, 0.125, loc=(0, 0, 0.16), scale=(0.95, 1, 1.05), segs=24, rings=16),
-        *cap_parts(cap_m),
-        hair_shell(hair),
-        sphere(eye, 0.016, loc=(0.042, -0.115, 0.16), segs=10, rings=6),
-        sphere(eye, 0.016, loc=(-0.042, -0.115, 0.16), segs=10, rings=6),
-        sphere(skin, 0.022, loc=(0, -0.125, 0.135), segs=10, rings=6),
-        sphere(skin, 0.03, loc=(0.122, 0, 0.15), scale=(0.5, 1, 1.2), segs=10, rings=6),
-        sphere(skin, 0.03, loc=(-0.122, 0, 0.15), scale=(0.5, 1, 1.2), segs=10, rings=6),
-    ]
-    parts.append(join('head', h))
+    # Head: neck pivot at 0, skull centred at 0.16, cap with brim facing -Y. A touch bigger to read in game.
+    sk = skull(skin)
+    h = [sk, *face(sk, skin, eye, white, hair, mouth), *cap_parts(cap_m), hair_shell(hair)]
+    head = join('head', h)
+    head.scale = (1.08, 1.08, 1.08)
+    apply_tf(head)
+    parts.append(head)
 
-    # Arms: sleeve on the upper arm, forearm with a hand.
-    for s in ('L', 'R'):
+    # Arms: hoodie sleeves to the wrist with a ribbed cuff, then the hand.
+    for s, side in (('L', 1), ('R', -1)):
         parts.append(join(f'upperArm_{s}', [
-            capsule(shirt, 0.058, 0.05, 0.31, loc=(0, 0, 0.02)),
+            loft(shirt, [
+                (0.05, 0.03, 0.03, 0, 0, 2), (0.035, 0.058, 0.056, 0, 0, 2), (0.0, 0.066, 0.062, 0, 0, 2),
+                (-0.08, 0.062, 0.058, 0, 0, 2), (-0.2, 0.055, 0.052, 0, 0, 2), (-0.29, 0.052, 0.05, 0, 0, 2),
+                (-0.32, 0.045, 0.045, 0, 0, 2), (-0.335, 0.02, 0.02, 0, 0, 2),
+            ], segs=18, name='sleeve'),
         ]))
         parts.append(join(f'forearm_{s}', [
-            capsule(skin, 0.045, 0.038, 0.26, loc=(0, 0, 0.0)),
-            cyl(shirt_dk, 0.052, 0.04, loc=(0, 0, -0.01), verts=12),
-            sphere(skin, 0.055, loc=(0, -0.005, -0.29), scale=(0.75, 0.6, 1), segs=12, rings=8),
+            loft(shirt, [
+                (0.03, 0.02, 0.02, 0, 0, 2), (0.015, 0.048, 0.046, 0, 0, 2), (-0.02, 0.054, 0.05, 0, 0, 2),
+                (-0.12, 0.05, 0.045, 0, 0, 2), (-0.2, 0.042, 0.039, 0, 0, 2),
+            ], segs=18, cap1=False, name='sleeve'),
+            loft(shirt_dk, [(-0.19, 0.045, 0.042, 0, 0, 2), (-0.235, 0.038, 0.035, 0, 0, 2)], segs=18, name='cuff'),
+            cyl(skin, 0.026, 0.05, loc=(0, 0, -0.245), verts=12),
+            *hand(skin, side, wrist=-0.255),
         ]))
 
-    # Legs: baggy jeans, cuffs on the shins.
+    # Legs: straight-leg jeans, the shin's top rounds into the knee so the joint never gaps.
     for s in ('L', 'R'):
-        parts.append(join(f'thigh_{s}', [capsule(pants, 0.085, 0.07, 0.47, loc=(0, 0, 0.02))]))
+        parts.append(join(f'thigh_{s}', [
+            loft(pants, [
+                (0.06, 0.04, 0.04, 0, 0.02, 2), (0.04, 0.068, 0.066, 0, 0.022, 2), (0.0, 0.076, 0.072, 0, 0.018, 2),
+                (-0.15, 0.08, 0.08, 0, -0.002, 2), (-0.32, 0.072, 0.072, 0, -0.004, 2), (-0.44, 0.066, 0.068, 0, -0.008, 2),
+                (-0.48, 0.05, 0.05, 0, -0.008, 2), (-0.5, 0.02, 0.02, 0, -0.006, 2),
+            ], segs=20, name='thigh'),
+        ]))
         parts.append(join(f'shin_{s}', [
-            capsule(pants, 0.07, 0.072, 0.44, loc=(0, 0, 0.0)),
-            cyl(pants_dk, 0.076, 0.05, loc=(0, 0, -0.39), verts=16),
+            sphere(pants, 0.068, loc=(0, -0.008, 0), segs=20, rings=12),
+            loft(pants, [
+                (0.0, 0.068, 0.068, 0, -0.006, 2), (-0.12, 0.064, 0.062, 0, 0, 2), (-0.3, 0.068, 0.066, 0, 0, 2),
+                (-0.4, 0.074, 0.074, 0, -0.008, 2), (-0.43, 0.078, 0.082, 0, -0.016, 2),
+            ], segs=20, cap0=False, name='shin'),
+            loft(pants_dk, [(-0.405, 0.08, 0.08, 0, -0.01, 2), (-0.44, 0.082, 0.086, 0, -0.018, 2)], segs=20, name='hem'),
         ]))
-        # Shoe: ankle at origin, toes towards -Y (the camera), sole at -0.075.
-        parts.append(join(f'shoe_{s}', [
-            cube(shoe_m, (0.115, 0.28, 0.075), loc=(0, -0.035, -0.035), bevel=0.025, segs=3),
-            cube(sole, (0.12, 0.29, 0.022), loc=(0, -0.035, -0.07), bevel=0.008),
-            cube(lace, (0.06, 0.1, 0.02), loc=(0, -0.09, 0.0), bevel=0.008),
-            cyl(shoe_m, 0.055, 0.07, loc=(0, 0.03, 0.0), verts=14),
-        ]))
+        parts.append(join(f'shoe_{s}', shoe(shoe_m, sole, accent, tread)))
 
     # Deck: origin on the ground under the wheels, deck top at 0.115.
     parts.append(build_board())
@@ -990,5 +1140,9 @@ def build_volcano(out):
 
 
 if __name__ == '__main__':
-    build_skater()
-    build_props()
+    import sys
+    which = sys.argv[1:] or ['skater', 'props']
+    if 'skater' in which:
+        build_skater()
+    if 'props' in which:
+        build_props()

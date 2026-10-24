@@ -43,4 +43,8 @@ The skater, board and scenery are modelled in Blender from code. To rebuild them
 ```sh
 python3 -m venv .venv && .venv/bin/pip install bpy
 .venv/bin/python art/build_assets.py   # writes public/models/*.glb
+.venv/bin/python art/build_assets.py skater   # just the skater (or `props`)
 ```
+
+To check the skater from all sides, run `npm run dev` and open `/art/preview.html`
+(`?pose=crouch`, `?pose=air`, `?close=1` for the head, or `?t=<height>&d=<distance>`).
