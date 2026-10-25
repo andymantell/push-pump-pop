@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Track, DX, LOOP_SHIFT } from './track';
 import { Biome, Particles, Surface } from './biomes';
 import { toon } from './toon';
+import { LANDMARKS, TRACK_LANDMARKS } from './landmarks';
 
 export const TRACK_W = 3;
 
@@ -240,6 +241,7 @@ export class World {
     this.buildLoops();
     this.buildGround();
     this.buildFar();
+    this.placeLandmarks(seed);
     this.buildProps();
     this.buildSigns();
     this.buildFinish();
@@ -499,11 +501,33 @@ export class World {
       this.group.add(box);
       const foam = new THREE.Mesh(
         new THREE.BoxGeometry(p.x1 - p.x0, 0.08, TRACK_W + 0.22),
-        new THREE.MeshBasicMaterial({ color: b.pitFill === 'lava' ? 0xffd040 : 0xe8fbff }),
+        b.pitFill === 'lava' ? new THREE.MeshBasicMaterial({ color: 0xffd040 }) : this.waterTop(p.x1 - p.x0),
       );
       foam.position.set((p.x0 + p.x1) / 2, topY, 0);
       this.group.add(foam);
     }
+  }
+
+  /** Rippled water with flecks of foam, rather than a sheet of white. */
+  private waterTop(w: number): THREE.Material {
+    const base = new THREE.Color(this.biome.pitFillColor ?? 0x2aa6d9).lerp(new THREE.Color(0xffffff), 0.35);
+    const tex = canvasTexture(128, 128, (c) => {
+      c.fillStyle = `#${base.getHexString()}`;
+      c.fillRect(0, 0, 128, 128);
+      const r = rng(5);
+      c.strokeStyle = 'rgba(255,255,255,0.85)';
+      c.lineWidth = 3;
+      for (let i = 0; i < 9; i++) {
+        const x = r() * 128, y = r() * 128;
+        c.beginPath();
+        c.arc(x, y, 6 + r() * 6, Math.PI * 1.1, Math.PI * 1.9);
+        c.stroke();
+      }
+    });
+    tex.repeat.set(w / 3, 1);
+    const m = new THREE.MeshBasicMaterial({ map: tex });
+    m.userData.outlineParameters = { visible: false };
+    return m;
   }
 
   private buildGround() {
@@ -792,12 +816,41 @@ export class World {
     return o;
   }
 
+  private clearings: { x: number; z: number; r: number }[] = [];
+
+  /** This track's landmarks, spread along it. */
+  private placeLandmarks(id: string) {
+    const names = TRACK_LANDMARKS[id] ?? [];
+    const tr = this.track;
+    const end = Number.isFinite(tr.finishX) ? tr.finishX : tr.length;
+    names.forEach((name, i) => {
+      const lm = LANDMARKS[name];
+      if (!lm) return;
+      const x = tr.startX + (end - tr.startX) * (names.length === 1 ? 0.45 : 0.28 + i * 0.44);
+      const o = lm.build(this.rand);
+      let y: number;
+      if (lm.on === 'sea') y = tr.minY - 3;
+      else if (lm.on === 'air') y = tr.height(x);
+      else {
+        y = this.groundY(x, lm.z);
+        const rr = lm.r * 0.5;
+        for (const [dx, dz] of [[rr, 0], [-rr, 0], [0, rr * 0.6], [0, -rr * 0.6]]) y = Math.min(y, this.groundY(x + dx, lm.z + dz));
+      }
+      o.position.set(x, y, lm.z);
+      this.group.add(o);
+      if (lm.r) this.clearings.push({ x, z: lm.z, r: lm.r });
+    });
+  }
+
   private buildProps() {
     const b = this.biome, r = this.rand;
     const end = this.track.length + 10;
     for (let x = -10; x < end; x += 3 + r() * 4) {
       const z = b.backZ[0] + r() * (b.backZ[1] - b.backZ[0]);
-      this.placeProp(this.pickBack(), x, z, 0.8 + r() * 0.6, r() * Math.PI * 2);
+      const kind = this.pickBack(), scale = 0.8 + r() * 0.6, rot = r() * Math.PI * 2;
+      // Keep clear of the landmarks.
+      if (this.clearings.some((c) => Math.abs(x - c.x) < c.r + 1.5 && Math.abs(z - c.z) < c.r + 2)) continue;
+      this.placeProp(kind, x, z, scale, rot);
     }
     if (b.fence) for (let x = -6; x < end; x += b.fence.spacing) this.placeProp(b.fence.kind, x, b.fence.z);
     if (b.posts) {
