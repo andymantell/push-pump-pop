@@ -1,8 +1,8 @@
 import { Lean } from './rider';
 
 /** Degrees of tilt from level to start a lean, and back within this to stop. */
-const ON_DEG = 14;
-const OFF_DEG = 8;
+const ON_DEG = 9;
+const OFF_DEG = 5;
 /** Below this share of gravity in the screen's plane (device lying flat), roll is unreliable. */
 const MIN_PLANE = 0.3;
 

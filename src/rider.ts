@@ -665,7 +665,7 @@ export class Rider {
       // Tilted on gentle ground: balance on two wheels.
       // Too slow and you'd stall without pushing, so it drops back onto four wheels.
       // Once it drops, level out before the next one, so it can't flicker on and off.
-      const want: ManualName | null = this.lean && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.8)
+      const want: ManualName | null = this.lean && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.7)
         ? (this.lean > 0 ? (this.opts.snow ? 'Tail Press' : 'Manual') : (this.opts.snow ? 'Nose Press' : 'Nose Manual')) : null;
       if (want !== this.manual) {
         if (this.manual && this.lean) this.manualBlocked = true;
