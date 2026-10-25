@@ -7,13 +7,23 @@
 const CACHE = 'push-pump-pop';
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', (e) => e.waitUntil((async () => {
+  // Older workers cached every version check under its own query string; drop them.
+  const cache = await caches.open(CACHE);
+  for (const key of await cache.keys()) if (skip(new URL(key.url))) await cache.delete(key);
+  await self.clients.claim();
+})()));
+
+/** Version checks (version.json, the index.html probe) must always see the live site, never a cached copy. */
+function skip(url) {
+  return url.pathname.endsWith('/version.json') || (url.searchParams.get('v') ?? '').startsWith('probe-');
+}
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
   // Version checks (version.json, the index.html probe) always ask the network.
-  if (req.method !== 'GET' || url.origin !== location.origin || req.cache === 'no-store') return;
+  if (req.method !== 'GET' || url.origin !== location.origin || req.cache === 'no-store' || skip(url)) return;
   if (req.mode === 'navigate') e.respondWith(page(req));
   else if (url.pathname.includes('/assets/')) e.respondWith(cached(req));
   else e.respondWith(fresh(req));

@@ -17,7 +17,18 @@ const SETTLE_MS = 90_000;
 const LAST_KEY = 'push-pump-pop-last-build';
 const MAX_UPDATES = 12;
 
-async function fetchVersion(): Promise<{ id?: unknown; changelog?: unknown } | null> {
+type Version = { id?: unknown; time?: unknown; changelog?: unknown };
+
+/**
+ * Whether version.json describes a build newer than this one. Comparing build times
+ * as well as IDs means a stale copy (from a cache or the offline service worker)
+ * can never pass for an update.
+ */
+function newer(v: Version | null): v is Version & { id: string } {
+  return !!v && typeof v.id === 'string' && v.id !== __BUILD_ID__ && typeof v.time === 'string' && v.time > __BUILD_TIME__;
+}
+
+async function fetchVersion(): Promise<Version | null> {
   try {
     const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
     return res.ok ? await res.json() : null;
@@ -128,7 +139,9 @@ export function watchForUpdates(inRun: () => boolean, leaveRun: () => void) {
   let candidateSince = 0;
   const check = async () => {
     const v = await fetchVersion();
-    if (!v || typeof v.id !== 'string' || v.id === __BUILD_ID__ || v.id === latest) return;
+    // The live build is this one after all: take down any prompt.
+    if (v?.id === __BUILD_ID__) { latest = null; candidate = null; return; }
+    if (!newer(v) || v.id === latest) return;
     // Wait for the deploy to settle, then only offer it once a reload would really
     // load it, so the button never shows for a build we can't get yet.
     if (v.id !== candidate) { candidate = v.id; candidateSince = Date.now(); }
@@ -147,7 +160,7 @@ export function watchForUpdates(inRun: () => boolean, leaveRun: () => void) {
   if (tries > 0) {
     fetchVersion().then((v) => {
       const id = typeof v?.id === 'string' ? v.id : null;
-      if (id && id !== __BUILD_ID__ && tries < MAX_TRIES) { reloadTo(id, tries + 1); return; }
+      if (newer(v) && tries < MAX_TRIES) { reloadTo(v.id, tries + 1); return; }
       try { sessionStorage.removeItem(TRIES_KEY); } catch { /* storage unavailable */ }
       if (id === __BUILD_ID__) {
         if (!fresh) openNews();

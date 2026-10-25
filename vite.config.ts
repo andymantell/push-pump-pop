@@ -50,7 +50,7 @@ function versionFile(): Plugin {
     // Lets a running game check that a fresh index.html really is the new build.
     transformIndexHtml: (html) => html.replace('<head>', `<head>\n  <meta name="build-id" content="${BUILD_ID}" />`),
     generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ id: BUILD_ID, changelog: CHANGELOG }) });
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ id: BUILD_ID, time: BUILD_TIME, changelog: CHANGELOG }) });
     },
   };
 }
