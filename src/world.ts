@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { addLighting, Lamp, setRim } from './lighting';
-import { Track, DX, LOOP_SHIFT } from './track';
+import { Track, Pit, DX, LOOP_SHIFT } from './track';
 import { Biome, Particles, Surface } from './biomes';
 import { toon } from './toon';
 import { LANDMARKS, TRACK_LANDMARKS } from './landmarks';
@@ -902,7 +902,11 @@ export class World {
 
   private buildPitFills() {
     const b = this.biome;
-    if (b.pitFill === 'dark') return;
+    for (const p of this.track.pits) this.buildGapWall(p);
+    if (b.pitFill === 'dark') {
+      for (const p of this.track.pits) this.buildGapFloor(p);
+      return;
+    }
     for (const p of this.track.pits) {
       const topY = Math.min(p.lipY, p.landY) - 1.3;
       const h = topY - p.floorY;
@@ -923,9 +927,134 @@ export class World {
     }
   }
 
+  /**
+   * The far side of a gap: a wall behind the track, in the biome's own rock, brick or ice,
+   * going darker as it drops away. Without it you look straight through the gap at the sky.
+   */
+  private buildGapWall(p: Pit) {
+    const z = -TRACK_W / 2 + 0.04;
+    const x0 = p.x0 - 0.1, x1 = p.x1 + 0.1;
+    const n = Math.max(2, Math.ceil((x1 - x0) / 0.5) + 1);
+    const bottom = p.floorY - 2;
+    const pos = new Float32Array(n * 2 * 3), uv = new Float32Array(n * 2 * 2), col = new Float32Array(n * 2 * 3);
+    // Ice and lava light the deep from below; everything else sinks into shadow.
+    const deep = new THREE.Color(this.biome.top.kind === 'snow' || this.biome.top.kind === 'ice' ? 0x2a5aa8
+      : this.biome.pitFill === 'lava' ? 0xc0461a : 0x302a3a);
+    const c = new THREE.Color();
+    const idx: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const x = x0 + (x1 - x0) * i / (n - 1);
+      const top = Math.max(this.groundY(x, z), p.lipY + (p.landY - p.lipY) * Math.max(0, Math.min(1, (x - p.x0) / (p.x1 - p.x0)))) + 0.02;
+      pos.set([x, top, z, x, bottom, z], i * 6);
+      uv.set([x / 4, top / 4, x / 4, bottom / 4], i * 4);
+      if (i < n - 1) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 2, i * 2 + 1, i * 2 + 3);
+    }
+    // Shade by depth rather than per vertex pair, so the top stays in the light.
+    for (let i = 0; i < n * 2; i++) {
+      const y = pos[i * 3 + 1], top = pos[(i - (i % 2)) * 3 + 1];
+      const t = Math.min(1, Math.max(0, (top - y) / 7));
+      c.set(0xffffff).lerp(deep, Math.sqrt(t));
+      col.set([c.r, c.g, c.b], i * 3);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const mat = toon(0xffffff, { map: (this.frontMat as THREE.MeshToonMaterial).map, vertexColors: true });
+    mat.userData.outlineParameters = { visible: false };
+    const wall = new THREE.Mesh(g, mat);
+    wall.receiveShadow = true;
+    this.group.add(wall);
+  }
+
+  /** Something to see at the bottom of a dry gap: a creek, an alley, a crevasse or a gully. */
+  private buildGapFloor(p: Pit) {
+    const w = p.x1 - p.x0, cx = (p.x0 + p.x1) / 2, y = p.floorY;
+    const r = rng(hashString(`${p.x0}`));
+    const add = (m: THREE.Mesh, outline = false) => {
+      if (!outline) for (const mm of ([] as THREE.Material[]).concat(m.material)) mm.userData.outlineParameters = { visible: false };
+      this.group.add(m);
+      return m;
+    };
+    const slab = (color: number, h: number, map?: THREE.Material) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, h, TRACK_W), map ?? toon(color));
+      m.position.set(cx, y + h / 2, 0);
+      return add(m);
+    };
+    const rock = (x: number, z: number, s: number, color: number) => {
+      const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), toon(color));
+      m.position.set(x, y + s * 0.5, z);
+      m.rotation.set(r() * 3, r() * 3, r() * 3);
+      m.scale.y = 0.7;
+      return add(m, true);
+    };
+    switch (this.biome.id) {
+      case 'park': {
+        // A little creek between grassy banks.
+        slab(0x5aa64a, 0.4);
+        const water = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.08, 1.4), this.waterTop(w, false, 0x2aa6d9));
+        water.position.set(cx, y + 0.42, 0.1);
+        add(water);
+        for (let x = p.x0 + 0.4; x < p.x1; x += 0.9 + r()) rock(x, r() > 0.5 ? 0.95 : -0.8, 0.15 + r() * 0.15, 0x9a958c);
+        break;
+      }
+      case 'rooftops': {
+        // An alley far below: tarmac, a yellow line and the odd bin.
+        slab(0x3a3a42, 0.2);
+        for (let x = p.x0 + 0.3; x < p.x1 - 0.5; x += 1.6) {
+          const dash = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.02, 0.12), toon(0xf2c84a));
+          dash.position.set(x + 0.4, y + 0.21, 0.3);
+          add(dash);
+        }
+        const bin = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.9, 0.7), toon(0x3a7a4a));
+        bin.position.set(p.x0 + w * (0.3 + r() * 0.4), y + 0.65, -0.9);
+        add(bin, true);
+        const lid = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.08, 0.75), toon(0x2a5a36));
+        lid.position.set(bin.position.x, y + 1.14, -0.9);
+        add(lid, true);
+        if (this.biome.lights) this.lamps.push({ x: cx, y: y + 2, z: -0.6, radius: 4 + w, color: new THREE.Color(0xffc870), intensity: 6 });
+        break;
+      }
+      case 'snow': {
+        // A blue crevasse with icicles hanging off both lips.
+        const ice = new THREE.MeshBasicMaterial({ color: 0x5aa0e0 });
+        slab(0, 0.3, ice);
+        const icicle = toon(0xdff0ff);
+        for (const [x0, top, dir] of [[p.x0, p.lipY, 1], [p.x1, p.landY, -1]] as const) {
+          for (let z = -1.2; z <= 1.2; z += 0.4 + r() * 0.3) {
+            const len = 0.4 + r() * 0.9;
+            const m = new THREE.Mesh(new THREE.ConeGeometry(0.07 + r() * 0.05, len, 6), icicle);
+            m.rotation.x = Math.PI;
+            m.position.set(x0 + dir * 0.06, top - 0.15 - len / 2, z);
+            add(m);
+          }
+        }
+        break;
+      }
+      case 'desert': {
+        // A dry gully: pale sand, rocks and a cactus clinging on.
+        slab(0xdca868, 0.5);
+        for (let x = p.x0 + 0.5; x < p.x1; x += 0.8 + r() * 1.2) rock(x, -1.1 + r() * 2.2, 0.15 + r() * 0.25, 0xa85a34);
+        const cactus = this.models.cactus;
+        if (cactus && w > 3) {
+          const c = cactus.clone();
+          c.position.set(p.x0 + w * (0.3 + r() * 0.4), y + 0.5, -0.8);
+          c.scale.multiplyScalar(0.6);
+          this.group.add(c);
+        }
+        break;
+      }
+      default:
+        slab(0x6a6258, 0.3);
+        for (let x = p.x0 + 0.5; x < p.x1; x += 1 + r()) rock(x, -1 + r() * 2, 0.2 + r() * 0.2, 0x8a8278);
+    }
+  }
+
   /** Rippled water with flecks of foam (or lava with glowing swirls), rather than a flat sheet. */
-  private waterTop(w: number, lava = false): THREE.Material {
-    const fill = new THREE.Color(this.biome.pitFillColor ?? 0x2aa6d9);
+  private waterTop(w: number, lava = false, color = this.biome.pitFillColor ?? 0x2aa6d9): THREE.Material {
+    const fill = new THREE.Color(color);
     // A dark fill is a river of chocolate: glossy swirls, not foam.
     const choc = !lava && fill.getHSL({ h: 0, s: 0, l: 0 }, THREE.SRGBColorSpace).l < 0.3;
     const base = lava ? new THREE.Color(0xff8a20) : choc ? fill.clone().lerp(new THREE.Color(0xa05a2a), 0.4) : fill.lerp(new THREE.Color(0xffffff), 0.35);
