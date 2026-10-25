@@ -16,6 +16,7 @@ import { BIOMES, BIOME_ORDER } from './biomes';
 import { biomeFor } from './moods';
 import { Track } from './track';
 import { watchForUpdates } from './version';
+import { registerOffline } from './pwa';
 import { Replays, Player, Clip, HudSnap, MAX_CLIPS } from './replay';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -432,6 +433,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 watchForUpdates(() => state === 'playing' || replayFrom === 'playing', openSelect);
+registerOffline();
 
 // Camera follows from the side, pulling back and looking ahead with speed.
 const camPos = new THREE.Vector3(track.startX + 3, track.height(track.startX) + 2, 12);

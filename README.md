@@ -53,6 +53,15 @@ prompt lists the lines the running copy doesn't have, and after an update the Wh
 New screen opens with the new updates marked. Don't reword old lines: a reworded line
 moves to the commit that changed it and shows up as new.
 
+### Home screen app
+
+The game installs to the home screen (Android: Install app; iPad: Share, then Add to
+Home Screen) via `public/manifest.webmanifest`, `public/sw.js` and the
+apple-mobile-web-app tags in `index.html`. On Android it opens fullscreen and stays
+landscape; iPadOS ignores the orientation, so use the iPad's rotation lock. The service
+worker fetches the page and models fresh and only falls back to its cache offline, so
+installed copies update like the website does. Icons are rendered from `art/icon/icon.svg`.
+
 ## Tracks and biomes
 
 - `src/biomes.ts`: look and feel of each biome (sky, surfaces, scenery, friction).

@@ -1,0 +1,61 @@
+// Lets the game install to the home screen and start without a connection.
+// Fresh first: the page and unhashed files (models, icons) come from the network
+// when it's there, so updates land exactly as they do in a browser tab, with the
+// cache only as an offline fallback. Hashed bundles never change, so they're
+// served from the cache. The update prompt (src/version.ts) unregisters this
+// worker and clears the cache before it reloads onto a new build.
+const CACHE = 'push-pump-pop';
+
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+  const url = new URL(req.url);
+  // Version checks (version.json, the index.html probe) always ask the network.
+  if (req.method !== 'GET' || url.origin !== location.origin || req.cache === 'no-store') return;
+  if (req.mode === 'navigate') e.respondWith(page(req));
+  else if (url.pathname.includes('/assets/')) e.respondWith(cached(req));
+  else e.respondWith(fresh(req));
+});
+
+/** The page, from the network if we can, keeping only the bundles it uses. */
+async function page(req) {
+  const cache = await caches.open(CACHE);
+  const home = new URL('./', self.registration.scope).href;
+  try {
+    const res = await fetch(req);
+    if (res.ok) {
+      const html = await res.clone().text();
+      await cache.put(home, res.clone());
+      const used = new Set(html.match(/assets\/[^"'\s)]+/g) ?? []);
+      for (const key of await cache.keys()) {
+        const m = key.url.match(/assets\/[^?#]+/);
+        if (m && !used.has(m[0])) await cache.delete(key);
+      }
+    }
+    return res;
+  } catch (err) {
+    return (await cache.match(home)) ?? Promise.reject(err);
+  }
+}
+
+async function cached(req) {
+  const cache = await caches.open(CACHE);
+  const hit = await cache.match(req);
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok) await cache.put(req, res.clone());
+  return res;
+}
+
+async function fresh(req) {
+  const cache = await caches.open(CACHE);
+  try {
+    const res = await fetch(req);
+    if (res.ok) await cache.put(req, res.clone());
+    return res;
+  } catch (err) {
+    return (await cache.match(req, { ignoreSearch: true })) ?? Promise.reject(err);
+  }
+}
