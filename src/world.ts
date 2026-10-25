@@ -961,15 +961,37 @@ export class World {
       }
       case 'skyline': {
         const winTex = surfaceTexture({ kind: 'windows', base: '#3a2f5c', seam: '#2a2048', accent: '#ffcf70' });
+        // Every tower stands on one street level well below the roofs, which runs out to the
+        // horizon, so no building ever shows its base hanging in the sky.
+        const street = Math.min(tr.minY - 45, this.groundY(0, -80));
+        const road = new THREE.Mesh(new THREE.PlaneGeometry(len + 900, 600), new THREE.MeshBasicMaterial({ color: new THREE.Color(b.farColors[2]).lerp(fog, 0.25) }));
+        road.rotation.x = -Math.PI / 2;
+        road.position.set(len / 2, street, -320);
+        far.add(road);
         for (let x = -60; x < len + 120; x += 7 + r() * 12) {
           const h = 15 + r() * 45, w = 6 + r() * 10, d = 8 + r() * 10;
           const z = -40 - r() * 80;
+          const top = tr.minY - 35 + h * 1.5 + (z < -80 ? 20 : 10);
+          const tall = top - street;
           const tex = winTex.clone();
-          tex.repeat.set(w / 8, h / 8);
+          tex.repeat.set(w / 8, tall / 8);
           tex.needsUpdate = true;
           const m = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(b.farColors[Math.floor(r() * 3)]).lerp(new THREE.Color(0xffffff), 0.6) });
-          const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-          box.position.set(x, tr.minY - 35 + h + (z < -80 ? 20 : 10), z);
+          const box = new THREE.Mesh(new THREE.BoxGeometry(w, tall, d), m);
+          box.position.set(x, street + tall / 2, z);
+          far.add(box);
+        }
+        // Packed blocks further back, so the street below reads as more city rather than open ground.
+        // Their own random stream, so the props placed after this stay where they were.
+        const r2 = rng(hashString(`blocks-${len}`));
+        for (let x = -120; x < len + 200; x += 10 + r2() * 10) {
+          const w = 10 + r2() * 14, d = 12 + r2() * 14, z = -135 - r2() * 110;
+          const tall = 20 + r2() * 40 + (tr.minY - 35 - street);
+          const tex = winTex.clone();
+          tex.repeat.set(w / 8, tall / 8);
+          tex.needsUpdate = true;
+          const box = new THREE.Mesh(new THREE.BoxGeometry(w, tall, d), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(b.farColors[Math.floor(r2() * 3)]).lerp(fog, 0.35) }));
+          box.position.set(x, street + tall / 2, z);
           far.add(box);
         }
         break;
