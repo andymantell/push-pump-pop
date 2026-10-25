@@ -26,6 +26,8 @@ Tilt is measured from however the device was held when the run started. On iPhon
 
 Land a combo worth 1,500 points or more and a **REPLAY** button pops up for a few seconds: tap it to watch the combo back in slow motion (the run, and the half-pipe timer, wait for you). Drag along the bar to scrub, tap the picture or the play button to pause, and pick 1×, ½× or ¼× speed. The results screen keeps your five best combos from the run to watch. Keyboard: R to open, Space to pause, left/right arrows to step, up/down for speed, Escape to close.
 
+Sound starts on your first tap (iPhone and iPad need one). Every surface sounds different, and each world has its own ambience. Turn sound off with the SOUND button on the title screen, or M on a keyboard. On iPhone and iPad the ring/silent switch or the mute setting silences it too. All sound is synthesised in `src/audio.ts`; credits and the rules for adding recorded sounds are in `SOUNDS.md`.
+
 You get three lives per track. Each bail or fall into a gap costs one, and losing the third means starting the track again: the game freezes behind the Out of Lives screen and ignores taps, swipes and tilt until you do. Half-pipe bonus levels are timed and have no lives.
 
 ## Development

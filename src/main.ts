@@ -18,6 +18,7 @@ import { Track } from './track';
 import { watchForUpdates } from './version';
 import { registerOffline } from './pwa';
 import { Replays, Player, Clip, HudSnap, MAX_CLIPS } from './replay';
+import { Sound } from './audio';
 
 const $ = (id: string) => document.getElementById(id)!;
 const progress = new Progress(TRACKS, BIOME_ORDER, (() => { try { return localStorage; } catch { return null; } })());
@@ -48,6 +49,12 @@ let world = new World(track, biomeFor(BIOMES[def.biome], def.id), assets.props, 
 world.applyEnvironment(scene, hemi, sun);
 scene.add(world.group);
 
+// Sound starts on the first tap: see audio.ts.
+const sound = new Sound();
+sound.listen();
+sound.setScene(world.biome, false);
+document.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('button')) sound.click(); });
+
 const score = new Score();
 const timeLabel = document.querySelector('#hud .time small') as HTMLElement;
 const hud = {
@@ -77,17 +84,20 @@ function showCombo(v: ComboView | null, cls = '') {
 score.onBank = (pts, v) => {
   chal.bank(pts);
   showCombo(v, 'banked'); comboHold = 1.1;
+  if (pts >= 300) sound.bank(v.mult);
   if (v.mult > 1) popup(`+${fmt(pts)}`, 'big');
   replays.bank(pts, v.names, def.kind === 'pipe');
 };
 score.onLost = (v) => {
-  chal.lost(); showCombo(v, 'lost'); comboHold = 1.1; replays.lost(); };
+  chal.lost(); showCombo(v, 'lost'); comboHold = 1.1; replays.lost(); sound.lost(); };
 
 const rider = new Rider(track, {
-  trick(t: Trick) { chal.trick(t); replays.trick(t.duration, rider.grounded); score.addTrick(t); if (t.axis !== 'grab' && t.axis !== 'manual') popup(t.name); },
-  grab(name) { popup(name + '!'); },
-  manual(name) { popup(name + '!'); },
+  trick(t: Trick) { sound.trick(t); chal.trick(t); replays.trick(t.duration, rider.grounded); score.addTrick(t); if (t.axis !== 'grab' && t.axis !== 'manual') popup(t.name); },
+  grab(name) { sound.grab(); popup(name + '!'); },
+  manual(name) { sound.manual(); popup(name + '!'); },
+  loop(done) { if (!done) sound.enterLoop(); },
   land({ airTime, smooth, peakY }) {
+    sound.land(airTime);
     chal.land(rider.x);
     if (def.kind === 'pipe') {
       const h = peakY - track.maxY;
@@ -97,9 +107,10 @@ const rider = new Rider(track, {
     } else if (airTime > 0.7) score.addBonus(`Air ${airTime.toFixed(1)}s`, Math.round(airTime * 120));
     if (smooth) { score.addBonus('Smooth', 75); popup('Smooth landing', 'good'); }
   },
-  bail() { chal.bail(); score.lose(); popup('BAIL!', 'bad'); loseLife(); },
-  pump(good) { chal.pump(good); if (good) popup('Pump!', 'good'); },
+  bail() { sound.bail(); chal.bail(); score.lose(); popup('BAIL!', 'bad'); loseLife(); },
+  pump(good) { sound.pump(good); chal.pump(good); if (good) popup('Pump!', 'good'); },
   fall() {
+    sound.fall(rider.loopFall ? 'loop' : world.biome.pitFill);
     chal.fall(rider.x); score.lose(); popup(rider.loopFall ? 'WIPEOUT!' : world.biome.fallText, 'bad');
     // On a mega ramp a fall just ends that drop.
     if (def.kind !== 'mega') { respawnTimer = 1.2; loseLife(); }
@@ -115,6 +126,7 @@ function newChallenges() {
   chal.onDone = (i) => {
     progress.markChallenge(def, i);
     popup('CHALLENGE!', 'challenge');
+    sound.challenge();
     drawChallenges(i);
   };
   drawChallenges();
@@ -160,7 +172,8 @@ function loseLife() {
   if (state !== 'playing' || finishTimer > 0) return;
   const last = lives.lose();
   drawLives(true);
-  if (last) { rider.setLean(0); popup('OUT OF LIVES', 'big'); }
+  sound.lifeLost();
+  if (last) { rider.setLean(0); popup('OUT OF LIVES', 'big'); sound.outOfLives(); }
 }
 
 function loadTrack(d: TrackDef) {
@@ -179,6 +192,7 @@ function loadTrack(d: TrackDef) {
   // Mega ramps are smooth and fast.
   rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow };
   skater.setSnow(snow);
+  sound.setScene(world.biome, snow);
   rider.reset();
   // Half pipes start up on the coping: the first tap drops you in.
   if (isPipe || isMega) rider.perch();
@@ -199,6 +213,7 @@ replays.onClip = (c) => {
   chipClip = c;
   chipTimer = 5;
   chip.classList.remove('hidden');
+  sound.blip();
 };
 function hideChip() { chipTimer = 0; chipClip = null; chip.classList.add('hidden'); }
 /** Where the replay was opened from, to go back to. */
@@ -367,7 +382,7 @@ function finish(out = false) {
   const total = score.total;
   const wasOpen = TRACKS.filter((t) => progress.unlocked(t)).length;
   // Running out of lives doesn't count as finishing, or towards your best.
-  if (!out) chal.finish();
+  if (!out) { chal.finish(); sound.finish(); }
   if (!out) progress.record(def.id, total);
   const opened = TRACKS.filter((t) => progress.unlocked(t)).length - wasOpen;
   const next = out ? null : nextTrack();
@@ -407,6 +422,10 @@ function updateWatch() {
 $('play').addEventListener('click', openSelect);
 $('guidebtn').addEventListener('click', () => show('guide'));
 $('guideback').addEventListener('click', () => show('title'));
+const soundBtn = $('soundbtn');
+const drawSound = () => { soundBtn.textContent = sound.enabled ? 'SOUND: ON' : 'SOUND: OFF'; };
+drawSound();
+soundBtn.addEventListener('click', () => { sound.enabled = !sound.enabled; drawSound(); });
 $('again').addEventListener('click', () => start(def));
 $('next').addEventListener('click', () => { const n = nextTrack(); if (n) showCard(n); });
 $('go').addEventListener('click', () => { if (cardDef) start(cardDef); });
@@ -427,6 +446,7 @@ $('back').addEventListener('click', () => { show('title'); state = 'title'; });
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' && (state === 'playing' && chipClip || state === 'finished')) { replays.flush(); watchReplay(chipClip ?? replays.clips[0]); }
   else if (e.code === 'Escape' && state === 'playing') openSelect();
+  else if (e.code === 'KeyM') { sound.enabled = !sound.enabled; drawSound(); toast(sound.enabled ? 'Sound on' : 'Sound off'); }
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'title') { e.preventDefault(); openSelect(); }
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'finished') { e.preventDefault(); start(def); }
   else if ((e.code === 'Enter' || e.code === 'Space') && !$('card').classList.contains('hidden') && cardDef) { e.preventDefault(); start(cardDef); }
@@ -507,16 +527,19 @@ function frame(now: number) {
     // Replays pose the skater and camera themselves; the run waits, timer and all.
     const r = player.update(dt);
     world.update(r.dt, r.follow.x, r.follow.y);
+    sound.update(dt, rider, false, 1);
     effect.render(scene, camera);
     requestAnimationFrame(frame);
     return;
   }
 
+  // Whether the rider moved this frame, so the board only makes a sound when it does.
+  let moved = false;
   if (resumeTimer > 0) resumeTimer -= dt;
   else if (state === 'playing') {
     // The half pipe clock starts once you drop in.
     if (!rider.perched) time += dt;
-    if (lives.simulate(rider.bailing || rider.falling)) { rider.update(dt); chal.tick(dt, rider); }
+    if (lives.simulate(rider.bailing || rider.falling)) { rider.update(dt); chal.tick(dt, rider); moved = true; }
     if (lives.out) {
       // Let the last crash play out, then show the Out of Lives screen.
       if (lives.tick(dt)) finish(true);
@@ -538,7 +561,7 @@ function frame(now: number) {
       if (over) {
         score.bank();
         chal.newDrop();
-        if (mega.next(rider)) popup(`DROP ${mega.drop}!`, 'big');
+        if (mega.next(rider)) { popup(`DROP ${mega.drop}!`, 'big'); sound.blip(); }
         else finish();
       }
     } else if (rider.x >= track.finishX && finishTimer === 0 && !lives.out) finishTimer = 0.001;
@@ -549,7 +572,9 @@ function frame(now: number) {
   } else if (state === 'finished' && !lives.out) {
     // Roll on past the finish line; after running out of lives everything stays frozen.
     rider.update(dt);
+    moved = true;
   }
+  sound.update(dt, rider, moved || (state === 'playing' && rider.perched), state === 'playing' || state === 'finished' ? 1 : 0.5);
 
   skater.update(dt, rider, (x) => track.height(x), (x) => track.slope(x));
   updateCamera(dt);
@@ -597,6 +622,6 @@ requestAnimationFrame(frame);
 
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
-  rider, score, skater, replays, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
+  rider, score, skater, replays, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };
