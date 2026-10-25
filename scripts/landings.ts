@@ -92,7 +92,7 @@ export function ride(trackId: string, pumpRate: number, ollie: boolean, seed: nu
       if (i < 0) loopFell = true;
     },
   });
-  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isMega ? 22 : biome.maxSpeed, mega: isMega, snow: def.biome === 'snow' };
+  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isMega ? 22 : biome.maxSpeed, mega: isMega, snow: def.biome === 'snow', mountain: def.biome === 'farm' };
   if (isMega) r.perch();
   const queue: { at: number; act: 'pump' | 'up' }[] = [];
   let lastPump = -1, lastLip = -1;
@@ -104,7 +104,7 @@ export function ride(trackId: string, pumpRate: number, ollie: boolean, seed: nu
     // Before any input: an ollie leaves the ground as it lands.
     const wasGrounded = r.grounded && !r.grind;
     const up = track.slope(r.x) * (Math.sign(r.v) || 1);
-    const x0 = r.x, v0 = r.speed;
+    const x0 = r.x, v0 = r.speed, bounces = r.bounces;
     for (let i = queue.length - 1; i >= 0; i--) {
       if (queue[i].at > t) continue;
       const { act } = queue.splice(i, 1)[0];
@@ -125,7 +125,8 @@ export function ride(trackId: string, pumpRate: number, ollie: boolean, seed: nu
     t += DT;
     if (gaps && !r.falling) track.pits.forEach((p, i) => { if (gaps[i] === undefined && r.x > p.x1 + 0.5) { gaps[i] = true; if (loopFell) late?.push(i); } });
     if (wasGrounded && !r.grounded && !r.grind && !r.loop && !r.falling) {
-      air = { from: x0, speed: v0, up, ollie: ollied, inPipe: r.inPipe };
+      // A jelly pad throws you like a ramp does.
+      air = { from: x0, speed: v0, up: r.bounces !== bounces ? 1 : up, ollie: ollied, inPipe: r.inPipe };
     }
     if (r.grounded) ollied = false;
     if (air && r.falling) air = null;

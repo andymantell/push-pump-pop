@@ -32,6 +32,8 @@ const GRIND_CATCH = 0.3;
 /** Rolling friction on the loop is a bit higher: it's a tight curve. */
 const LOOP_FRICTION = 0.3;
 const LOOP_POINTS = 1000;
+/** Pumping as you hit a jelly pad bounces you this much higher. */
+const PUMP_BOUNCE = 1.25;
 /** Mud drags you back: a steady pull plus more the faster you go. */
 const MUD_DRAG = 1.2;
 const MUD_DRAG_PER_SPEED = 0.16;
@@ -89,7 +91,7 @@ const SWIPE_GRIND: Record<Exclude<Swipe, 'up'>, GrindName> = {
 /** The fancier grinds are worth more than a plain 50-50. */
 const GRIND_STYLE_POINTS: Record<GrindName, number> = { '50-50': 1, 'Boardslide': 1.2, '5-0': 1.3, 'Nosegrind': 1.4 };
 
-/** Flip-side swipes on a snowboard, where flipping the board out from under you can't happen. */
+/** Flip-side swipes on a snowboard or mountain board, where flipping the board out from under you can't happen. */
 const SWIPE_TRICK_SNOW: Record<Swipe, BoardTrick> = {
   up: 'Ollie',
   left: 'BS Shifty',
@@ -151,6 +153,8 @@ export interface RiderOptions {
   pipe?: boolean;
   /** Snowboard: strapped-in tricks and presses instead of flips and manuals. */
   snow?: boolean;
+  /** Mountain board: feet bound in, so the snowboard's swipe tricks instead of flips. */
+  mountain?: boolean;
   /** Mega ramp: no pushing, and its quarter pipe rides like a half pipe wall. */
   mega?: boolean;
 }
@@ -178,6 +182,8 @@ export class Rider {
   ollied = false;
   /** Counts pops off the ground or a rail, and the height popped from, for the ollie animation. */
   pops = 0;
+  /** Counts bounces off jelly pads, for the boing. */
+  bounces = 0;
   popY = 0;
   tricksThisAir = 0;
   /** Trick in progress: the board is spinning. */
@@ -330,7 +336,7 @@ export class Rider {
       this.grind = { rail, t: 0, style };
       return;
     }
-    const name = (this.opts.snow ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir];
+    const name = (this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir];
     if (!name) return;
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) {
@@ -676,6 +682,18 @@ export class Rider {
         if (want) { this.manual = want; this.manualT = 0; this.ev.manual?.(want); }
       }
       if (this.manual) this.manualT += dt;
+      // A jelly pad: boing.
+      const pad = !this.bailing && !this.inPipe ? tr.bouncerAt(this.x) : null;
+      if (pad && Math.abs(this.v) > 1) {
+        this.vx = this.v;
+        this.vy = pad.lift * (this.pumpTimer > 0 ? PUMP_BOUNCE : 1);
+        this.popY = this.y;
+        this.bounces++;
+        this.y += 0.02;
+        this.leaveGround();
+        this.ollied = false;
+        return;
+      }
       const th = Math.atan(k);
       const sin = Math.sin(th), cos = Math.cos(th);
       const dir = Math.sign(this.v) || 1;

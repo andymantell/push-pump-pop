@@ -66,6 +66,7 @@ scene.add(world.group);
 // Sound starts on the first tap: see audio.ts.
 /** The world the level select shows; null picks the furthest one you've reached. */
 let selWorld: number | null = null;
+let lastBounces = 0;
 const sound = new Sound();
 sound.listen();
 sound.setScene(world.biome, false);
@@ -206,10 +207,12 @@ function loadTrack(d: TrackDef) {
   rider.track = track;
   const isPipe = d.kind === 'pipe', isMega = d.kind === 'mega';
   const snow = d.biome === 'snow';
+  // Bound in on a mountain board down the farm's dirt tracks: grabs instead of flips.
+  const mountain = d.biome === 'farm';
   // Mega ramps are smooth and fast.
-  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow };
-  skater.setSnow(snow);
-  sound.setScene(world.biome, snow);
+  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow, mountain };
+  skater.setBoard(snow ? 'snow' : mountain ? 'mountain' : 'skate');
+  sound.setScene(world.biome, snow, snow || mountain);
   rider.reset();
   // Half pipes start up on the coping: the first tap drops you in.
   if (isPipe || isMega) rider.perch();
@@ -621,6 +624,7 @@ function frame(now: number) {
   // The camera itself, so scenery tied to the sky also follows a camera set by hand.
   world.update(dt, camera.position.x, camera.position.y - 1.2);
   world.mud(state === 'playing' ? dt : 0, rider.x, rider.y, rider.v, rider.grounded);
+  if (rider.bounces !== lastBounces) { lastBounces = rider.bounces; world.bounce(rider.x); }
   lampLights.update(camera.position.x + 4);
   if (state === 'playing' || state === 'finished') replays.record(dt, camPos, rider.grounded, comboSnap);
   if (chipTimer > 0) {

@@ -177,6 +177,33 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
         }
         break;
       }
+      case 'biscuit': {
+        // A crunchy biscuit: docking holes in rows, a sugar sparkle, a darker baked edge.
+        speckle(c, 700, 0.05, 0.06);
+        for (let y = 32; y < 256; y += 64) for (let x = 32; x < 256; x += 64) {
+          c.fillStyle = s.seam;
+          c.beginPath(); c.arc(x + (y % 128 ? 32 : 0), y, 6, 0, Math.PI * 2); c.fill();
+        }
+        c.fillStyle = s.accent ?? '#fff';
+        for (let i = 0; i < 90; i++) c.fillRect(r() * 256, r() * 256, 2, 2);
+        c.fillStyle = 'rgba(150,90,30,0.35)';
+        c.fillRect(0, 0, 256, 10);
+        c.fillRect(0, 246, 256, 10);
+        break;
+      }
+      case 'cake': {
+        // Layer cake: sponge, cream and jam stripes, with crumbs.
+        for (let y = 0; y < 256; y += 64) {
+          c.fillStyle = s.accent ?? '#fff';
+          c.fillRect(0, y + 40, 256, 10);
+          c.fillStyle = s.seam;
+          c.fillRect(0, y + 50, 256, 8);
+        }
+        speckle(c, 800, 0.06, 0.05);
+        c.fillStyle = 'rgba(200,140,70,0.5)';
+        for (let i = 0; i < 70; i++) { c.beginPath(); c.arc(r() * 256, r() * 256, 1.5 + r() * 2, 0, Math.PI * 2); c.fill(); }
+        break;
+      }
       case 'windows': {
         c.fillStyle = s.seam;
         for (let y = 0; y < 256; y += 64) c.fillRect(0, y, 256, 6);
@@ -236,6 +263,8 @@ interface ParticleLook {
   /** Drift about in all directions (fireflies). */
   wander?: number;
   blink?: boolean;
+  /** Each particle picks one of these colours (sprinkles). */
+  colors?: number[];
 }
 
 const PARTICLES: Record<Particles, ParticleLook> = {
@@ -247,6 +276,7 @@ const PARTICLES: Record<Particles, ParticleLook> = {
   petals: { n: 260, color: 0xf8b8d0, size: 0.13, vx: 0.8, vy: -0.8, sway: 1.4, swaySpeed: 2 },
   leaves: { n: 260, color: 0xe07a24, size: 0.16, vx: 1.0, vy: -1.0, sway: 1.6, swaySpeed: 1.6 },
   dust: { n: 1300, color: 0xe0c090, size: 0.08, vx: 7, vy: -0.3, sway: 0.4, opacity: 0.7 },
+  sprinkles: { n: 500, color: 0xffffff, size: 0.12, vx: 0.3, vy: -1.4, sway: 0.6, colors: [0xff5a9a, 0x5ad0ff, 0xffe04a, 0x7aea6a, 0xb07aff] },
   fireflies: { n: 220, color: 0xfff27a, size: 0.22, vx: 0, vy: 0, sway: 0, wander: 0.8, blink: true },
 };
 
@@ -309,6 +339,12 @@ function blobMaterial(): THREE.MeshBasicMaterial {
 }
 
 /** Cast and catch the sun's shadow (sprites and glowing bits stay out of it). */
+function group3(...parts: THREE.Object3D[]) {
+  const g = new THREE.Group();
+  g.add(...parts);
+  return g;
+}
+
 function shadows(o: THREE.Object3D): THREE.Object3D {
   o.traverse((c) => {
     const mesh = c as THREE.Mesh;
@@ -340,6 +376,7 @@ export class World {
     this.lightUp();
     this.buildTrack();
     this.buildMud();
+    this.buildBouncers();
     this.buildPitFills();
     this.buildStairs();
     this.buildRails();
@@ -576,6 +613,52 @@ export class World {
   }
   private splat: { pts: THREE.Points; vel: Float32Array; life: Float32Array; next: number; carry: number } | null = null;
 
+  /** Jelly pads: wobbly translucent blocks that squash when you bounce. */
+  private jellies: { mesh: THREE.Object3D; x0: number; x1: number; t: number }[] = [];
+  private buildBouncers() {
+    const colors = [0xff4a8a, 0x4ad86a, 0xffa020, 0x8a5aff];
+    this.track.bouncers.forEach((pad, i) => {
+      const len = pad.x1 - pad.x0, y = this.track.height(pad.x0);
+      const c = colors[i % colors.length];
+      // A jelly block set into the path: its top bulges just above the ground and its
+      // front shows down the side of the track like a slab of jelly.
+      const H = 0.6;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(len, H, TRACK_W - 0.3, 8, 3, 4), toon(c, { transparent: true, opacity: 0.85 }));
+      // Round the top edges off like a jelly sweet.
+      const p = body.geometry.getAttribute('position') as THREE.BufferAttribute;
+      for (let k = 0; k < p.count; k++) {
+        if (p.getY(k) <= 0) continue;
+        const ex = Math.abs(p.getX(k)) / (len / 2), ez = Math.abs(p.getZ(k)) / ((TRACK_W - 0.3) / 2);
+        p.setY(k, p.getY(k) + 0.06 * (1 - ex * ex) - 0.1 * ez * ez);
+      }
+      body.geometry.computeVertexNormals();
+      body.position.y = 0.12 - H / 2;
+      const shine = new THREE.Mesh(new THREE.BoxGeometry(len * 0.6, 0.02, 0.18), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }));
+      shine.position.set(-len * 0.1, 0.19, 0.5);
+      shine.userData.outlineParameters = { visible: false };
+      // A highlight down the front face, and a dusting of sugar on top.
+      const gloss = new THREE.Mesh(new THREE.PlaneGeometry(len * 0.7, 0.08), shine.material);
+      gloss.position.set(0, 0.0, (TRACK_W - 0.3) / 2 + 0.01);
+      const sugar = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.05), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      sugar.userData.outlineParameters = { visible: false };
+      const grains = new THREE.InstancedMesh(sugar.geometry, sugar.material, 40);
+      const m4 = new THREE.Matrix4();
+      for (let k = 0; k < 40; k++) {
+        const fx = ((k * 0.618) % 1) - 0.5, fz = ((k * 0.381 + 0.2) % 1) - 0.5;
+        grains.setMatrixAt(k, m4.makeTranslation(fx * len * 0.85, 0.16 + 0.04 * (1 - 4 * fx * fx), fz * (TRACK_W - 0.8)));
+      }
+      grains.userData.outlineParameters = { visible: false };
+      const g = group3(body, shine, gloss, grains);
+      g.position.set((pad.x0 + pad.x1) / 2, y, 0);
+      this.group.add(g);
+      this.jellies.push({ mesh: g, x0: pad.x0, x1: pad.x1, t: 9 });
+    });
+  }
+  /** A pad just bounced someone: wobble it. */
+  bounce(x: number) {
+    for (const j of this.jellies) if (x >= j.x0 - 0.5 && x <= j.x1 + 0.5) j.t = 0;
+  }
+
   /** Throw up mud behind the wheels while riding through it. */
   mud(dt: number, x: number, y: number, v: number, grounded: boolean) {
     const s = this.splat;
@@ -725,12 +808,15 @@ export class World {
 
   /** Rippled water with flecks of foam (or lava with glowing swirls), rather than a flat sheet. */
   private waterTop(w: number, lava = false): THREE.Material {
-    const base = lava ? new THREE.Color(0xff8a20) : new THREE.Color(this.biome.pitFillColor ?? 0x2aa6d9).lerp(new THREE.Color(0xffffff), 0.35);
+    const fill = new THREE.Color(this.biome.pitFillColor ?? 0x2aa6d9);
+    // A dark fill is a river of chocolate: glossy swirls, not foam.
+    const choc = !lava && fill.getHSL({ h: 0, s: 0, l: 0 }).l < 0.3;
+    const base = lava ? new THREE.Color(0xff8a20) : choc ? fill.clone().lerp(new THREE.Color(0xa05a2a), 0.4) : fill.lerp(new THREE.Color(0xffffff), 0.35);
     const tex = canvasTexture(128, 128, (c) => {
       c.fillStyle = `#${base.getHexString()}`;
       c.fillRect(0, 0, 128, 128);
       const r = rng(5);
-      c.strokeStyle = lava ? 'rgba(255,236,120,0.95)' : 'rgba(255,255,255,0.85)';
+      c.strokeStyle = lava ? 'rgba(255,236,120,0.95)' : choc ? 'rgba(200,130,80,0.9)' : 'rgba(255,255,255,0.85)';
       c.lineWidth = 3;
       for (let i = 0; i < 9; i++) {
         const x = r() * 128, y = r() * 128;
@@ -835,6 +921,28 @@ export class World {
             bush.scale.y = 0.7;
             bush.position.set(i * 26 - 40 + k * 5, tr.minY - 3 + rad * s.scale.y - Math.abs(k) * 0.9, z + rad * 0.15);
             far.add(bush);
+          }
+        }
+        break;
+      }
+      case 'scoops': {
+        // Ice cream hills: big pastel scoops with a drippy rim, some with a cherry on top.
+        const cherry = mat(0xe02040);
+        for (let i = 0; i * 24 < len + 140; i++) {
+          const rad = 22 + (i * 37) % 18;
+          const col = b.farColors[(i * 3) % b.farColors.length];
+          const z = -100 - (i % 3) * 16;
+          const scoop = new THREE.Mesh(new THREE.SphereGeometry(rad, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(col));
+          scoop.scale.y = 0.7;
+          scoop.position.set(i * 24 - 40, tr.minY - 4, z);
+          const rim = new THREE.Mesh(new THREE.TorusGeometry(rad * 1.01, rad * 0.06, 6, 30), mat(new THREE.Color(col).multiplyScalar(0.92).getHex()));
+          rim.rotation.x = Math.PI / 2;
+          rim.position.set(i * 24 - 40, tr.minY - 3.2, z);
+          far.add(scoop, rim);
+          if (i % 3 === 1) {
+            const c = new THREE.Mesh(new THREE.SphereGeometry(rad * 0.12, 10, 8), cherry);
+            c.position.set(i * 24 - 40, tr.minY - 4 + rad * 0.7 + rad * 0.08, z);
+            far.add(c);
           }
         }
         break;
@@ -969,11 +1077,16 @@ export class World {
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    if (p.colors) {
+      const col = new Float32Array(p.n * 3), c = new THREE.Color();
+      for (let i = 0; i < p.n; i++) col.set(c.setHex(p.colors[i % p.colors.length]).toArray(), i * 3);
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    }
     const glow = kind === 'fireflies' || kind === 'embers';
     const common = { color: p.color, transparent: true, opacity: p.opacity ?? 0.9, depthWrite: false, blending: glow ? THREE.AdditiveBlending : THREE.NormalBlending };
     this.particles = stride === 2
       ? new THREE.LineSegments(g, new THREE.LineBasicMaterial(common))
-      : new THREE.Points(g, new THREE.PointsMaterial({ ...common, size: p.size }));
+      : new THREE.Points(g, new THREE.PointsMaterial({ ...common, size: p.size, vertexColors: !!p.colors }));
     this.particleKind = p;
     this.particleStride = stride;
     this.group.add(this.particles);
@@ -1077,6 +1190,13 @@ export class World {
       o.add(halo);
       this.addLamp(x, y + 1.5, z + 0.35, 0xffc070, 18, 8);
     }
+    if (this.biome.lights && kind === 'gumlamp') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(0, 2.66, 0);
+      halo.scale.setScalar(1.6);
+      o.add(halo);
+      this.addLamp(x, y + 2.66 * scale, z, 0xfff0b0, 30, 12);
+    }
     if (this.biome.lights && kind === 'lamp') {
       const halo = new THREE.Sprite(haloMaterial());
       halo.position.set(0, 3.9, 0.85);
@@ -1143,7 +1263,7 @@ export class World {
       }
       if (b.posts.kind === 'liftpylon') this.buildLift(tops);
     }
-    if (b.lights && b.posts?.kind !== 'lamp') this.buildNightLights(end);
+    if (b.lights && b.posts?.kind !== 'lamp' && b.posts?.kind !== 'gumlamp') this.buildNightLights(end);
     if (b.edge) for (let x = 6; x < end; x += b.edge.spacing * (0.7 + r() * 0.6)) this.placeProp(b.edge.kind, x, b.edge.z, 1, r() * Math.PI);
     for (const p of this.track.props) this.placeProp(p.kind, p.x, p.z, p.scale, p.rot);
     this.buildBlobs();
@@ -1306,6 +1426,12 @@ export class World {
   private buildSky() { /* sky is the scene background, set in applyEnvironment */ }
 
   update(dt: number, camX: number, camY: number) {
+    for (const j of this.jellies) {
+      if (j.t > 1) continue;
+      j.t += dt;
+      const w = Math.exp(-j.t * 6) * Math.sin(j.t * 38);
+      j.mesh.scale.set(1 + w * 0.12, 1 - w * 0.4, 1 + w * 0.08);
+    }
     this.clouds.position.x = camX * 0.6;
     this.sky.position.set(camX * 0.9, camY, 0);
     const p = this.particleKind;

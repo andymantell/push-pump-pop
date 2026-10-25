@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { PART_NAMES, PartName, SNOW_PART_NAMES, SnowPartName } from './skater';
+import { PART_NAMES, PartName, SNOW_PART_NAMES, SnowPartName, MTB_PART_NAMES, MtbPartName } from './skater';
 import { PropKind } from './track';
 import { toonify } from './toon';
 
 // Models are built in Blender by art/build_assets.py and exported to public/models.
 
 export interface Assets {
-  parts: Partial<Record<PartName | SnowPartName, THREE.Object3D>>;
+  parts: Partial<Record<PartName | SnowPartName | MtbPartName, THREE.Object3D>>;
   props: Partial<Record<PropKind, THREE.Object3D>>;
 }
 
@@ -39,7 +39,7 @@ export async function loadAssets(): Promise<Assets> {
     ]);
     toonify(skater.scene);
     toonify(props.scene);
-    for (const n of [...PART_NAMES, ...SNOW_PART_NAMES]) {
+    for (const n of [...PART_NAMES, ...SNOW_PART_NAMES, ...MTB_PART_NAMES]) {
       const o = pick(skater.scene, n);
       if (o) assets.parts[n] = o;
     }

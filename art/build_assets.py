@@ -557,6 +557,14 @@ def build_skater():
     head.scale = (1.08, 1.08, 1.08)
     apply_tf(head)
     parts.append(head)
+
+    # Farm gear: a mountain board, and a helmet.
+    parts.append(build_mountainboard())
+    sk = skull(skin)
+    head = join('head_helmet', [sk, *face(sk, skin, eye, white, hair, mouth), *helmet_parts()])
+    head.scale = (1.08, 1.08, 1.08)
+    apply_tf(head)
+    parts.append(head)
     export(os.path.join(OUT, 'skater.glb'), parts)
 
 
@@ -734,6 +742,106 @@ def build_snowboard():
     return join('snowboard', bits)
 
 
+def helmet_parts():
+    """A bike-style helmet: a shell over the skull with vents, a short peak at the front (-Y) and a chin strap."""
+    shell_m = mat('helmet', (242, 160, 32))
+    vent_m = mat('helmet_vent', (40, 40, 44))
+    strap = mat('helmet_strap', (34, 34, 38))
+    dome = sphere(shell_m, 0.158, loc=(0, 0.005, 0.17), scale=(0.98, 1.08, 1.0), segs=28, rings=16)
+    bm = bmesh.new()
+    bm.from_mesh(dome.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < 0.205 - 0.05 * max(0.0, v.co.y) / 0.16], context='VERTS')
+    bm.to_mesh(dome.data)
+    bm.free()
+    bits = [dome]
+    for x in (-0.05, 0.0, 0.05):
+        bits.append(cube(vent_m, (0.018, 0.12, 0.02), loc=(x, 0.0, 0.325), bevel=0.006))
+    bits.append(cube(shell_m, (0.2, 0.06, 0.012), loc=(0, -0.175, 0.215), rot=(0.25, 0, 0), bevel=0.005))
+    for s in (1, -1):
+        bits.append(cube(strap, (0.008, 0.012, 0.11), loc=(s * 0.128, -0.02, 0.13), rot=(0.25, 0, 0)))
+    return bits
+
+
+def build_mountainboard():
+    """Mountain board along X, origin on the ground under its tyres, deck top at 0.2.
+
+    Feet stand across the deck at x = 0.24 (front) and -0.21 (back) in loop bindings.
+    """
+    deck_m = mat('mtb_deck', (60, 150, 70))
+    grip = mat('deck_grip', (34, 34, 38))
+    metal = mat('truck', (184, 190, 198))
+    tyre_m = mat('tyre', (42, 40, 40))
+    hub_m = mat('mtb_hub', (240, 200, 40))
+    strap_m = mat('binding_strap', (232, 64, 42))
+
+    L, W, T = 0.98, 0.24, 0.022
+    nx, ny = 48, 8
+    bm = bmesh.new()
+    top, bot = [], []
+    for i in range(nx + 1):
+        u = i / nx * 2 - 1
+        x = u * L / 2
+        end = max(0.0, abs(u) - 0.82) / 0.18
+        width = max(W / 2 * math.sqrt(max(0.0, 1 - end * end)), 0.004)
+        k = max(0.0, abs(u) - 0.7) / 0.3
+        z = 0.189 + 0.06 * k * k
+        rt, rb = [], []
+        for j in range(ny + 1):
+            y = (j / ny * 2 - 1) * width
+            rt.append(bm.verts.new((x, y, z + T / 2)))
+            rb.append(bm.verts.new((x, y, z - T / 2)))
+        top.append(rt)
+        bot.append(rb)
+    for i in range(nx):
+        for j in range(ny):
+            bm.faces.new((top[i][j], top[i + 1][j], top[i + 1][j + 1], top[i][j + 1]))
+            bm.faces.new((bot[i][j], bot[i][j + 1], bot[i + 1][j + 1], bot[i + 1][j]))
+    for i in range(nx):
+        bm.faces.new((top[i][0], bot[i][0], bot[i + 1][0], top[i + 1][0]))
+        bm.faces.new((top[i][ny], top[i + 1][ny], bot[i + 1][ny], bot[i][ny]))
+    for i in (0, nx):
+        for j in range(ny):
+            f = (top[i][j], top[i][j + 1], bot[i][j + 1], bot[i][j])
+            bm.faces.new(f if i == nx else f[::-1])
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    for f in bm.faces:
+        f.material_index = 1 if f.normal.z > 0.5 else 0
+    me = bpy.data.meshes.new('mountainboard')
+    bm.to_mesh(me)
+    bm.free()
+    board = bpy.data.objects.new('mountainboard_body', me)
+    bpy.context.collection.objects.link(board)
+    for m in (deck_m, grip):
+        board.data.materials.append(m)
+    for p in board.data.polygons:
+        p.use_smooth = True
+
+    bits = [board]
+    R = 0.085
+    for s in (-1, 1):
+        x = s * 0.34
+        # Baseplate and a chunky skate-style truck with a long axle.
+        bits.append(cube(metal, (0.08, 0.08, 0.016), loc=(x, 0, 0.17), bevel=0.004))
+        bits.append(cube(metal, (0.045, 0.06, 0.06), loc=(x, 0, 0.135), bevel=0.01))
+        bits.append(cube(metal, (0.035, 0.26, 0.03), loc=(x, 0, R + 0.01), bevel=0.012))
+        bits.append(cyl(metal, 0.008, 0.38, loc=(x, 0, R), rot=(math.pi / 2, 0, 0), verts=8))
+        for y in (-0.165, 0.165):
+            # A knobbly pneumatic tyre on a yellow hub.
+            bits.append(cyl(tyre_m, R, 0.07, loc=(x, y, R), rot=(math.pi / 2, 0, 0), verts=24, bevel=0.025))
+            bits.append(cyl(hub_m, R * 0.5, 0.074, loc=(x, y, R), rot=(math.pi / 2, 0, 0), verts=16, bevel=0.006))
+            for k in range(12):
+                a = k * math.pi / 6
+                bits.append(cube(tyre_m, (0.018, 0.064, 0.012), loc=(x + (R - 0.002) * math.cos(a), y, R + (R - 0.002) * math.sin(a)), rot=(0, -a + math.pi / 2, 0)))
+    for x in (0.24, -0.21):
+        # Loop bindings: a padded strap arching over the foot, and a heel cup behind (+Y).
+        for k in range(7):
+            a = math.pi * k / 6
+            bits.append(cube(strap_m, (0.06, 0.05, 0.018), loc=(x, -0.02 + 0.09 * math.cos(a), 0.2 + 0.075 * math.sin(a)), rot=(a - math.pi / 2, 0, 0)))
+        bits.append(cube(grip, (0.1, 0.02, 0.05), loc=(x, 0.11, 0.225), bevel=0.008))
+    return join('mountainboard', bits)
+
+
 # ---------------------------------------------------------------- props
 
 def build_props():
@@ -825,6 +933,7 @@ def build_props():
     build_jungle(out)
     build_volcano(out)
     build_farm(out)
+    build_candy(out)
     export(os.path.join(OUT, 'props.glb'), out)
 
 
@@ -1425,6 +1534,131 @@ def build_farm(out):
         cube(iron, (0.03, 0.35, 0.03), loc=(0, -0.17, 1.65)),
         cube(iron, (0.16, 0.16, 0.22), loc=(0, -0.35, 1.5), bevel=0.02),
         cube(mat('lamp_light', (255, 243, 176)), (0.11, 0.11, 0.15), loc=(0, -0.35, 1.5)),
+    ]))
+
+
+def swirl_disc(mats, r, thick, loc, turns=3):
+    """A flat lollipop: a disc in mats[0] with a spiral of mats[1] on both faces."""
+    parts = [cyl(mats[0], r, thick, loc=loc, rot=(math.pi / 2, 0, 0), verts=32)]
+    for side in (-1, 1):
+        cd = bpy.data.curves.new('swirl', 'CURVE')
+        cd.dimensions = '3D'
+        cd.bevel_depth = r * 0.07
+        cd.bevel_resolution = 2
+        sp = cd.splines.new('POLY')
+        n = 90
+        sp.points.add(n - 1)
+        for i in range(n):
+            t = i / (n - 1)
+            ang = side * t * turns * 2 * math.pi
+            rr = r * 0.9 * t
+            sp.points[i].co = (loc[0] + rr * math.cos(ang), loc[1] + side * thick * 0.45, loc[2] + rr * math.sin(ang), 1)
+        o = bpy.data.objects.new('swirl', cd)
+        bpy.context.collection.objects.link(o)
+        bpy.context.view_layer.objects.active = o
+        o.select_set(True)
+        bpy.ops.object.convert(target='MESH')
+        o = bpy.context.object
+        parts.append(finish(o, mats[1], True))
+    return parts
+
+
+def build_candy(out):
+    pink = mat('candy_pink', (255, 110, 170))
+    white = mat('white', (245, 245, 245))
+    red = mat('candy_red', (230, 40, 60))
+    mint = mat('candy_mint', (110, 220, 170))
+    lemon = mat('candy_lemon', (255, 220, 70))
+    grape = mat('candy_grape', (160, 100, 230))
+    orange = mat('candy_orange', (255, 150, 50))
+    blue = mat('candy_blue', (90, 180, 255))
+    stick = mat('lolly_stick', (250, 246, 236))
+    sponge = mat('sponge', (240, 200, 130))
+    choc = mat('chocolate', (110, 62, 36))
+    cream = mat('cream', (255, 246, 236))
+    cone_m = mat('wafer', (220, 160, 80))
+    floss = mat('candyfloss', (255, 180, 220))
+    floss2 = mat('candyfloss_blue', (170, 210, 255))
+    cherry = mat('cherry', (220, 30, 50))
+    glow = mat('lamp_light', (255, 243, 176))
+
+    # Lollipop: a big swirl on a stick.
+    out.append(join('lollipop', [
+        cyl(stick, 0.05, 2.0, loc=(0, 0, 1.0), verts=8),
+    ] + swirl_disc([pink, white], 0.6, 0.16, loc=(0, 0, 2.4))))
+
+    # Candy floss tree: a white stick trunk with fluffy pink and blue puffs.
+    ct = [cyl(stick, 0.14, 2.0, loc=(0, 0, 1.0), r2=0.1, verts=10)]
+    for i, (x, y, z, r, m) in enumerate([(0, 0, 2.6, 1.1, floss), (0.75, -0.2, 2.35, 0.75, floss2), (-0.75, 0.15, 2.4, 0.8, floss), (0.15, -0.35, 3.2, 0.7, floss2)]):
+        ct.append(ico(m, r, loc=(x, y, z), sub=3, jitter=0.12, seed=120 + i, smooth=True))
+    out.append(join('candytree', ct))
+
+    # Gumdrop: a sugary dome.
+    out.append(join('gumdrop', [sphere(mint, 0.35, loc=(0, 0, 0.3), scale=(1, 1, 1.15), segs=16, rings=10)] +
+        [sphere(white, 0.025, loc=(0.32 * math.cos(a) * math.cos(e), 0.32 * math.sin(a) * math.cos(e), 0.3 + 0.38 * math.sin(e)), segs=6, rings=4)
+         for a, e in [(k * 1.3, 0.3 + (k % 4) * 0.25) for k in range(14)]]))
+
+    # Candy cane stuck in the ground, red and white stripes.
+    cc = []
+    n = 10
+    for i in range(n):
+        cc.append(cyl(red if i % 2 else white, 0.09, 1.8 / n + 0.005, loc=(0, 0, 1.8 * (i + 0.5) / n), verts=12))
+    for i in range(7):
+        a = math.pi * i / 6
+        cc.append(sphere(red if i % 2 else white, 0.095, loc=(0.32 - 0.32 * math.cos(a), 0, 1.8 + 0.32 * math.sin(a)), segs=12, rings=8))
+    out.append(join('candycane', cc))
+
+    # Cupcake: a ridged wrapper, swirly icing, a cherry.
+    cu = [cyl(pink, 0.42, 0.55, loc=(0, 0, 0.27), r2=0.52, verts=16, smooth=False)]
+    for k, (r, z) in enumerate([(0.55, 0.65), (0.45, 0.85), (0.32, 1.02), (0.18, 1.15)]):
+        cu.append(sphere(cream, r, loc=(0, 0, z), scale=(1, 1, 0.5), segs=16, rings=8))
+    cu.append(sphere(cherry, 0.11, loc=(0, 0, 1.3), segs=10, rings=8))
+    out.append(join('cupcake', cu))
+
+    # Ice cream cone stuck point down in the ground, two scoops.
+    out.append(join('icecream', [
+        cyl(cone_m, 0.32, 1.0, loc=(0, 0, 0.5), r2=0.03, verts=12, smooth=False),
+        sphere(mint, 0.36, loc=(0, 0, 1.15), segs=14, rings=10),
+        sphere(pink, 0.32, loc=(0, 0, 1.6), segs=14, rings=10),
+        sphere(cherry, 0.08, loc=(0, 0, 1.95), segs=8, rings=6),
+    ]))
+
+    # Giant doughnut standing on its edge, with icing and sprinkles.
+    dn = []
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.55, minor_radius=0.25, location=(0, 0, 0.8), rotation=(math.pi / 2, 0, 0), major_segments=24, minor_segments=10)
+    dn.append(finish(bpy.context.object, sponge, True))
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.55, minor_radius=0.22, location=(0, -0.06, 0.8), rotation=(math.pi / 2, 0, 0), major_segments=24, minor_segments=10)
+    ic = bpy.context.object
+    ic.scale = (1.02, 0.7, 1.02)
+    apply_tf(ic)
+    dn.append(finish(ic, pink, True))
+    for k, m in enumerate([lemon, blue, white, mint, grape] * 3):
+        a = k * 2 * math.pi / 15
+        dn.append(cube(m, (0.08, 0.03, 0.025), loc=(0.55 * math.cos(a), -0.27, 0.8 + 0.55 * math.sin(a)), rot=(0, k * 0.9, 0)))
+    out.append(join('donut', dn))
+
+    # A wrapped sweet lying in the grass.
+    out.append(join('sweet', [
+        sphere(orange, 0.25, loc=(0, 0, 0.22), scale=(1.4, 1, 1), segs=14, rings=8),
+        cyl(white, 0.18, 0.25, loc=(0.48, 0, 0.22), rot=(0, math.pi / 2, 0), r2=0.02, verts=10),
+        cyl(white, 0.18, 0.25, loc=(-0.48, 0, 0.22), rot=(0, -math.pi / 2, 0), r2=0.02, verts=10),
+    ]))
+
+    # Candy cane fence: one 2.4 m bay, a striped post and two striped rails.
+    cf = []
+    for i in range(5):
+        cf.append(cyl(red if i % 2 else white, 0.07, 0.22, loc=(-1.2, 0, 0.11 + i * 0.22), verts=10))
+    cf.append(sphere(red, 0.09, loc=(-1.2, 0, 1.13), segs=10, rings=6))
+    for z in (0.45, 0.85):
+        for i in range(8):
+            cf.append(cyl(red if i % 2 else white, 0.045, 0.3, loc=(-1.2 + 0.15 + i * 0.3, 0.03, z), rot=(0, math.pi / 2, 0), verts=8))
+    out.append(join('canefence', cf))
+
+    # Gumball lamp: a striped post with a glowing gumball on top.
+    out.append(join('gumlamp', [cyl(red if i % 2 else white, 0.07, 0.3, loc=(0, 0, 0.15 + i * 0.3), verts=10) for i in range(8)] + [
+        cyl(lemon, 0.18, 0.08, loc=(0, 0, 2.42), verts=14),
+        sphere(glow, 0.22, loc=(0, 0, 2.66), segs=14, rings=10),
+        cyl(lemon, 0.12, 0.06, loc=(0, 0, 2.9), verts=12),
     ]))
 
 

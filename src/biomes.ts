@@ -1,6 +1,6 @@
 // A biome sets the look, scenery and feel of a track. Track layouts live in src/tracks.
 
-export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil';
+export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake';
 
 export interface Surface {
   kind: SurfaceKind;
@@ -23,7 +23,7 @@ export interface Biome {
   ground: [number, number, number];
   /** How the ground behind the track rises or falls away. */
   groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat';
-  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields';
+  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops';
   farColors: number[];
   clouds: number | null;
   particles: Particles | null;
@@ -61,7 +61,7 @@ export interface Biome {
   bigMoon?: boolean;
 }
 
-export type Particles = 'snow' | 'heavysnow' | 'embers' | 'ash' | 'rain' | 'petals' | 'leaves' | 'dust' | 'fireflies';
+export type Particles = 'snow' | 'heavysnow' | 'embers' | 'ash' | 'rain' | 'petals' | 'leaves' | 'dust' | 'fireflies' | 'sprinkles';
 
 export const BIOMES: Record<string, Biome> = {
   park: {
@@ -184,12 +184,28 @@ export const BIOMES: Record<string, Biome> = {
     pitFill: 'water', pitFillColor: 0x7a5a32, fallText: 'SPLAT!', sign: '#8a2a20',
     friction: 1, maxSpeed: 17, swatch: '#d88a3a', leafTint: 0xe08a2a,
   },
+  candy: {
+    id: 'candy', name: 'Candy Kingdom', blurb: 'Jelly pads bounce you sky high. Pump on them to go higher.',
+    sky: ['#58a8f0', '#b8d8f8', '#ffd8ec'], fog: [0xffe0f0, 60, 200],
+    hemi: [0xfff0f8, 0xc890b0, 1.45], sun: [0xfff4e8, 2.2],
+    top: { kind: 'biscuit', base: '#e8b870', seam: '#c88c48', accent: '#ffffff' },
+    front: { kind: 'cake', base: '#f4d8a0', seam: '#ff8ab8', accent: '#fff8f0' },
+    band: 0xff7ab8,
+    ground: [0xa8ecc8, 0x8ee0b8, 0xc8f6dc], groundShape: 'hills',
+    far: 'scoops', farColors: [0xffb0d0, 0xb0f0d0, 0xfff0c0, 0x9a6040, 0xc8b0f8], clouds: 0xffd0ec, particles: null,
+    back: [['lollipop', 2], ['candytree', 3], ['gumdrop', 2], ['candycane', 2], ['cupcake', 1], ['icecream', 1], ['donut', 1], ['sweet', 1.5]], backZ: [-5, -24],
+    fence: { kind: 'canefence', z: -3.2, spacing: 2.4 },
+    posts: { kind: 'gumlamp', z: -2.5, spacing: 30 },
+    edge: { kind: 'gumdrop', z: -2.1, spacing: 16 },
+    pitFill: 'water', pitFillColor: 0x6a3a1a, fallText: 'SPLOSH!', sign: '#c8387a',
+    friction: 1, maxSpeed: 17, swatch: '#ff8ac8',
+  },
 };
 
 /** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
 export const WORLDS: string[][] = [
   ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
-  ['farm'],
+  ['farm', 'candy'],
 ];
 export const BIOME_ORDER = WORLDS.flat();
 export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));

@@ -76,6 +76,13 @@ export interface Mud {
   x1: number;
 }
 
+/** A jelly pad from x0 to x1: touch it on the ground and it throws you up at `lift` m/s. */
+export interface Bouncer {
+  x0: number;
+  x1: number;
+  lift: number;
+}
+
 export interface Prop {
   kind: PropKind;
   x: number;
@@ -100,9 +107,11 @@ export class Track {
   readonly spots: Spot[];
   readonly pads: Pad[];
   readonly mud: Mud[];
+  readonly bouncers: Bouncer[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = []) {
     this.mud = mud;
+    this.bouncers = bouncers;
     this.spots = spots;
     this.pads = pads;
     this.pits = pits;
@@ -153,6 +162,11 @@ export class Track {
     return false;
   }
 
+  bouncerAt(x: number): Bouncer | null {
+    for (const b of this.bouncers) if (x >= b.x0 && x <= b.x1) return b;
+    return null;
+  }
+
   pitAt(x: number): Pit | null {
     for (const p of this.pits) if (x > p.x0 - 0.5 && x < p.x1 + 0.5) return p;
     return null;
@@ -183,6 +197,7 @@ export class TrackBuilder {
   spots: Spot[] = [];
   pads: Pad[] = [];
   mudPatches: Mud[] = [];
+  bouncers: Bouncer[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -262,6 +277,16 @@ export class TrackBuilder {
     fn(this);
     this.mudPatches.push({ x0, x1: this.x });
     return this.spot('mud');
+  }
+
+  /**
+   * A jelly pad `len` long on flat ground: roll onto it (or land on it) and it bounces you up
+   * at `lift` m/s, more if you pump as you hit it. Follow it with `land()`, like a kicker.
+   */
+  bouncer(len = 2.5, lift = 7): this {
+    this.spot('bouncer');
+    this.bouncers.push({ x0: this.x, x1: this.x + len, lift });
+    return this.flat(len);
   }
 
   /** Near vertical drop (a lip edge). */
@@ -384,6 +409,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers);
   }
 }

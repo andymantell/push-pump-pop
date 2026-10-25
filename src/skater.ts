@@ -16,6 +16,10 @@ export type PartName = (typeof PART_NAMES)[number];
 /** Swapped in for the snow biome: a snowboard with bindings, and a beanie and goggles. */
 export const SNOW_PART_NAMES = ['snowboard', 'head_snow'] as const;
 export type SnowPartName = (typeof SNOW_PART_NAMES)[number];
+/** Swapped in on the farm: a mountain board with big tyres and bindings, and a helmet. */
+export const MTB_PART_NAMES = ['mountainboard', 'head_helmet'] as const;
+export type MtbPartName = (typeof MTB_PART_NAMES)[number];
+export type BoardKind = 'skate' | 'snow' | 'mountain';
 
 const THIGH = 0.44;
 const SHIN = 0.44;
@@ -24,6 +28,8 @@ const FOREARM = 0.3;
 const DECK_TOP = 0.115;
 /** Top of the snowboard's binding baseplates. */
 const SNOW_TOP = 0.05;
+/** Top of the mountain board's deck, up over its big tyres. */
+const MTB_TOP = 0.2;
 /** Where the feet sit along the board, front and back. */
 const FRONT_X = 0.24, BACK_X = -0.21;
 const ANKLE = 0.075;
@@ -166,6 +172,26 @@ function placeholderSnowParts(): Record<SnowPartName, THREE.Object3D> {
   return { snowboard: board, head_snow: head };
 }
 
+function placeholderMtbParts(): Record<MtbPartName, THREE.Object3D> {
+  const board = new THREE.Group();
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.03, 0.25), toon(0x3a8a3a));
+  deck.position.y = MTB_TOP - 0.015;
+  board.add(deck);
+  for (const x of [-0.33, 0.33]) for (const z of [-0.17, 0.17]) {
+    const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.07, 16), toon(0x2a2828));
+    tyre.rotation.x = Math.PI / 2;
+    tyre.position.set(x, 0.085, z);
+    board.add(tyre);
+  }
+  const head = new THREE.Group();
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.125, 16, 12), toon(0xf0c09a));
+  skull.position.y = 0.16;
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 10, 0, Math.PI * 2, 0, Math.PI / 1.9), toon(0xf2a020));
+  helmet.position.y = 0.18;
+  head.add(skull, helmet);
+  return { mountainboard: board, head_helmet: head };
+}
+
 export class Skater {
   readonly root = new THREE.Group();
   private body = new THREE.Group();
@@ -191,7 +217,11 @@ export class Skater {
   private slideW = 0;
   private lastGrab: GrabName = 'Indy';
   private snowParts: Record<SnowPartName, THREE.Object3D>;
-  private snow = false;
+  private mtbParts: Record<MtbPartName, THREE.Object3D>;
+  private board: BoardKind = 'skate';
+  private get snow() { return this.board === 'snow'; }
+  /** Feet strapped to the board: no pushing, and they stay put when popping. */
+  private get bound() { return this.board !== 'skate'; }
   /** Ollie in progress: time since the pop (-1 for none), the height popped from, and the timing scale. */
   private pops = 0;
   private olT = -1;
@@ -209,11 +239,12 @@ export class Skater {
   private landT = -1;
   private landW = 0;
 
-  constructor(parts?: Partial<Record<PartName | SnowPartName, THREE.Object3D>>) {
+  constructor(parts?: Partial<Record<PartName | SnowPartName | MtbPartName, THREE.Object3D>>) {
     const ph = placeholderParts();
     this.p = { ...ph, ...(parts ?? {}) } as Record<PartName, THREE.Object3D>;
     const p = this.p;
     this.snowParts = { ...placeholderSnowParts(), ...(parts ?? {}) } as Record<SnowPartName, THREE.Object3D>;
+    this.mtbParts = { ...placeholderMtbParts(), ...(parts ?? {}) } as Record<MtbPartName, THREE.Object3D>;
 
     this.root.add(this.body);
     this.body.add(this.boardTilt);
@@ -239,7 +270,12 @@ export class Skater {
     this.boardPivot.add(sp.snowboard);
     p.torso.add(sp.head_snow);
     sp.head_snow.position.y = 0.5;
-    this.setSnow(false);
+    const mp = this.mtbParts;
+    mp.mountainboard.position.y = -0.08;
+    this.boardPivot.add(mp.mountainboard);
+    p.torso.add(mp.head_helmet);
+    mp.head_helmet.position.y = 0.5;
+    this.setBoard('skate');
 
     const sh = new THREE.Mesh(
       new THREE.CircleGeometry(0.55, 24),
@@ -253,13 +289,15 @@ export class Skater {
 
   get shadowMesh() { return this.shadow; }
 
-  /** Snowboard and beanie on the snow, skateboard and cap everywhere else. */
-  setSnow(on: boolean) {
-    this.snow = on;
-    this.p.deck.visible = !on;
-    this.p.head.visible = !on;
-    this.snowParts.snowboard.visible = on;
-    this.snowParts.head_snow.visible = on;
+  /** Snowboard and beanie on the snow, mountain board and helmet on the farm, skateboard and cap everywhere else. */
+  setBoard(kind: BoardKind) {
+    this.board = kind;
+    this.p.deck.visible = kind === 'skate';
+    this.p.head.visible = kind === 'skate';
+    this.snowParts.snowboard.visible = kind === 'snow';
+    this.snowParts.head_snow.visible = kind === 'snow';
+    this.mtbParts.mountainboard.visible = kind === 'mountain';
+    this.mtbParts.head_helmet.visible = kind === 'mountain';
   }
 
   /** World positions of the points that should never go below the ground: knees, heels and toes. */
@@ -277,7 +315,7 @@ export class Skater {
 
   /** Everything update() moves, for recording replays. */
   get joints(): THREE.Object3D[] {
-    return [this.root, this.body, this.boardTilt, this.boardPivot, ...Object.values(this.p), ...Object.values(this.snowParts), this.shadow];
+    return [this.root, this.body, this.boardTilt, this.boardPivot, ...Object.values(this.p), ...Object.values(this.snowParts), ...Object.values(this.mtbParts), this.shadow];
   }
 
   pumpKick() { this.pumpAnim = 1; }
@@ -348,8 +386,8 @@ export class Skater {
     this.manualPitch += ((tailDown ? 0.3 : noseLow ? -0.3 : 0) - this.manualPitch) * k;
     const flip = r.flipAngle;
     const pitch = flip + this.manualPitch;
-    // A skateboard pivots on its wheels, a snowboard on its tail or nose.
-    const end = this.snow ? 0.42 : 0.25;
+    // A board pivots on its wheels, a snowboard on its tail or nose.
+    const end = this.snow ? 0.42 : this.board === 'mountain' ? 0.33 : 0.25;
     const pivot = r.flipping ? v3(0, 0.75, 0) : v3(this.manualPitch > 0 ? -end : end, 0.03, 0);
     const spin = r.spin ? r.spin.dir * r.spinProgress * (r.spin.deg === 360 ? Math.PI * 2 : Math.PI) : 0;
     const yaw = r.bodyYaw + spin;
@@ -399,7 +437,7 @@ export class Skater {
     // levels out as it rises to his feet.
     const back = Math.cos(r.bodyYaw) >= 0 ? 1 : -1;
     const w = r.bailing ? 0 : 1;
-    const tiltX = -back * (this.snow ? PRESS_PIVOT : OLLIE_PIVOT) * Math.min(1, w * 4);
+    const tiltX = -back * (this.snow ? PRESS_PIVOT : this.board === 'mountain' ? 0.33 : OLLIE_PIVOT) * Math.min(1, w * 4);
     const tiltY = this.boardPivot.position.y - 0.08;
     const popGround = (popLine - r.y - hold) * Math.cos(r.angle);
     const pin = Math.max(-0.05, Math.min(0, popGround - tiltY)) * this.ol.pin * w;
@@ -415,7 +453,7 @@ export class Skater {
     };
 
     // Body.
-    const deckTop = this.snow ? SNOW_TOP : DECK_TOP;
+    const deckTop = this.snow ? SNOW_TOP : this.board === 'mountain' ? MTB_TOP : DECK_TOP;
     const hipY = STAND_HIP - (DECK_TOP - deckTop) - crouch * 0.42 + this.lift * 0.4;
     p.pelvis.position.set(0.02, hipY, 0);
     // Look where you're going: riding fakie after a 180, the shoulders open up
@@ -434,7 +472,7 @@ export class Skater {
     const tilt = grab.tilt * gw;
     // Popping, the back foot stands on the tail and the front foot in the middle of the
     // board, then slides up the grip to level it. Snowboard bindings keep the feet put.
-    const slide = this.snow ? 0 : this.ol.slide * w;
+    const slide = this.bound ? 0 : this.ol.slide * w;
     const frontX = FRONT_X + slide * (back > 0 ? -0.16 : 0.05);
     const backX = BACK_X + slide * (back > 0 ? -0.07 : 0.16);
     const front = v3(frontX * Math.cos(shifty), footY + Math.sin(tilt) * frontX, 0.02 - frontX * Math.sin(shifty));
@@ -443,9 +481,9 @@ export class Skater {
     onBoard(backFoot);
 
     // Ease in and out of pushing so the foot never snaps between the ground and the board.
-    // No pushing on a snowboard: both feet are strapped in.
+    // No pushing on a snowboard or mountain board: both feet are strapped in.
     // Capped too: starting to push the moment you land, after a big crouch, mustn't fling the foot down.
-    const pushTo = (r.pushing && r.grounded && !r.bailing && !this.snow ? 1 : 0) - this.pushW;
+    const pushTo = (r.pushing && r.grounded && !r.bailing && !this.bound ? 1 : 0) - this.pushW;
     this.pushW += Math.max(-dt * 6, Math.min(dt * 6, pushTo * (1 - Math.exp(-dt * 12))));
     if (this.pushW > 0.01) {
       this.pushT = (this.pushT + dt * 1.6) % 1;

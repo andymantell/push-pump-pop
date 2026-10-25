@@ -6,8 +6,8 @@ import type { Rail } from './track';
 // (see SOUNDS.md). Each surface has its own wheel roar, grit, joints and landing thud.
 // iOS only lets a page make sound after a tap, so nothing starts until the first one.
 
-export type Ground = 'concrete' | 'wood' | 'tar' | 'snow' | 'sand' | 'stone' | 'basalt' | 'dirt';
-type RailSound = 'metal' | 'coping' | 'log';
+export type Ground = 'concrete' | 'wood' | 'tar' | 'snow' | 'sand' | 'stone' | 'basalt' | 'dirt' | 'biscuit';
+type RailSound = 'metal' | 'coping' | 'log' | 'sugar';
 
 interface Band { type: BiquadFilterType; f: number; q: number; gain: number }
 interface GroundSound {
@@ -83,10 +83,18 @@ const GROUNDS: Record<Ground, GroundSound> = {
     grit: { type: 'bandpass', f: 2600, q: 0.9, gain: 0.5 },
     land: { type: 'bandpass', f: 700, q: 0.8, gain: 1, decay: 0.16, thump: 0.9 },
   },
+  // A giant biscuit path: a crumbly crunch and a soft click over the docker holes.
+  biscuit: {
+    rumble: { type: 'lowpass', f: 360, q: 0.8, gain: 0.4, fSpeed: 10 },
+    hiss: { type: 'bandpass', f: 1600, q: 0.8, gain: 0.35, fSpeed: 30 },
+    grit: { type: 'bandpass', f: 3200, q: 1.2, gain: 0.65 },
+    seam: { every: 1.2, gain: 0.35, f: 1100, q: 2, jitter: 0.1 },
+    land: { type: 'bandpass', f: 1200, q: 0.7, gain: 1.1, decay: 0.2, thump: 0.8 },
+  },
 };
 
 const BIOME_GROUND: Record<string, Ground> = {
-  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt',
+  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -97,6 +105,8 @@ const RAILS: Record<RailSound, { bands: [number, number, number][]; grit: number
   coping: { bands: [[1700, 8, 0.8], [2900, 9, 0.5], [1200, 1, 0.5]], grit: 0.8, gritF: 2200, clank: [620, 1050, 1720], clankDecay: 0.25 },
   // Jungle logs: a woody rasp.
   log: { bands: [[450, 2.5, 1], [900, 3, 0.6], [1600, 1.5, 0.3]], grit: 0.6, gritF: 900, clank: [210, 330, 520], clankDecay: 0.18 },
+  // Candy canes: a glassy hard-candy squeal and a bright little chime when you lock on.
+  sugar: { bands: [[3100, 18, 0.8], [4700, 20, 0.5], [1500, 3, 0.3]], grit: 0.3, gritF: 5000, clank: [1320, 1980, 2640, 3960], clankDecay: 0.6 },
 };
 
 /** Grind styles: how the pitch and brightness change (a boardslide is the deck on the rail). */
@@ -144,10 +154,13 @@ export class Sound {
   /** Rolling ducks for a moment after a landing so the wheels hitting the ground punch through. */
   private duckUntil = 0;
   private snow = false;
+  /** Feet strapped in (snowboard, mountain board): no pushing. */
+  private bound = false;
   private cur: Trick | null = null;
   private spinning = false;
   private flipT = 0;
   private inMud = false;
+  private bounces = -1;
   private squelchT = 0;
 
   constructor(ctx?: BaseAudioContext) {
@@ -322,13 +335,15 @@ export class Sound {
   }
 
   /** A new track: its surface, rails and ambience. */
-  setScene(b: Biome, snow: boolean) {
+  setScene(b: Biome, snow: boolean, bound = snow) {
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
-    this.railSound = b.id === 'jungle' || b.id === 'farm' ? 'log' : 'metal';
+    this.railSound = b.id === 'jungle' || b.id === 'farm' ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
     this.snow = snow;
+    this.bound = bound;
     // Start fresh: nothing the rider did on the last track should sound on this one.
     this.perched = false;
     this.pops = -1;
+    this.bounces = -1;
     if (!this.ctx) { this.pendingScene = b; return; }
     const p = GROUNDS[this.ground], r = this.roll!, t = this.ctx.currentTime;
     const set = (f: BiquadFilterNode, g: GainNode, band: Band) => {
@@ -350,7 +365,7 @@ export class Sound {
   update(dt: number, r: Rider, active: boolean, ambLevel: number) {
     const ctx = this.ctx!;
     if (!this.ready()) return;
-    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow); }
+    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow, this.bound); }
     const t = ctx.currentTime;
     const p = GROUNDS[this.ground];
     const speed = active ? r.speed : 0;
@@ -388,11 +403,16 @@ export class Sound {
     this.inMud = mud;
 
     // Pushing: a shoe scuffing the ground on each kick.
-    if (active && r.pushing && r.grounded && !this.snow) {
+    if (active && r.pushing && r.grounded && !this.bound) {
       this.pushT += dt * 1.6;
       if (this.pushT >= 1) { this.pushT -= 1; this.scuff(t); }
     } else this.pushT = 0.7;
 
+    // Bounced off a jelly pad.
+    if (r.bounces !== this.bounces) {
+      if (active && this.bounces >= 0) this.boing(t, r.speed);
+      this.bounces = r.bounces;
+    }
     // Popped off the ground or a rail.
     if (r.pops !== this.pops) {
       if (active && this.pops >= 0) this.pop(t);
@@ -544,6 +564,28 @@ export class Sound {
   }
 
   /** Two wheels and a truck hitting the ground together. */
+  /** A jelly pad: a wobbly rising boing and a soft splat of jelly. */
+  private boing(t: number, speed: number) {
+    const f = 170 + Math.min(10, speed) * 6;
+    const o = this.ctx!.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f * 3.2, t + 0.22);
+    o.frequency.exponentialRampToValueAtTime(f * 2.4, t + 0.45);
+    const wob = this.ctx!.createOscillator();
+    wob.frequency.value = 22;
+    const wg = this.gain(f * 0.12);
+    wob.connect(wg).connect(o.frequency);
+    const g = this.gain(0, this.sfx);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.2, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o.connect(g);
+    o.start(t); wob.start(t);
+    o.stop(t + 0.52); wob.stop(t + 0.52);
+    this.burst(t, { buf: this.pink, type: 'lowpass', f: 900, q: 1, gain: 0.5, decay: 0.08 });
+  }
+
   /** Riding into mud: a wet slap. */
   private splat(t: number, g: number) {
     this.burst(t, { buf: this.brown, type: 'bandpass', f: 700, q: 1.2, gain: 0.9 * g, attack: 0.005, decay: 0.18, fEnd: 260 });
@@ -894,6 +936,30 @@ export class Sound {
               this.tone(at + [0, 0.16, 0.32, 0.52][i], { type: 'sawtooth', f: f0, fEnd: f1, gain: 0.02, attack: 0.02, decay: d, glide: d, lp: 2200, to: out, pan: p }));
           });
         }
+        break;
+      }
+      case 'candy': {
+        // A warm sugary breeze, music-box twinkles, the chocolate river bubbling; soft chimes at night.
+        bed(this.pink, { type: 'bandpass', f: 1100, q: 0.7 }, 0.05, 10, 0.7, 300);
+        bed(this.brown, { type: 'lowpass', f: 260, q: 0.8 }, 0.06, 7, 0.4);
+        const notes = [1047, 1175, 1319, 1568, 1760, 2093];
+        const twinkle = (at: number) => {
+          const p = pan(), n = 2 + Math.floor(Math.random() * 3);
+          let k = Math.floor(Math.random() * notes.length);
+          for (let i = 0; i < n; i++) {
+            k = Math.max(0, Math.min(notes.length - 1, k + (Math.random() < 0.5 ? -1 : 1)));
+            this.tone(at + i * 0.18, { f: notes[k], gain: night ? 0.022 : 0.016, attack: 0.004, decay: 0.7, to: out, pan: p });
+            this.tone(at + i * 0.18, { f: notes[k] * 3.01, gain: 0.004, attack: 0.002, decay: 0.25, to: out, pan: p });
+          }
+        };
+        every(night ? 2.5 : 4, night ? 6 : 10, twinkle);
+        every(0.8, 2.5, (at) => {
+          // A chocolate bubble: a low pop that glides up.
+          const f = 140 + Math.random() * 120;
+          this.tone(at, { f, fEnd: f * 2.2, gain: 0.04, attack: 0.01, decay: 0.09, glide: 0.08, to: out, pan: pan() });
+        });
+        if (night) every(0.5, 1.6, crickets);
+        else every(2.5, 7, bird);
         break;
       }
       case 'volcano': {

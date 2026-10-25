@@ -136,6 +136,17 @@ const TRACK_MOODS: Record<string, Mood> = {
     sunPos: [12, 5, 5], clouds: 0x4a4868, stars: true, lights: true, bigMoon: true, haze: 0.2, fogColor: 0x4a4058,
   },
   'farm-pipe': mood('dusk'),
+  'candy-2': { ...mood('morning'), label: 'Sugar morning', sky: ['#7ab8f0', '#c8e4ff', '#ffe0f0'] },
+  'candy-3': { ...mood('sunset'), label: 'Candyfloss sunset', sky: ['#6a4ab0', '#ff8ac8', '#ffc8a0'], clouds: 0xffb8e0, fogColor: 0xf8c0d8 },
+  'candy-4': { ...mood('golden'), label: 'Golden caramel', sun: [0xffc880, 2.3], fogColor: 0xf8dcb0 },
+  'candy-5': { label: 'Candyfloss clouds', clouds: 0xffd0ec, cloudCount: 44 },
+  'candy-6': { label: 'Sprinkle shower', particles: 'sprinkles', clouds: 0xfff0f8, cloudCount: 36 },
+  'candy-7': { ...mood('dusk'), label: 'Candy dusk', sky: ['#2a1a5a', '#8a4aa8', '#ff9ab8'], clouds: 0xb08ac8 },
+  'candy-8': {
+    label: 'Night lights', sky: ['#120a30', '#3a1a5a', '#7a3a7a'], hemi: [0xe0b8f0, 0x40304a, 0.8], sun: [0xffc8f0, 0.8],
+    sunPos: [-9, 12, 5], clouds: 0x5a3a78, stars: true, lights: true, haze: 0.2, fogColor: 0x4a2a5a,
+  },
+  'candy-pipe': { ...mood('sunset'), label: 'Candyfloss sunset', sky: ['#6a4ab0', '#ff8ac8', '#ffc8a0'], clouds: 0xffb8e0, fogColor: 0xf8c0d8 },
   'volcano-mega': { label: 'Eruption', sky: ['#2a0808', '#8a1a10', '#ff6a20'], hemi: [0xffb090, 0x601818, 1.7], eruption: true },
 };
 

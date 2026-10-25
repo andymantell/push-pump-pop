@@ -21,7 +21,7 @@ A mobile-friendly side-on skateboarding game inspired by Pumped BMX, built with 
 Flip tricks pop off the ground too. Chain tricks into combos; land before the board finishes spinning or you bail and lose the combo.
 A grab scores more the longer you hold it, and starts once any flip has finished, so flip with your right thumb, then swipe and hold with your left for a Kickflip + Nosegrab. Flips are swiped on the right half of the screen. Let go before you land, or you bail.
 Land a spin or flip before it's nearly round and you bail too. A manual keeps your combo going while you're on the ground.
-On the Snowy Mountain tracks the skater rides a snowboard: no pushing, and since your feet are strapped in, the flip-side swipes become snowboard tricks (left BS Shifty, right FS Shifty, down Tuck Knee) and manuals become tail and nose presses.
+On the Snowy Mountain tracks the skater rides a snowboard: no pushing, and since your feet are strapped in, the flip-side swipes become snowboard tricks (left BS Shifty, right FS Shifty, down Tuck Knee) and manuals become tail and nose presses. On Autumn Farm he rides a mountain board with big tyres and a helmet: feet strapped in again, so no pushing and the same swipe tricks as the snowboard (manuals stay manuals, on wheels).
 Tilt is measured from however the device was held when the run started. On iPhone and iPad the game asks for motion access on your first tap.
 
 Land a combo worth 1,500 points or more and a **REPLAY** button pops up for a few seconds: tap it to watch the combo back in slow motion (the run, and the half-pipe timer, wait for you). Drag along the bar to scrub, tap the picture or the play button to pause, and pick 1×, ½× or ¼× speed. The results screen keeps your five best combos from the run to watch. Keyboard: R to open, Space to pause, left/right arrows to step, up/down for speed, Escape to close.
@@ -76,7 +76,7 @@ it; Load backup picks it). Installed copies also ask `navigator.storage.persist(
 
 Keep rollers long (12 m or more) so there's time to tap on each downslope.
 
-Mud (`mud(len)`, or `muddy(fn)` around any pieces) drags you back while you roll through it, so pump the muddy dips.
+Mud (`mud(len)`, or `muddy(fn)` around any pieces) drags you back while you roll through it, so pump the muddy dips. Jelly pads (`bouncer(len, lift)`) fling you up at `lift` m/s, a quarter higher if you pump as you hit them; put a gap or a landing after one like a kicker.
 
 The plan for the first 70 tracks is `docs/level-plan.md`; World 2 (opens after Volcano 5) is planned in `docs/world-2-plan.md`. `art/props.html?names=a,b` shows a contact sheet of props from `props.glb`.
 

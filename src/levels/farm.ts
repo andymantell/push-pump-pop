@@ -111,7 +111,7 @@ export const FARM: TrackDef[] = [
     challenges: [
       { text: 'Land 5 different tricks', kind: 'variety', count: 5 },
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
-      { text: 'Flip and grab in the same air', kind: 'sameAir', match: ['flip', 'grab'] },
+      { text: 'Spin and grab in the same air', kind: 'sameAir', match: ['spin', 'grab'] },
     ],
     build: layout(14, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(10, -3).flat(6).rollers(2, 14, 1.0).flat(4);
@@ -125,7 +125,7 @@ export const FARM: TrackDef[] = [
     }),
   },
   {
-    id: 'farm-7', biome: 'farm', name: 'Tractor Tracks', difficulty: 5, par: 24500,
+    id: 'farm-7', biome: 'farm', name: 'Tractor Tracks', difficulty: 5, par: 24000,
     challenges: [
       { text: 'Clear every ditch', kind: 'gaps' },
       { text: 'Grind the fence rail', kind: 'grind' },

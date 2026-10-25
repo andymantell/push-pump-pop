@@ -220,8 +220,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   });
   const isPipe = def.kind === 'pipe', isMega = def.kind === 'mega';
   const skater = legs ? new Skater() : null;
-  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : biome.maxSpeed, pipe: isPipe, mega: isMega, snow: def.biome === 'snow' };
-  skater?.setSnow(def.biome === 'snow');
+  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : biome.maxSpeed, pipe: isPipe, mega: isMega, snow: def.biome === 'snow', mountain: def.biome === 'farm' };
+  skater?.setBoard(def.biome === 'snow' ? 'snow' : def.biome === 'farm' ? 'mountain' : 'skate');
   if (isPipe || isMega) r.perch();
   const mega = new MegaRun();
   let dropsDone = 0;
@@ -278,7 +278,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     if (careful) return true;
     if (!airNames) {
       const pool = (['Kickflip', 'Heelflip', 'Pop Shove-it', 'Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'FS 180', 'BS 180'] as TrickName[])
-        .map((n) => (def.biome === 'snow' ? ({ Kickflip: 'BS Shifty', Heelflip: 'FS Shifty', 'Pop Shove-it': 'Tuck Knee' } as Record<string, TrickName>)[n] ?? n : n));
+        .map((n) => (def.biome === 'snow' || def.biome === 'farm' ? ({ Kickflip: 'BS Shifty', Heelflip: 'FS Shifty', 'Pop Shove-it': 'Tuck Knee' } as Record<string, TrickName>)[n] ?? n : n));
       switch (g.kind) {
         case 'trick': airNames = [pickFrom(members(g.match))]; break;
         case 'sameAir': airNames = g.match.map((m) => pickFrom(members(m))); break;
@@ -301,7 +301,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         }
         default: return undefined;
       }
-      airNames = airNames.filter((n) => n !== 'Ollie');
+      airNames = airNames.filter((n) => n && n !== 'Ollie');
     }
     if (!airNames.length) return true;
     const filters = g as { overGap?: unknown; from?: string; fromRail?: boolean; minTime?: number };

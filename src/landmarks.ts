@@ -595,6 +595,156 @@ export const LANDMARKS: Record<string, Landmark> = {
     g.add(sign, cyl(0.06, 0.06, 1.4, 0x6a4422, [2.6, 0.7, 0.25], 6), cyl(0.06, 0.06, 1.4, 0x6a4422, [4.2, 0.7, 0.25], 6));
     return g;
   } },
+  gingercastle: { z: -24, r: 11, build: () => {
+    // A gingerbread castle: biscuit towers with icing trim, candy-cane flagpoles and gumdrop tops.
+    const ginger = 0xb8743a, icing = 0xfff6ee, door = 0x6a3a1a;
+    const g = group(box(12, 7, 6, ginger, [0, 3.5, 0]));
+    for (let x = -5.5; x <= 5.6; x += 1.1) g.add(box(0.7, 0.8, 6.2, ginger, [x, 7.4, 0]), box(0.75, 0.15, 0.1, icing, [x, 7.85, 3.12]));
+    g.add(box(12.1, 0.25, 0.1, icing, [0, 6.9, 3.02]));
+    for (let x = -5; x <= 5; x += 2.5) g.add(box(2.0, 0.12, 0.1, icing, [x, 6.4, 3.03]));
+    for (const [x, h, c] of [[-7, 11, 0xff7ab8], [7, 11, 0x7ad8b0], [0, 13, 0xc8a0f8]] as const) {
+      g.add(cyl(1.8, 1.9, h, ginger, [x, h / 2, 0.5], 14));
+      for (let y = 2.5; y < h; y += 2.5) g.add(cyl(1.95, 1.95, 0.18, icing, [x, y, 0.5], 14));
+      g.add(cyl(0.05, 2.3, 3.2, c, [x, h + 1.6, 0.5], 14), ball(0.35, icing, [x, h + 3.3, 0.5], 10));
+      g.add(box(0.6, 1.0, 0.2, 0xfff0a0, [x, h - 2.5, 2.35]));
+    }
+    g.add(mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.3, 16, 1, false, 0, Math.PI), door, [0, 3.2, 3.05], [Math.PI / 2, 0, 0]), box(3.2, 3.2, 0.3, door, [0, 1.6, 3.05]));
+    for (const [x, c] of [[-3.5, 0xff5a8a], [-2.4, 0x7ad8b0], [2.4, 0xffd04a], [3.5, 0x8ab8ff]] as const) g.add(ball(0.4, c, [x, 4.5, 3.1], 10));
+    const sign = textPanel('CANDY CASTLE', 5, 0.9, '#fff6ee', '#e0407a', '#ff8ac8');
+    sign.position.set(0, 5.6, 3.2);
+    g.add(sign);
+    return g;
+  } },
+  bigcupcake: { z: -16, r: 6, build: () => {
+    // A giant cupcake with a candle on top.
+    const g = group(cyl(4.2, 3.4, 4, 0xff7ab8, [0, 2, 0], 24));
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      g.add(box(0.12, 4, 0.2, 0xe85a9a, [Math.cos(a) * 3.85, 2, Math.sin(a) * 3.85], [0, -a, 0]));
+    }
+    for (const [r, y] of [[4.6, 4.6], [3.8, 5.8], [2.8, 6.9], [1.6, 7.8]] as const) {
+      const t = mesh(new THREE.TorusGeometry(r * 0.75, r * 0.32, 10, 28), 0xfff4e8, [0, y, 0], [Math.PI / 2, 0, 0]);
+      g.add(t);
+    }
+    g.add(ball(0.9, 0xe02040, [0, 8.8, 0], 14));
+    const cols = [0xffd04a, 0x7ad8b0, 0x8ab8ff, 0xc8a0f8, 0xff5a8a];
+    for (let i = 0; i < 30; i++) {
+      const a = i * 2.4, r = 1.5 + (i % 5) * 0.6;
+      g.add(box(0.35, 0.1, 0.1, cols[i % 5], [Math.cos(a) * r, 5.4 + (5 - (i % 5)) * 0.55, Math.sin(a) * r + 0.3], [0, a, 0.5]));
+    }
+    g.add(cyl(0.18, 0.18, 1.8, 0x8ab8ff, [1.4, 8.6, 0.6], 8), mesh(new THREE.SphereGeometry(0.25, 8, 6), glow(0xffc040), [1.4, 9.75, 0.6]));
+    return g;
+  } },
+  chocfall: { z: -22, r: 8, build: () => {
+    // A chocolate waterfall pouring off a cliff of layer cake into a chocolate pool.
+    const g = new THREE.Group();
+    const layers = [0xf0c890, 0xff9ac8, 0xf0c890, 0xfff4e8, 0xf0c890] as const;
+    const W = 14, lh = 2.1;
+    layers.forEach((c, i) => g.add(box(W - i * 0.6, lh, 6 - i * 0.3, c, [0, lh * (i + 0.5), 0])));
+    const top = lh * layers.length;
+    // Pink icing over the top, dripping down the front.
+    g.add(box(W - 2.2, 0.4, 5, 0xff8ac8, [0, top + 0.2, 0]));
+    for (let i = 0; i < 16; i++) {
+      const x = -5.6 + i * 0.75, d = 0.5 + ((i * 7) % 5) * 0.25;
+      if (Math.abs(x) < 2.4) continue;
+      g.add(cyl(0.18, 0.18, d, 0xff8ac8, [x, top - d / 2 + 0.2, 2.4], 6), ball(0.2, 0xff8ac8, [x, top - d + 0.2, 2.4], 6));
+    }
+    const choc = 0x6a3a1a;
+    g.add(box(4, top + 0.4, 0.5, choc, [0, (top + 0.4) / 2, 3.3]));
+    for (let i = 0; i < 5; i++) g.add(box(0.2, top + 0.4, 0.05, 0x9a5a30, [-1.6 + i * 0.8, (top + 0.4) / 2, 3.58]));
+    const pool = mesh(new THREE.CircleGeometry(4.5, 22), choc, [0, 0.15, 5.5], [-Math.PI / 2, 0, 0]);
+    pool.scale.y = 0.5;
+    g.add(pool, box(5, 0.7, 1.4, 0x8a5030, [0, 0.35, 4.2]));
+    for (const [x, c] of [[-5, 0xe02040], [5, 0x7ad8b0], [-3.5, 0xffd04a], [3.6, 0xe02040]] as const) g.add(ball(0.7, c, [x, top + 0.9, 0.5], 10));
+    return g;
+  } },
+  lolliarch: { z: -12, r: 7, build: () => {
+    // An arch of giant lollipops with a rainbow sign.
+    const g = new THREE.Group();
+    const cols = [0xff5a8a, 0xffd04a, 0x7ad8b0, 0x8ab8ff, 0xc8a0f8];
+    for (const sx of [-1, 1]) {
+      g.add(cyl(0.2, 0.2, 7, 0xfaf6ec, [sx * 5, 3.5, 0], 10));
+      const d = cyl(2.2, 2.2, 0.5, cols[sx < 0 ? 0 : 3], [sx * 5, 8.5, 0], 24, [Math.PI / 2, 0, 0]);
+      g.add(d);
+      for (let r = 0.5; r < 2.1; r += 0.6) g.add(mesh(new THREE.TorusGeometry(r, 0.12, 6, 24), 0xffffff, [sx * 5, 8.5, 0.27]));
+    }
+    for (let i = 0; i < 5; i++) {
+      const t = mesh(new THREE.TorusGeometry(5 - i * 0.35, 0.18, 6, 30, Math.PI), cols[i], [0, 7, -0.3]);
+      g.add(t);
+    }
+    const sign = textPanel('SWEET!', 3.2, 1, '#fff6ee', '#e0407a', '#ffd04a');
+    sign.position.set(0, 11.3, 0);
+    g.add(sign);
+    return g;
+  } },
+  gingerhouse: { z: -14, r: 6, build: () => {
+    // A gingerbread house with icing on the roof and sweets for decoration.
+    const ginger = 0xb8743a, icing = 0xfff6ee;
+    const g = group(box(7, 4, 5, ginger, [0, 2, 0]));
+    for (const sgn of [1, -1]) {
+      g.add(box(7.8, 0.35, 3.9, 0x9a5a2a, [0, 5.3, sgn * 1.45], [sgn * 0.75, 0, 0]));
+      for (let x = -3.5; x <= 3.6; x += 0.7) g.add(ball(0.22, icing, [x, 4.15 + 0.1, sgn * 2.9], 8));
+    }
+    const shape = new THREE.Shape([[-2.5, 0], [2.5, 0], [0, 2.6]].map(([x, y]) => new THREE.Vector2(x, y)));
+    for (const sx of [-1, 1]) g.add(mesh(new THREE.ShapeGeometry(shape), ginger, [sx * 3.51, 4, 0], [0, sx * Math.PI / 2, 0]));
+    g.add(box(1.4, 2.4, 0.2, 0x6a3a1a, [0, 1.2, 2.55]), ball(0.15, 0xffd04a, [0.45, 1.2, 2.7], 8));
+    for (const x of [-2.4, 2.4]) {
+      g.add(box(1.4, 1.2, 0.2, 0xfff0a0, [x, 2.4, 2.55]), box(1.6, 0.15, 0.25, icing, [x, 1.75, 2.6]), box(0.12, 1.2, 0.22, icing, [x, 2.4, 2.58]));
+    }
+    const cols = [0xff5a8a, 0x7ad8b0, 0xffd04a, 0x8ab8ff];
+    for (let i = 0; i < 10; i++) g.add(ball(0.22, cols[i % 4], [-3.2 + i * 0.7, 0.25, 2.8], 8));
+    g.add(box(0.9, 1.6, 0.9, 0xe02040, [2, 6, -0.6]), box(1.0, 0.2, 1.0, icing, [2, 6.85, -0.6]));
+    return g;
+  } },
+  gumball: { z: -10, r: 4, build: () => {
+    // A giant gumball machine full of coloured balls.
+    const g = group(cyl(1.6, 2.0, 3, 0xe02040, [0, 1.5, 0], 18), box(0.9, 0.9, 0.3, 0xc8c8d0, [0, 1.8, 1.8]), cyl(0.3, 0.3, 0.2, 0xc8c8d0, [0, 1.8, 2.0], 10, [Math.PI / 2, 0, 0]));
+    const globe = mesh(new THREE.SphereGeometry(2.6, 24, 16), new THREE.MeshBasicMaterial({ color: 0xe8f8ff, transparent: true, opacity: 0.35, depthWrite: false }), [0, 5.4, 0]);
+    globe.userData.outlineParameters = { visible: false };
+    const cols = [0xff5a8a, 0x7ad8b0, 0xffd04a, 0x8ab8ff, 0xc8a0f8, 0xff9a40];
+    for (let i = 0; i < 40; i++) {
+      const a = i * 2.4, y = 3.3 + (i / 40) * 3.6, rr = Math.sqrt(Math.max(0, 2.2 * 2.2 - (y - 5.4) ** 2)) * (0.4 + 0.6 * ((i * 7) % 10) / 10);
+      g.add(ball(0.45, cols[i % 6], [Math.cos(a) * rr, y, Math.sin(a) * rr], 8));
+    }
+    g.add(globe, cyl(1.2, 1.6, 0.6, 0xe02040, [0, 8.1, 0], 16), ball(0.4, 0xe02040, [0, 8.6, 0], 10));
+    return g;
+  } },
+  layercake: { z: -18, r: 7, build: () => {
+    // A tall layer cake with dripping icing and candles.
+    const g = new THREE.Group();
+    const tiers = [[5, 3, 0xffd0e0], [3.8, 2.6, 0xd0f0ff], [2.6, 2.2, 0xfff0b0]] as const;
+    let y = 0;
+    for (const [r, h, c] of tiers) {
+      g.add(cyl(r, r, h, c, [0, y + h / 2, 0], 28));
+      g.add(cyl(r + 0.05, r + 0.05, 0.4, 0xfff6ee, [0, y + h - 0.2, 0], 28));
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2, d = 0.4 + ((i * 5) % 7) * 0.12;
+        g.add(cyl(0.18, 0.18, d, 0xfff6ee, [Math.cos(a) * (r + 0.05), y + h - 0.4 - d / 2, Math.sin(a) * (r + 0.05)], 6));
+      }
+      y += h;
+    }
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      g.add(cyl(0.12, 0.12, 1.2, [0xff5a8a, 0x8ab8ff, 0x7ad8b0, 0xffd04a, 0xc8a0f8][i], [Math.cos(a) * 1.6, y + 0.6, Math.sin(a) * 1.6], 8));
+      g.add(mesh(new THREE.SphereGeometry(0.18, 8, 6), glow(0xffc040), [Math.cos(a) * 1.6, y + 1.35, Math.sin(a) * 1.6]));
+    }
+    g.add(ball(0.7, 0xe02040, [0, y + 0.5, 0], 12));
+    return g;
+  } },
+  donutwheel: { z: -20, r: 10, build: () => {
+    // A big wheel with a doughnut for a rim.
+    const g = bigWheel(7, 0xff8ac8, [0x7ad8b0, 0xffd04a, 0x8ab8ff, 0xc8a0f8]);
+    const d = mesh(new THREE.TorusGeometry(7, 0.9, 12, 40), 0xd8a060, [0, 8.5, -0.3]);
+    const ice = mesh(new THREE.TorusGeometry(7, 0.75, 10, 40), 0xff8ac8, [0, 8.5, 0.15]);
+    ice.scale.z = 0.7;
+    g.add(d, ice);
+    const cols = [0xffd04a, 0x7ad8b0, 0xffffff, 0x8ab8ff];
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2 + 0.05;
+      g.add(box(0.5, 0.14, 0.14, cols[i % 4], [Math.cos(a) * 7.1, 8.5 + Math.sin(a) * 7.1, 0.7], [0, 0, a + i]));
+    }
+    return g;
+  } },
 };
 
 /** Which landmarks each track has, spread along it in order. */
@@ -623,4 +773,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'farm-1': ['barn'], 'farm-2': ['tractor', 'silos'], 'farm-3': ['haystack', 'windmill'], 'farm-4': ['coop', 'farmhouse'],
   'farm-5': ['maze'], 'farm-6': ['pumpkinpatch', 'barn'], 'farm-7': ['combine', 'silos'], 'farm-8': ['balloons', 'farmhouse'],
   'farm-pipe': ['barn'],
+  'candy-1': ['lolliarch'], 'candy-2': ['bigcupcake', 'gingerhouse'], 'candy-3': ['gumball', 'donutwheel'], 'candy-4': ['chocfall'],
+  'candy-5': ['layercake', 'lolliarch'], 'candy-6': ['gingerhouse', 'gumball'], 'candy-7': ['donutwheel', 'bigcupcake'], 'candy-8': ['gingercastle'],
+  'candy-pipe': ['donutwheel'],
 };
