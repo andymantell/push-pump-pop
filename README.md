@@ -63,6 +63,9 @@ apple-mobile-web-app tags in `index.html`. On Android it opens fullscreen and st
 landscape; iPadOS ignores the orientation, so use the iPad's rotation lock. The service
 worker fetches the page and models fresh and only falls back to its cache offline, so
 installed copies update like the website does. Icons are rendered from `art/icon/icon.svg`.
+On the iPad the home screen app doesn't share storage with Safari, so the title screen's
+Move My Stars panel (`src/transfer.ts`) copies progress as a code and merges it in the
+other copy, keeping the better of each score and challenge.
 
 ## Tracks and biomes
 

@@ -44,6 +44,7 @@
     <button id="play">TAP TO PLAY</button>
     <button id="guidebtn" class="small">TRICK GUIDE</button>
     <button id="soundbtn" class="small alt">SOUND: ON</button>
+    <button id="movebtn" class="small alt">MOVE MY STARS</button>
   </div>
   <div id="guide" class="panel hidden">
     <h2>TRICK GUIDE</h2>
@@ -67,6 +68,20 @@
       <p class="keys">Keyboard: Space pump, arrows flip, hold I J K L to grab, Z X spin, hold Q E to tilt</p>
     </div>
     <button id="guideback" class="small">BACK</button>
+  </div>
+  <div id="move" class="panel hidden">
+    <h2>MOVE MY STARS</h2>
+    <div class="howto">
+      <p>Played in <b>Safari</b> and the <b>home screen app</b>? They keep their stars apart.</p>
+      <p>1. Where your stars are, tap <b>COPY</b>.<br />2. In the other one, tap <b>PASTE</b>.</p>
+    </div>
+    <div class="buttons">
+      <button id="movecopy">COPY MY STARS</button>
+      <button id="movepaste">PASTE MY STARS</button>
+    </div>
+    <textarea id="movecode" class="hidden" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+    <p id="movemsg"></p>
+    <button id="moveback" class="small">BACK</button>
   </div>
   <div id="select" class="panel hidden">
     <h2>PICK A TRACK</h2>

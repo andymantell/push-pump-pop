@@ -18,6 +18,7 @@ import { biomeFor } from './moods';
 import { Track } from './track';
 import { watchForUpdates } from './version';
 import { registerOffline } from './pwa';
+import { exportCode, importCode, hasProgress } from './transfer';
 import { Replays, Player, Clip, HudSnap, MAX_CLIPS } from './replay';
 import { Sound } from './audio';
 
@@ -284,7 +285,7 @@ input.onLean = (l) => { keyLean = l; applyLean(); };
 const tilt = new Tilt();
 tilt.onLean = (l) => { tiltLean = l; applyLean(); };
 
-const panels = ['title', 'select', 'card', 'results', 'guide'];
+const panels = ['title', 'select', 'card', 'results', 'guide', 'move'];
 function show(panel: string | null) {
   for (const p of panels) $(p).classList.toggle('hidden', p !== panel);
   $('menu').classList.toggle('hidden', panel !== null);
@@ -437,6 +438,7 @@ function updateWatch() {
 $('play').addEventListener('click', openSelect);
 $('guidebtn').addEventListener('click', () => show('guide'));
 $('guideback').addEventListener('click', () => show('title'));
+setupMove();
 const soundBtn = $('soundbtn');
 const drawSound = () => { soundBtn.textContent = sound.enabled ? 'SOUND: ON' : 'SOUND: OFF'; };
 drawSound();
@@ -644,3 +646,57 @@ requestAnimationFrame(frame);
   rider, score, skater, replays, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };
+
+/**
+ * Move my stars: Safari and the iPad home screen app keep separate storage, so
+ * progress travels as a code on the clipboard (or typed into the box if the
+ * clipboard won't play).
+ */
+function setupMove() {
+  let store: Storage | null = null;
+  try { store = localStorage; } catch { /* no storage: nothing to move */ }
+  const box = $('movecode') as HTMLTextAreaElement;
+  const msg = $('movemsg');
+  const say = (t: string) => { msg.textContent = t; };
+  const open = () => { box.classList.add('hidden'); box.value = ''; say(''); show('move'); };
+  // A brand new home screen app: point straight at the stars left in Safari.
+  const standalone = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches
+    || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  if (standalone && store && !hasProgress(store)) $('movebtn').textContent = 'GOT STARS IN SAFARI?';
+  $('movebtn').addEventListener('click', open);
+  $('moveback').addEventListener('click', () => show('title'));
+  const take = (text: string) => {
+    if (!store) { say('This browser can\u2019t save stars.'); return false; }
+    const n = importCode(store, text);
+    if (n < 0) return false;
+    say(n ? `Got your stars from ${n} track${n === 1 ? '' : 's'}!` : 'Done! There were no stars to bring yet.');
+    box.classList.add('hidden');
+    setTimeout(() => location.reload(), 1500);
+    return true;
+  };
+  $('movecopy').addEventListener('click', async () => {
+    if (!store) { say('This browser can\u2019t save stars.'); return; }
+    const code = exportCode(store);
+    try {
+      await navigator.clipboard.writeText(code);
+      say(standalone ? 'Copied! Now open Safari and tap PASTE MY STARS.' : 'Copied! Now open the app and tap PASTE MY STARS.');
+    } catch {
+      box.value = code;
+      box.classList.remove('hidden');
+      box.select();
+      say('Copy all of this text, then paste it in the other one.');
+    }
+  });
+  $('movepaste').addEventListener('click', async () => {
+    try {
+      if (take(await navigator.clipboard.readText())) return;
+      say('Hmm, that wasn\u2019t stars. Tap COPY MY STARS in the other one first.');
+    } catch {
+      box.value = '';
+      box.classList.remove('hidden');
+      box.focus();
+      say('Press in the box and choose Paste.');
+    }
+  });
+  box.addEventListener('input', () => { if (box.value.trim() && !take(box.value)) say('Hmm, that wasn\u2019t stars. Tap COPY MY STARS in the other one first.'); });
+}

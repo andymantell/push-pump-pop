@@ -5,6 +5,7 @@ import { Progress, Store } from '../src/progress';
 import { TRACKS } from '../src/tracks';
 import { BIOME_ORDER } from '../src/biomes';
 import { ChallengeRun } from '../src/challenges';
+import { exportCode, importCode, hasProgress, KeyStore } from '../src/transfer';
 
 let failed = 0;
 function check(name: string, ok: boolean) {
@@ -55,6 +56,28 @@ const byId = (id: string) => TRACKS.find((t) => t.id === id)!;
   run2.bail();
   run2.finish();
   check('a bail spoils the no-lives challenge', !run2.done[2] && run2.done[0]);
+}
+
+{
+  // Moving stars from Safari to the home screen app, which don't share storage.
+  const keyed = (init: Record<string, string>): KeyStore & { data: Map<string, string> } => {
+    const s = store(init);
+    return Object.assign(s, { get length() { return s.data.size; }, key: (i: number) => [...s.data.keys()][i] ?? null });
+  };
+  const safari = keyed({ 'push-pump-pop-best-park-1': '900', 'push-pump-pop-done-park-1': '1', 'push-pump-pop-ch-park-1': '101',
+    'push-pump-pop-best-park-2': '400', 'push-pump-pop-last-build': '{"id":"x"}', 'push-pump-pop-sound': 'off', 'other-site': 'x' });
+  const app = keyed({ 'push-pump-pop-best-park-1': '1200', 'push-pump-pop-ch-park-1': '010', 'push-pump-pop-sound': 'on', 'push-pump-pop-last-build': '{"id":"y"}' });
+  check('a fresh app has nothing to keep', !hasProgress(keyed({ 'push-pump-pop-last-build': '{}' })) && hasProgress(safari));
+  const code = exportCode(safari);
+  check('the code leaves out other sites and build bookkeeping', !atob(code.split(':')[1]).includes('other-site') && !atob(code.split(':')[1]).includes('last-build'));
+  check('pasting a code reports its tracks', importCode(app, `here you go ${code}\n`) === 2);
+  check('the better best score wins', app.data.get('push-pump-pop-best-park-1') === '1200' && app.data.get('push-pump-pop-best-park-2') === '400');
+  check('challenges done in either copy stay done', app.data.get('push-pump-pop-ch-park-1') === '111');
+  check('finishes come across', app.data.get('push-pump-pop-done-park-1') === '1');
+  check('this copy keeps its own settings and build', app.data.get('push-pump-pop-sound') === 'on' && app.data.get('push-pump-pop-last-build') === '{"id":"y"}');
+  check('random text is not a code', importCode(app, 'hello') === -1 && importCode(app, 'PUSHPUMPPOP:!!!') === -1);
+  const p = new Progress(TRACKS, BIOME_ORDER, app);
+  check('moved stars count in the app', p.stars(byId('park-1')) === 3 && p.unlocked(byId('park-2')));
 }
 
 if (failed) process.exit(1);
