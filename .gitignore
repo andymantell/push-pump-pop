@@ -4,3 +4,4 @@ dist-single
 *.blend1
 __pycache__
 .venv
+art/icon/frame.png
