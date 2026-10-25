@@ -454,8 +454,14 @@ title.addEventListener('pointerdown', () => {
   holdTimer = window.setTimeout(() => {
     progress.unlockAll = !progress.unlockAll;
     toast(progress.unlockAll ? 'Every track is open' : 'Tracks open as you play again');
+    drawUnlock();
   }, 2000);
 });
+// The same switch as a button, for now, while lost progress gets sorted out.
+const unlockBtn = $('unlockbtn');
+const drawUnlock = () => { unlockBtn.textContent = progress.unlockAll ? 'ALL TRACKS: OPEN' : 'ALL TRACKS: LOCKED'; };
+drawUnlock();
+unlockBtn.addEventListener('click', () => { progress.unlockAll = !progress.unlockAll; drawUnlock(); });
 for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) title.addEventListener(ev, () => clearTimeout(holdTimer));
 $('tracks').addEventListener('click', openSelect);
 $('menu').addEventListener('click', openSelect);
