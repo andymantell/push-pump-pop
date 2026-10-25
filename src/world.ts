@@ -142,6 +142,35 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
   });
 }
 
+/** A butte: stacked rock bands sharing one ragged outline, with a flat top. */
+function mesaShape(x: number, y: number, z: number, rad: number, h: number, r: () => number, bands: THREE.Material[], top: THREE.Material) {
+  const g = new THREE.Group();
+  const SEG = 11;
+  const wob = Array.from({ length: SEG }, () => 0.8 + r() * 0.35);
+  const n = 3 + Math.floor(r() * 3);
+  let yy = 0;
+  for (let i = 0; i < n; i++) {
+    const lh = (h / n) * (0.7 + r() * 0.6);
+    const r0 = rad * (1.25 - (i / n) * 0.35), r1 = rad * (1.25 - ((i + 1) / n) * 0.35);
+    const geo = new THREE.CylinderGeometry(r1, r0, lh, SEG, 1, i < n - 1);
+    const p = geo.getAttribute('position') as THREE.BufferAttribute;
+    for (let k = 0; k < p.count; k++) {
+      const ang = Math.atan2(p.getZ(k), p.getX(k));
+      const w = wob[Math.round(((ang + Math.PI) / (Math.PI * 2)) * SEG) % SEG];
+      p.setX(k, p.getX(k) * w);
+      p.setZ(k, p.getZ(k) * w * 0.7);
+    }
+    geo.computeVertexNormals();
+    const mats = i < n - 1 ? bands[i % bands.length] : [bands[i % bands.length], top, top];
+    const m = new THREE.Mesh(geo, mats);
+    m.position.y = yy + lh / 2;
+    g.add(m);
+    yy += lh;
+  }
+  g.position.set(x, y, z);
+  return g;
+}
+
 export class World {
   readonly group = new THREE.Group();
   private groundCache: Float32Array;
@@ -212,7 +241,7 @@ export class World {
         return near + (hills - 1) * depth * depth;
       }
       case 'mountain': {
-        const hills = 4 * Math.sin(x * 0.03) + 2 * Math.sin(x * 0.09 + 1.3) + 10;
+        const hills = 2.5 * Math.sin(x * 0.03) + 1.5 * Math.sin(x * 0.09 + 1.3) + 6;
         return near + hills * depth * depth;
       }
       case 'flat':
@@ -429,7 +458,8 @@ export class World {
   private noOutline(o: THREE.Object3D) {
     o.traverse((c) => {
       const mesh = c as THREE.Mesh;
-      if (mesh.isMesh) (mesh.material as THREE.Material).userData.outlineParameters = { visible: false };
+      if (!mesh.isMesh) return;
+      for (const m of ([] as THREE.Material[]).concat(mesh.material)) m.userData.outlineParameters = { visible: false };
     });
     return o;
   }
@@ -439,6 +469,9 @@ export class World {
     const far = new THREE.Group();
     const len = tr.length;
     const mat = (c: number) => toon(c);
+    const fog = new THREE.Color(b.fog[0]);
+    /** A material that ignores the fog, tinted part way towards it instead. */
+    const hazed = (c: number, amt: number) => toon(new THREE.Color(c).lerp(fog, Math.min(0.8, amt)).getHex(), { fog: false });
     switch (b.far) {
       case 'hills':
         for (let i = 0; i * 22 < len + 120; i++) {
@@ -477,38 +510,40 @@ export class World {
         break;
       }
       case 'mountains':
-        for (let x = -100; x < len + 200; x += 45 + r() * 40) {
-          const h = 60 + r() * 50, rad = 45 + r() * 30;
-          const z = -160 - r() * 60;
-          const base = new THREE.Mesh(new THREE.ConeGeometry(rad, h, 7), mat(b.farColors[r() > 0.5 ? 0 : 2]));
+        // Closer and unfogged (tinted by hand instead), so the peaks read against the sky.
+        for (let x = -100; x < len + 200; x += 40 + r() * 35) {
+          const h = 45 + r() * 35, rad = 35 + r() * 22;
+          const z = -170 - r() * 60;
+          const rock = b.farColors[r() > 0.5 ? 0 : 2];
+          const base = new THREE.Mesh(new THREE.ConeGeometry(rad, h, 7), hazed(rock, 0.2));
           base.position.set(x, tr.minY + h / 2 - 10, z);
-          const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.38, h * 0.38, 7), mat(b.farColors[1]));
-          cap.position.set(x, tr.minY + h - 10 - h * 0.19 + 0.5, z);
+          base.rotation.y = r() * Math.PI;
+          const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.42, h * 0.42, 7), hazed(b.farColors[1], 0.1));
+          cap.position.set(x, tr.minY + h - 10 - h * 0.21 + 0.3, z);
+          cap.rotation.y = base.rotation.y;
           far.add(base, cap);
         }
         break;
       case 'mesas': {
-        const mesa = this.models.mesa;
-        for (let x = -60; x < len + 150; x += 35 + r() * 40) {
-          const o = mesa ? mesa.clone() : new THREE.Mesh(new THREE.CylinderGeometry(8, 10, 16, 8), mat(b.farColors[0]));
-          const s = 2 + r() * 1.5;
-          o.scale.set(s * 2.2, s * (0.7 + r() * 0.4), s * 1.6);
-          o.position.set(x, this.groundY(x, -40) - 3, -110 - r() * 80);
-          o.rotation.y = r() * Math.PI;
-          far.add(o);
+        // Flat-topped buttes in bands of rock, wider than tall.
+        const bands = [0xc9784a, 0xe09a64, 0xa85a34, 0xd98a58];
+        for (let x = -60; x < len + 150; x += 30 + r() * 35) {
+          const z = -95 - r() * 70;
+          const rad = 8 + r() * 14, h = 14 + r() * 18;
+          far.add(mesaShape(x, this.groundY(x, -40) - 4, z, rad, h, r, bands.map((c) => hazed(c, 0.15 + (-z - 95) / 400)), hazed(0xe8b07a, 0.15)));
         }
         break;
       }
       case 'volcano': {
         const vx = len * 0.75;
-        const cone = new THREE.Mesh(new THREE.CylinderGeometry(22, 110, 90, 12, 1, true), mat(b.farColors[0]));
+        const cone = new THREE.Mesh(new THREE.CylinderGeometry(22, 110, 90, 12, 1, true), hazed(b.farColors[0], 0.3));
         cone.position.set(vx, tr.minY + 35, -230);
-        const glow = new THREE.Mesh(new THREE.CircleGeometry(22, 16), new THREE.MeshBasicMaterial({ color: b.farColors[1] }));
+        const glow = new THREE.Mesh(new THREE.CircleGeometry(22, 16), new THREE.MeshBasicMaterial({ color: b.farColors[1], fog: false }));
         glow.rotation.x = -Math.PI / 2;
         glow.position.set(vx, tr.minY + 79.5, -230);
         far.add(cone, glow);
         for (let i = 0; i < 9; i++) {
-          const puff = new THREE.Mesh(new THREE.SphereGeometry(10 + i * 2, 10, 8), mat(b.farColors[2]));
+          const puff = new THREE.Mesh(new THREE.SphereGeometry(10 + i * 2, 10, 8), hazed(b.farColors[2], 0.3));
           puff.position.set(vx + i * 9 - 10, tr.minY + 88 + i * 9, -235 - i * 3);
           far.add(puff);
         }
@@ -563,14 +598,40 @@ export class World {
     return list[0][0];
   }
 
-  private placeProp(kind: string, x: number, z: number, scale = 1, rot = 0) {
+  private footprints = new Map<string, number>();
+
+  /** Half the width of a model's base, so props on a slope sit in it rather than float. */
+  private footprint(kind: string, model: THREE.Object3D): number {
+    let r = this.footprints.get(kind);
+    if (r === undefined) {
+      const box = new THREE.Box3().setFromObject(model);
+      r = Math.max(-box.min.x, box.max.x, -box.min.z, box.max.z, 0);
+      this.footprints.set(kind, r);
+    }
+    return r;
+  }
+
+  private placeProp(kind: string, x: number, z: number, scale = 1, rot = 0): THREE.Object3D | undefined {
     const model = this.models[kind];
-    if (!model) return;
+    if (!model) return undefined;
     const o = model.clone();
-    o.position.set(x, this.groundY(x, z), z);
+    if (kind === this.biome.fence?.kind) {
+      // Fence bays are 2.4 m long: shear each one to follow the ground so the rails meet
+      // the next bay and the posts stay upright.
+      const y0 = this.groundY(x - 1.2, z), y1 = this.groundY(x + 1.2, z);
+      o.matrixAutoUpdate = false;
+      o.matrix.set(1, 0, 0, x, (y1 - y0) / 2.4, 1, 0, (y0 + y1) / 2, 0, 0, 1, z, 0, 0, 0, 1);
+      this.group.add(o);
+      return o;
+    }
+    const rr = Math.min(1.2, this.footprint(kind, model) * scale * 0.6);
+    let y = this.groundY(x, z);
+    for (const [dx, dz] of [[rr, 0], [-rr, 0], [0, rr], [0, -rr]]) y = Math.min(y, this.groundY(x + dx, z + dz));
+    o.position.set(x, y, z);
     o.scale.setScalar(scale);
     o.rotation.y = rot;
     this.group.add(o);
+    return o;
   }
 
   private buildProps() {
@@ -581,9 +642,46 @@ export class World {
       this.placeProp(this.pickBack(), x, z, 0.8 + r() * 0.6, r() * Math.PI * 2);
     }
     if (b.fence) for (let x = -6; x < end; x += b.fence.spacing) this.placeProp(b.fence.kind, x, b.fence.z);
-    if (b.posts) for (let x = 4; x < end; x += b.posts.spacing) this.placeProp(b.posts.kind, x, b.posts.z);
+    if (b.posts) {
+      const tops: THREE.Vector3[] = [];
+      for (let x = 4; x < end; x += b.posts.spacing) {
+        const o = this.placeProp(b.posts.kind, x, b.posts.z);
+        if (o) tops.push(o.position.clone());
+      }
+      if (b.posts.kind === 'liftpylon') this.buildLift(tops);
+    }
     if (b.edge) for (let x = 6; x < end; x += b.edge.spacing * (0.7 + r() * 0.6)) this.placeProp(b.edge.kind, x, b.edge.z, 1, r() * Math.PI);
     for (const p of this.track.props) this.placeProp(p.kind, p.x, p.z, p.scale, p.rot);
+  }
+
+  /** Chairlift cables slung between the pylons, with a chair every so often. */
+  private buildLift(tops: THREE.Vector3[]) {
+    const cableMat = new THREE.LineBasicMaterial({ color: 0x2a2e36 });
+    const chairMat = toon(0x3d7fd0), barMat = toon(0x4a4f58);
+    const chair = new THREE.Group();
+    const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 6), barMat);
+    hanger.position.y = -0.8;
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.1, 0.5), chairMat);
+    seat.position.y = -1.6;
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 0.08), chairMat);
+    back.position.set(0, -1.35, -0.22);
+    chair.add(hanger, seat, back);
+    for (let i = 0; i + 1 < tops.length; i++) {
+      const a = tops[i], b = tops[i + 1];
+      for (const dz of [-1.3, 1.3]) {
+        const pts: THREE.Vector3[] = [];
+        for (let k = 0; k <= 16; k++) {
+          const t = k / 16;
+          pts.push(new THREE.Vector3(a.x + (b.x - a.x) * t, a.y + 6.9 + (b.y - a.y) * t - 1.4 * Math.sin(Math.PI * t), a.z + dz));
+        }
+        this.group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), cableMat));
+        // One chair per span on each cable, going opposite ways.
+        const t = dz < 0 ? 0.3 + this.rand() * 0.15 : 0.55 + this.rand() * 0.15;
+        const c = chair.clone();
+        c.position.set(a.x + (b.x - a.x) * t, a.y + 6.9 + (b.y - a.y) * t - 1.4 * Math.sin(Math.PI * t), a.z + dz);
+        this.group.add(c);
+      }
+    }
   }
 
   private buildSigns() {

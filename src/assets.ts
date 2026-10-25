@@ -11,13 +11,17 @@ export interface Assets {
   props: Partial<Record<PropKind, THREE.Object3D>>;
 }
 
-function pick(scene: THREE.Object3D, name: string): THREE.Object3D | undefined {
+/** Props keep their node transform: a prop's origin is wherever its first part was made, not
+ * always its base, so zeroing it would sink (or tip over) the model. */
+function pick(scene: THREE.Object3D, name: string, keepTransform = false): THREE.Object3D | undefined {
   const o = scene.getObjectByName(name);
   if (!o) return undefined;
   const c = o.clone();
-  c.position.set(0, 0, 0);
-  c.rotation.set(0, 0, 0);
-  c.scale.set(1, 1, 1);
+  if (!keepTransform) {
+    c.position.set(0, 0, 0);
+    c.rotation.set(0, 0, 0);
+    c.scale.set(1, 1, 1);
+  }
   const g = new THREE.Group();
   g.name = name;
   g.add(c);
@@ -40,7 +44,7 @@ export async function loadAssets(): Promise<Assets> {
       if (o) assets.parts[n] = o;
     }
     for (const child of props.scene.children) {
-      const o = pick(props.scene, child.name);
+      const o = pick(props.scene, child.name, true);
       if (o) assets.props[child.name] = o;
     }
   } catch (e) {
