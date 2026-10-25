@@ -6,6 +6,7 @@ import { Input } from './input';
 import { Tilt } from './tilt';
 import { Lives, LIVES } from './lives';
 import { World } from './world';
+import { LampLights } from './lighting';
 import { Skater } from './skater';
 import { loadAssets } from './assets';
 import { TRACKS, TrackDef, PIPE_TIME } from './tracks';
@@ -30,6 +31,8 @@ const canvas = $('game') as HTMLCanvasElement;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const effect = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
 
 const scene = new THREE.Scene();
@@ -37,7 +40,16 @@ const hemi = new THREE.HemisphereLight(0xdff3ff, 0x6b8f4e, 1.4);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 2.2);
 sun.position.set(-6, 12, 10);
+// The sun follows the camera, so its shadow only has to cover what's on screen.
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 0.5, far: 90 });
+sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias = -0.0006;
+sun.shadow.normalBias = 0.03;
+sun.shadow.intensity = 1;
 scene.add(sun);
+const lampLights = new LampLights(scene);
 scene.add(sun.target);
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 500);
@@ -47,6 +59,7 @@ let def: TrackDef = TRACKS[0];
 let track: Track = def.build();
 let world = new World(track, biomeFor(BIOMES[def.biome], def.id), assets.props, def.id);
 world.applyEnvironment(scene, hemi, sun);
+lampLights.use(world.lamps);
 scene.add(world.group);
 
 // Sound starts on the first tap: see audio.ts.
@@ -183,6 +196,7 @@ function loadTrack(d: TrackDef) {
     track = d.build();
     world = new World(track, biomeFor(BIOMES[d.biome], d.id), assets.props, d.id);
     world.applyEnvironment(scene, hemi, sun);
+    lampLights.use(world.lamps);
     scene.add(world.group);
   }
   const b = BIOMES[d.biome];
@@ -201,6 +215,7 @@ function loadTrack(d: TrackDef) {
 
 const skater = new Skater(assets.parts);
 scene.add(skater.root, skater.shadowMesh);
+skater.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
 
 // Big combos are recorded for slow-motion replays: see replay.ts.
 const replays: Replays = new Replays(skater.joints, camera, skater.shadowMesh);
@@ -460,10 +475,12 @@ const camPos = new THREE.Vector3(track.startX + 3, track.height(track.startX) + 
 const camLook = new THREE.Vector3();
 let camOverride: { pos: number[]; look: number[] } | null = null;
 function updateCamera(dt: number) {
-  const sunOff = world.biome.sunPos ?? [-6, 12, 10];
+  const sunOff = world.biome.sunPos ?? [-9, 9, 5];
   if (camOverride) {
     camera.position.fromArray(camOverride.pos);
     camera.lookAt(new THREE.Vector3().fromArray(camOverride.look));
+    sun.position.set(camOverride.look[0] + sunOff[0], camOverride.look[1] + sunOff[1], sunOff[2]);
+    sun.target.position.set(camOverride.look[0], camOverride.look[1], 0);
     return;
   }
   const aspect = camera.aspect;
@@ -527,6 +544,7 @@ function frame(now: number) {
     // Replays pose the skater and camera themselves; the run waits, timer and all.
     const r = player.update(dt);
     world.update(r.dt, r.follow.x, r.follow.y);
+    lampLights.update(r.follow.x + 4);
     sound.update(dt, rider, false, 1);
     effect.render(scene, camera);
     requestAnimationFrame(frame);
@@ -580,6 +598,7 @@ function frame(now: number) {
   updateCamera(dt);
   // The camera itself, so scenery tied to the sky also follows a camera set by hand.
   world.update(dt, camera.position.x, camera.position.y - 1.2);
+  lampLights.update(camera.position.x + 4);
   if (state === 'playing' || state === 'finished') replays.record(dt, camPos, rider.grounded, comboSnap);
   if (chipTimer > 0) {
     chipTimer -= dt;

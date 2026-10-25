@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { addLighting, Lamp, setLamps, setRim } from './lighting';
+import { addLighting, Lamp, setRim } from './lighting';
 import { Track, DX, LOOP_SHIFT } from './track';
 import { Biome, Particles, Surface } from './biomes';
 import { toon } from './toon';
@@ -245,8 +245,8 @@ function blobMaterial(): THREE.MeshBasicMaterial {
   if (blob) return blob;
   const tex = canvasTexture(64, 64, (c) => {
     const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
-    g.addColorStop(0, 'rgba(20,16,30,0.42)');
-    g.addColorStop(0.55, 'rgba(20,16,30,0.22)');
+    g.addColorStop(0, 'rgba(20,16,30,0.3)');
+    g.addColorStop(0.55, 'rgba(20,16,30,0.15)');
     g.addColorStop(1, 'rgba(20,16,30,0)');
     c.fillStyle = g;
     c.fillRect(0, 0, 64, 64);
@@ -255,6 +255,16 @@ function blobMaterial(): THREE.MeshBasicMaterial {
   blob = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   blob.userData.outlineParameters = { visible: false };
   return blob;
+}
+
+/** Cast and catch the sun's shadow (sprites and glowing bits stay out of it). */
+function shadows(o: THREE.Object3D): THREE.Object3D {
+  o.traverse((c) => {
+    const mesh = c as THREE.Mesh;
+    if (!mesh.isMesh || (mesh.material as THREE.Material).type === 'MeshBasicMaterial') return;
+    mesh.castShadow = mesh.receiveShadow = true;
+  });
+  return o;
 }
 
 export class World {
@@ -358,7 +368,6 @@ export class World {
     // Rim light takes the colour of the sky at the horizon (moonlight blue at night).
     const rim = new THREE.Color(b.sky[2]).lerp(new THREE.Color(b.sun[0]), 0.5);
     setRim(rim, b.stars ? 0.5 : 0.32);
-    setLamps(this.lamps, 0);
     document.body.style.background = b.sky[1];
   }
 
@@ -432,6 +441,7 @@ export class World {
     // The track is one long strip: keep it out of the outline pass to avoid noisy lines.
     for (const m of meshes) {
       (m.material as THREE.Material).userData.outlineParameters = { visible: false };
+      m.receiveShadow = true;
       this.group.add(m);
     }
   }
@@ -449,11 +459,11 @@ export class World {
         const top = st.y0 - i * st.rise;
         const box = new THREE.Mesh(new THREE.BoxGeometry(st.run, top - base, TRACK_W + 0.02), mats);
         box.position.set(st.x0 + (i + 0.5) * st.run, (top + base) / 2, 0);
-        this.group.add(box);
+        this.group.add(shadows(box));
         // A bright nosing on each step so the set reads at a glance.
         const nose = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, TRACK_W + 0.04), toon(this.biome.band));
         nose.position.set(st.x0 + i * st.run + 0.03, top - 0.015, 0);
-        this.group.add(nose);
+        this.group.add(shadows(nose));
       }
     }
   }
@@ -493,7 +503,7 @@ export class World {
       ribbon.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
       for (const m of [new THREE.Mesh(ribbon, inner), new THREE.Mesh(face(1, 2), band), new THREE.Mesh(face(2, 3), band), new THREE.Mesh(face(3, 0), band)]) {
         (m.material as THREE.Material).userData.outlineParameters = { visible: false };
-        this.group.add(m);
+        this.group.add(shadows(m));
       }
     }
   }
@@ -513,13 +523,13 @@ export class World {
         box.position.set((r.x0 + r.x1) / 2, r.y0 - h / 2, r.z - 0.2);
         const coping = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.08), barMat);
         coping.position.set((r.x0 + r.x1) / 2, r.y0 - 0.02, r.z + 0.12);
-        this.group.add(box, coping);
+        this.group.add(shadows(box), shadows(coping));
         continue;
       }
       const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, len, 12), barMat);
       bar.position.set((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2 - 0.04, r.z);
       bar.rotation.z = ang - Math.PI / 2;
-      this.group.add(bar);
+      this.group.add(shadows(bar));
       // Posts down to the ground (or the stairs) every metre or two.
       const n = Math.max(2, Math.round(len / 1.8) + 1);
       for (let i = 0; i < n; i++) {
@@ -529,7 +539,7 @@ export class World {
         const foot = this.track.height(tmp.x) - 0.05;
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, top - foot, 8), postMat);
         post.position.set(tmp.x, (top + foot) / 2, r.z);
-        this.group.add(post);
+        this.group.add(shadows(post));
       }
     }
   }
@@ -553,7 +563,7 @@ export class World {
       );
       foam.position.set((p.x0 + p.x1) / 2, topY, 0);
       this.group.add(foam);
-      if (b.pitFill === 'lava') this.lamps.push({ x: (p.x0 + p.x1) / 2, y: topY, z: 0, radius: 5 + (p.x1 - p.x0) * 0.6, color: new THREE.Color(0xff6a20).multiplyScalar(1.4) });
+      if (b.pitFill === 'lava') this.lamps.push({ x: (p.x0 + p.x1) / 2, y: topY + 0.6, z: 0.5, radius: 9 + (p.x1 - p.x0), color: new THREE.Color(0xff7a28), intensity: 18 });
     }
   }
 
@@ -609,6 +619,7 @@ export class World {
     g.computeVertexNormals();
     const m = new THREE.Mesh(g, toon(0xffffff, { vertexColors: true }));
     (m.material as THREE.Material).userData.outlineParameters = { visible: false };
+    m.receiveShadow = true;
     this.group.add(m);
   }
 
@@ -845,7 +856,7 @@ export class World {
       const y0 = this.groundY(x - 1.2, z), y1 = this.groundY(x + 1.2, z);
       o.matrixAutoUpdate = false;
       o.matrix.set(1, 0, 0, x, (y1 - y0) / 2.4, 1, 0, (y0 + y1) / 2, 0, 0, 1, z, 0, 0, 0, 1);
-      this.group.add(o);
+      this.group.add(shadows(o));
       return o;
     }
     const rr = Math.min(1.2, this.footprint(kind, model) * scale * 0.6);
@@ -860,10 +871,10 @@ export class World {
       halo.position.set(0, 3.9, 0.85);
       halo.scale.setScalar(2.2);
       o.add(halo);
-      this.addLamp(x, y + 3.9 * scale, z + 0.85 * scale, 0xffd080);
+      this.addLamp(x, y + 3.9 * scale, z + 0.85 * scale, 0xffd080, 45);
     }
     if (kind !== this.biome.fence?.kind) this.blobs.push({ x, z, r: Math.min(2.4, Math.max(0.35, this.footprint(kind, model) * scale * 0.9)) });
-    this.group.add(o);
+    this.group.add(shadows(o));
     return o;
   }
 
@@ -872,9 +883,9 @@ export class World {
   private blobs: { x: number; z: number; r: number }[] = [];
 
   /** A pool of light on the ground, brighter on darker nights. */
-  private addLamp(x: number, y: number, z: number, color: number, radius = 6.5) {
-    const night = this.biome.stars ? 1.6 : 1.1;
-    this.lamps.push({ x, y, z, radius, color: new THREE.Color(color).multiplyScalar(night) });
+  private addLamp(x: number, y: number, z: number, color: number, intensity: number, radius = 11) {
+    const night = this.biome.stars ? 1.3 : 1;
+    this.lamps.push({ x, y, z, radius, color: new THREE.Color(color), intensity: intensity * night });
   }
 
   /** This track's landmarks, spread along it. */
@@ -896,7 +907,7 @@ export class World {
         for (const [dx, dz] of [[rr, 0], [-rr, 0], [0, rr * 0.6], [0, -rr * 0.6]]) y = Math.min(y, this.groundY(x + dx, lm.z + dz));
       }
       o.position.set(x, y, lm.z);
-      this.group.add(o);
+      this.group.add(shadows(o));
       if (lm.r) this.clearings.push({ x, z: lm.z, r: lm.r });
       if (lm.r && lm.on !== 'sea') this.blobs.push({ x, z: lm.z, r: lm.r * 0.9 });
     });
@@ -955,8 +966,8 @@ export class World {
       halo.position.y = 2.55;
       halo.scale.setScalar(1.8);
       t.add(halo);
-      this.group.add(t);
-      this.addLamp(x, y + 2.5, z, 0xff9a40, 5.5);
+      this.group.add(shadows(t));
+      this.addLamp(x, y + 2.6, z, 0xff9a40, 22, 10);
       this.blobs.push({ x, z, r: 0.4 });
     }
   }
@@ -1014,7 +1025,7 @@ export class World {
         const t = dz < 0 ? 0.3 + this.rand() * 0.15 : 0.55 + this.rand() * 0.15;
         const c = chair.clone();
         c.position.set(a.x + (b.x - a.x) * t, a.y + 6.9 + (b.y - a.y) * t - 1.4 * Math.sin(Math.PI * t), a.z + dz);
-        this.group.add(c);
+        this.group.add(shadows(c));
       }
     }
   }
@@ -1046,7 +1057,7 @@ export class World {
       g.add(board);
       const z = -2.0;
       g.position.set(s.x + 2, this.groundY(s.x + 2, z), z);
-      this.group.add(g);
+      this.group.add(shadows(g));
     }
   }
 
@@ -1078,13 +1089,12 @@ export class World {
     banner.position.set(0, 3.8, zb);
     g.add(banner);
     g.position.set(x, this.track.height(x), 0);
-    this.group.add(g);
+    this.group.add(shadows(g));
   }
 
   private buildSky() { /* sky is the scene background, set in applyEnvironment */ }
 
   update(dt: number, camX: number, camY: number) {
-    setLamps(this.lamps, camX + 4);
     this.clouds.position.x = camX * 0.6;
     this.sky.position.set(camX * 0.9, camY, 0);
     const p = this.particleKind;

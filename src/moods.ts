@@ -13,27 +13,27 @@ const MOODS: Record<string, Mood> = {
   morning: {
     label: 'Morning',
     sky: ['#4f9ee0', '#a9d6f2', '#ffe6c8'], hemi: [0xfff0e0, 0x7a8f5e, 1.35], sun: [0xffe2b8, 2.0],
-    sunPos: [-12, 7, 10], clouds: 0xfff4ea,
+    sunPos: [-12, 7, 5], clouds: 0xfff4ea,
   },
   golden: {
     label: 'Golden hour',
     sky: ['#3a78c8', '#f2b46a', '#ffd89a'], hemi: [0xfff0dc, 0x807050, 1.35], sun: [0xffd49a, 2.2],
-    sunPos: [10, 6, 10], clouds: 0xffd8a8, fogColor: 0xf4e2c4,
+    sunPos: [10, 6, 5], clouds: 0xffd8a8, fogColor: 0xf4e2c4,
   },
   sunset: {
     label: 'Sunset',
     sky: ['#2c2a6a', '#e0607a', '#ffb060'], hemi: [0xffdcd0, 0x504060, 1.3], sun: [0xffa880, 2.0],
-    sunPos: [12, 4, 8], clouds: 0xf7a0b0, fogColor: 0xf0bca8,
+    sunPos: [12, 4, 4], clouds: 0xf7a0b0, fogColor: 0xf0bca8,
   },
   dusk: {
     label: 'Dusk',
     sky: ['#1a1f4a', '#5a4a8a', '#e08a7a'], hemi: [0xb8b0e0, 0x403850, 1.0], sun: [0xffb0a0, 1.1],
-    sunPos: [12, 3, 8], clouds: 0x8a7aa8, lights: true,
+    sunPos: [12, 3, 4], clouds: 0x8a7aa8, lights: true,
   },
   night: {
     label: 'Night',
     sky: ['#070b22', '#16224a', '#2c3a6a'], hemi: [0x9fb0e0, 0x30304a, 0.6], sun: [0xc8d8ff, 0.7],
-    sunPos: [-8, 14, 10], clouds: 0x3a4468, stars: true, lights: true, haze: 0.25,
+    sunPos: [-9, 12, 5], clouds: 0x3a4468, stars: true, lights: true, haze: 0.25,
   },
   overcast: {
     label: 'Cloudy',
