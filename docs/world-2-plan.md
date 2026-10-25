@@ -11,9 +11,9 @@ The ground rules, difficulty scale, challenges and par calibration in `level-pla
 | 1 | Autumn Farm | mud patches you pump through | 8 | 2 to 5 | Barn Halfpipe | built |
 | 2 | Candy Kingdom | jelly bounce pads | 8 | 3 to 6 | Jelly Bowl | built |
 | 3 | Harbour Docks | long manual and ledge combos on containers | 10 | 4 to 7 | Harbour Crane Mega Ramp | built |
-| 4 | Pirate Cove | stepping-stone gaps close together | 8 | 5 to 7 | half pipe | planned |
-| 5 | Haunted Hollow | big drop-offs in the dark | 8 | 5 to 8 | half pipe | planned |
-| 6 | Funfair | loops chained together, coaster rails | 10 | 6 to 8 | half pipe | planned |
+| 4 | Pirate Cove | stepping-stone gaps close together | 8 | 5 to 7 | Galleon Bowl | built |
+| 5 | Haunted Hollow | big drop-offs in the dark | 8 | 5 to 8 | Graveyard Halfpipe | built |
+| 6 | Funfair | loops chained together, coaster rails | 10 | 6 to 8 | Big Top Halfpipe | built |
 | 7 | Toxic Factory | conveyor belts and goo pits | 10 | 6 to 9 | mega ramp | planned |
 | 8 | Crystal Mine | rail lines and rail-to-rail hops | 10 | 6 to 9 | mega ramp | planned |
 | 9 | Dino Valley | giant humps to launch off | 10 | 7 to 9 | mega ramp | planned |
@@ -91,3 +91,67 @@ view. Gaps are harbour water.
 | 9 | docks-9 | Storm Surge | 7 | three-gap sets | lighthouse, cargo ship | thunderstorm |
 | 10 | docks-10 | Big Ship | 7 | everything, a 7 m gap | gantry crane, ferry | sailing day |
 | bonus | docks-mega | Harbour Crane Mega Ramp | - | - | gantry crane | dusk |
+
+## Pirate Cove: stepping stones
+
+`stones(n, gap)` lays `n` rocks standing out of the sea, each gap a little wider than the
+last (up to 7.6 m). Each rock is a landing slope to pump, a metre of flat and a kicker to the
+next. Start it off a kicker on the flat (no run-in slope, or riders who never pump clear it
+all) and finish with a `pit` and a `land`. The first rock's landing is longer (28 m), as you
+come off the first kicker fastest. Rocks are drawn as weathered stone with a craggy face, the
+sea in front and boulders around. Combo challenges run between the 'stones' and 'stonesend'
+spots, so keep sets to four rocks: the bot can't hold a combo through five.
+
+| # | id | Name | Diff | New | Landmarks | Mood |
+|---|----|------|----:|-----|-----------|------|
+| 1 | pirate-1 | Stepping Stones | 5 | stepping stones | treasure, pirate ship | sunny |
+| 2 | pirate-2 | Shipwreck Shallows | 5 | three-stone combos, a gap | shipwreck, tavern | low tide |
+| 3 | pirate-3 | Plank Walk | 5 | plank rails onto the stones | fort | golden |
+| 4 | pirate-4 | Skull Rock | 6 | wider stones | skull rock, treasure | squall |
+| 5 | pirate-5 | Cannon Run | 6 | big cannon-ramp gaps | fort, pirate ship | sunset |
+| 6 | pirate-6 | Treasure Trail | 6 | jetty manuals, everything | tavern, skull rock | treasure hunt |
+| 7 | pirate-7 | Kraken Reef | 7 | four-stone reefs | shipwreck, lighthouse | kraken mist |
+| 8 | pirate-8 | Captain's Revenge | 7 | everything, a 7 m gap | pirate ship, fort | torchlit night |
+| bonus | pirate-pipe | Galleon Bowl | - | - | pirate ship | dusk |
+
+## Haunted Hollow: drop-offs
+
+`dropoff(h, len, fall)` drops the ground `h` metres at a lip onto a landing `len` long (20 m
+or more, or fast riders overshoot it). Roll off with speed and you land on the slope; slowly
+and you thump onto its top. The landings check counts rolling off a drop-off's lip as a jump.
+Always after dark: gas lamps, glowing jack-o'-lanterns, a castle on the skyline, and
+will-o'-the-wisps (a new `wisps` particle). Friendly cartoon ghosts, not scary ones.
+
+| # | id | Name | Diff | New | Landmarks | Mood |
+|---|----|------|----:|-----|-----------|------|
+| 1 | haunted-1 | Spooky Steps | 5 | drop-offs | graveyard gate, spooky oak | dusk |
+| 2 | haunted-2 | Graveyard Drop | 5 | bigger drops, open graves | manor | full moon |
+| 3 | haunted-3 | Crooked Bridge | 6 | rails over the ravine | witch's hut, graveyard gate | graveyard fog |
+| 4 | haunted-4 | Pumpkin Patch | 6 | pumpkin rollers | giant pumpkin, spooky oak | pumpkin night |
+| 5 | haunted-5 | Into the Dark | 7 | drops into gaps | manor, witch's hut | will-o'-the-wisps |
+| 6 | haunted-6 | Ghost Train | 7 | down-rails then drops | spooky oak, giant pumpkin | stormy night |
+| 7 | haunted-7 | Manor Stairs | 7 | stairs and handrails | graveyard gate, manor | harvest moon |
+| 8 | haunted-8 | Off the Roof | 8 | everything, a 7.4 m gap | manor | midnight |
+| bonus | haunted-pipe | Graveyard Halfpipe | - | - | manor | full moon |
+
+## Funfair: loops back to back
+
+Two loops in a row work with the existing `loop()`: drop in (`ease(14, -4)`), loop, then
+`flat(3).ease(10, -2.5).flat(3)` before the second, and the bot gets round both every time.
+Leave a roller and some flat between a loop and a rail, or the bot can't get on the rail.
+The track is a painted boardwalk on a wooden coaster frame, with tents, a coaster and a big
+wheel on the skyline.
+
+| # | id | Name | Diff | New | Landmarks | Mood |
+|---|----|------|----:|-----|-----------|------|
+| 1 | funfair-1 | Loop the Loop | 6 | loops | balloon arch, big wheel | sunny |
+| 2 | funfair-2 | Double Trouble | 6 | two loops in a row | carousel, coaster hill | morning |
+| 3 | funfair-3 | Coaster Rail | 6 | coaster down-rails | coaster hill | afternoon |
+| 4 | funfair-4 | Loop to Gap | 7 | loop into a gap | helter-skelter, big top | breezy |
+| 5 | funfair-5 | Helter-Skelter | 7 | drop after drop | helter-skelter, carousel | golden |
+| 6 | funfair-6 | Bumper Cars | 7 | kicker after kicker | big top, big wheel | candyfloss sky |
+| 7 | funfair-7 | Loop and Grind | 7 | loop then a rail | carousel, coaster hill | sunset |
+| 8 | funfair-8 | Waltzer Spin | 8 | big gaps, a double loop | big top, helter-skelter | dusk |
+| 9 | funfair-9 | Night Ride | 8 | everything | big wheel, carousel | fair lights |
+| 10 | funfair-10 | Big Dipper | 8 | huge first drop, a 7.4 m gap | coaster hill, balloon arch | last ride |
+| bonus | funfair-pipe | Big Top Halfpipe | - | - | big top | showtime |

@@ -11,11 +11,14 @@ import { FARM } from './levels/farm';
 import { CANDY, CANDY_PIPE } from './levels/candy';
 import { DOCKS } from './levels/docks';
 import { SCOOTER, scooterFallback } from './levels/scooter';
+import { PIRATE, PIRATE_PIPE } from './levels/pirate';
+import { HAUNTED, HAUNTED_PIPE } from './levels/haunted';
+import { FUNFAIR, FUNFAIR_PIPE } from './levels/funfair';
 
 export { PIPE_TIME, STOP_AFTER_FINISH } from './levels/common';
 export type { TrackDef } from './levels/common';
 
-export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS];
+export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE];
 
 // Every track's scooter challenges. New tracks get their skateboard ones with scooter tricks
 // swapped in until they have their own (the scooter playtest lists them).

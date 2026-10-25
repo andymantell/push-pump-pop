@@ -163,6 +163,41 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   'docks-9': set(38500, combo('Clear a set of three gaps in one combo', { gaps: 3 }), tricks(6), noLives()),
   'docks-10': scored(57000, gaps('Clear the final gap', { which: [-1] }), combo('Grind, manual and body trick in one combo', { include: ['grind', 'manual', 'hold'] })),
   'docks-mega': scored(23500, drops(), bothAirs()),
+
+  // Pirate Cove: stepping stones.
+  'pirate-1': set(54000, gaps('Hop every stone'), pumps(12), trick('A body trick between two stones', 'hold', { from: 'stones' })),
+  'pirate-2': set(50500, gaps('Hop every stone'), combo('Hop three stones in one combo', { across: ['stones', 'stonesend'] }), variety(5)),
+  'pirate-3': set(58000, grind('Grind the plank'), combo('Grind, then whip, in one combo', { include: ['grind', 'whip'] }), noLives()),
+  'pirate-4': set(70500, gaps('Hop every stone'), combo('A whip and a body trick on one set of stones', { include: ['whip', 'hold'], across: ['stones', 'stonesend'] }), tricks(5)),
+  'pirate-5': scored(58000, air('Air for 1.5 seconds', { seconds: 1.5 }), trick('A spin over every big gap', 'spin', { overGap: [0, 4, 8] })),
+  'pirate-6': set(53000, { text: 'Manual the jetty', kind: 'manual', pad: true }, variety(6), tricks(6)),
+  'pirate-7': set(72000, gaps('Hop every stone'), combo('Hop four stones in one combo', { across: ['stones', 'stonesend'] }), noLives()),
+  'pirate-8': scored(67500, gaps('Clear the final gap', { which: [-1] }), combo('A whip and a body trick in one combo', { include: ['whip', 'hold'] })),
+  'pirate-pipe': scored(22500, trick('Land a body trick', 'hold'), variety(5)),
+
+  // Haunted Hollow: drop-offs.
+  'haunted-1': set(4500, air('Air for half a second off a drop-off', { from: 'dropoff', seconds: 0.5 }), pumps(12), trick('A body trick off a drop-off', 'hold', { from: 'dropoff' })),
+  'haunted-2': set(8000, gaps('Clear every gap'), trick('A whip off a drop-off', 'whip', { from: 'dropoff' }), variety(5)),
+  'haunted-3': set(16000, grind('Grind the crooked bridge'), combo('Grind, then a drop-off, in one combo', { include: ['grind'], tricks: 2 }), noLives()),
+  'haunted-4': set(7500, pumps(14), gaps('Clear every gap'), variety(6)),
+  'haunted-5': set(12500, gaps('Clear every gap'), trick('A spin over every gap', 'spin', { overGap: 'every' }), air('Air for 1.2 seconds', { seconds: 1.2 })),
+  'haunted-6': set(25500, grind('Ride the ghost train rail', { count: 3 }), combo('A grind and two more tricks in one combo', { include: ['grind'], tricks: 3 }), gaps('Clear every gap')),
+  'haunted-7': set(12500, grind('Grind a handrail', { railKind: 'handrail' }), gaps('Clear the gap'), trick('A whip down the stairs', 'whip', { from: 'stairs' })),
+  'haunted-8': scored(19500, gaps('Clear the final gap', { which: [-1] }), variety(6)),
+  'haunted-pipe': scored(22500, trick('Land a whip', 'whip'), variety(5)),
+
+  // Funfair: loops back to back.
+  'funfair-1': set(16000, loop('Ride every loop', 3), pumps(12), variety(5)),
+  'funfair-2': set(17000, loop('Ride both loops of a pair', 2), loop('Ride every loop', 4), variety(5)),
+  'funfair-3': set(20500, grind('Grind the coaster track', { count: 3 }), gaps('Clear every gap'), trick('A whip over a gap', 'whip', { overGap: true })),
+  'funfair-4': set(25000, gaps('Clear every gap'), combo('A loop and a gap in one combo', { include: ['loop'], gaps: 1 }), trick('A spin over a gap', 'spin', { overGap: true })),
+  'funfair-5': set(21000, air('Air for 1.2 seconds', { seconds: 1.2 }), loop('Ride every loop', 2), tricks(5)),
+  'funfair-6': set(20500, everyKicker('A trick off every kicker'), variety(6), gaps('Clear every gap')),
+  'funfair-7': set(33500, grind('Grind every rail', { count: 3 }), loop('Ride every loop', 3), combo('A loop and a grind in one combo', { include: ['loop', 'grind'] })),
+  'funfair-8': set(15000, trick('Land a 360', '360'), gaps('Clear every gap'), trick('A spin over every gap', 'spin', { overGap: 'every' })),
+  'funfair-9': set(30000, loop('Ride every loop', 4), variety(6), gaps('Clear every gap')),
+  'funfair-10': scored(19500, gaps('Clear the final gap', { which: [-1] }), loop('Ride every loop', 4)),
+  'funfair-pipe': scored(22500, trick('Land a spin', 'spin'), variety(5)),
 };
 
 /** Skateboard words and tricks, the scooter way. */

@@ -1101,6 +1101,8 @@ def build_props():
     build_candy(out)
     build_docks(out)
     build_pirate(out)
+    build_haunted(out)
+    build_funfair(out)
     export(os.path.join(OUT, 'props.glb'), out)
 
 
@@ -2087,6 +2089,239 @@ def build_pirate(out):
     fl.append(sphere(flag, 0.04, loc=(0.66, -0.07, 4.5), segs=6, rings=4))
     fl.append(sphere(flag, 0.04, loc=(0.78, -0.07, 4.5), segs=6, rings=4))
     out.append(join('jollyflag', fl))
+
+
+def limb(material, p0, p1, r0, r1, verts=8):
+    """A tapered branch from p0 to p1."""
+    dx, dy, dz = (p1[i] - p0[i] for i in range(3))
+    d = math.sqrt(dx * dx + dy * dy + dz * dz)
+    o = cyl(material, r0, d, loc=tuple((p0[i] + p1[i]) / 2 for i in range(3)), r2=r1, verts=verts)
+    # Point the cone's +Z along the branch.
+    o.rotation_euler = (math.acos(max(-1, min(1, dz / d))) * 1, 0, 0)
+    o.rotation_mode = 'XYZ'
+    yaw = math.atan2(dy, dx) + math.pi / 2
+    o.rotation_euler = (0, 0, 0)
+    import mathutils
+    v = mathutils.Vector((dx, dy, dz)).normalized()
+    o.rotation_mode = 'QUATERNION'
+    o.rotation_quaternion = mathutils.Vector((0, 0, 1)).rotation_difference(v)
+    apply_tf(o)
+    return o
+
+
+def build_haunted(out):
+    bark = mat('dead_bark', (120, 104, 108))
+    bark_dk = mat('dead_bark_dark', (92, 78, 86))
+    stone = mat('grave_stone', (150, 150, 160))
+    stone_dk = mat('grave_stone_dark', (112, 112, 124))
+    moss = mat('moss', (90, 120, 70))
+    pumpkin_m = mat('pumpkin', (242, 128, 32))
+    pumpkin_dk = mat('pumpkin_dark', (214, 98, 22))
+    stem = mat('stem', (96, 120, 50))
+    face = mat('pumpkin_glow', (255, 200, 60))
+    sheet = mat('ghost_sheet', (240, 244, 255))
+    black = mat('ghost_eye', (30, 26, 40))
+    iron = mat('iron', (68, 68, 72))
+    goo = mat('goo_glow', (120, 240, 80))
+    glow = mat('lamp_light', (255, 243, 176))
+    log = mat('crate_wood_dark', (150, 108, 62))
+
+    # A bare, twisted dead tree: a leaning trunk forking into crooked branches.
+    import random
+    rnd = random.Random(13)
+    tr = [limb(bark, (0, 0, 0), (0.35, 0, 1.6), 0.45, 0.3, verts=10), limb(bark, (0.35, 0, 1.6), (0.1, 0.05, 2.9), 0.3, 0.18, verts=10),
+          limb(bark, (0.1, 0.05, 2.9), (0.3, 0, 3.8), 0.18, 0.08, verts=8)]
+    for a in range(5):
+        ang = a * 2 * math.pi / 5 + 0.3
+        tr.append(limb(bark_dk, (0, 0, 0.25), (0.75 * math.cos(ang), 0.5 * math.sin(ang), -0.05), 0.16, 0.05, verts=6))
+    for base, ang, ln in [((0.35, 0, 1.6), 0.5, 1.9), ((0.25, 0, 2.1), 2.7, 1.8), ((0.1, 0.05, 2.9), 0.9, 1.4), ((0.15, 0.05, 2.6), 3.3, 1.5), ((0.3, 0, 3.8), 1.8, 0.9)]:
+        mid = (base[0] + ln * 0.5 * math.cos(ang), base[1] + 0.25 * math.sin(ang), base[2] + ln * 0.15)
+        tip = (base[0] + ln * math.cos(ang), base[1] + 0.4 * math.sin(ang), base[2] + ln * 0.6)
+        tr.append(limb(bark, base, mid, 0.15, 0.1, verts=7))
+        tr.append(limb(bark, mid, tip, 0.1, 0.05, verts=6))
+        for k in range(2):
+            a2 = ang + (rnd.random() - 0.5) * 1.8
+            t2 = (tip[0] + 0.7 * math.cos(a2), tip[1] + 0.2 * math.sin(a2), tip[2] + 0.1 + rnd.random() * 0.5)
+            tr.append(limb(bark_dk, tip, t2, 0.05, 0.02, verts=5))
+    # A hollow in the trunk, like a spooky face.
+    tr.append(sphere(black, 0.12, loc=(0.25, -0.38, 1.5), scale=(0.8, 0.4, 1.3), segs=10, rings=8))
+    out.append(join('spookytree', tr))
+
+    # A gravestone with a rounded top and a mossy foot, leaning a little.
+    gs = [cube(stone, (0.7, 0.18, 0.75), loc=(0, 0, 0.42), bevel=0.03), cyl(stone, 0.35, 0.18, loc=(0, 0, 0.8), rot=(math.pi / 2, 0, 0), verts=20),
+          cube(stone_dk, (0.4, 0.02, 0.05), loc=(0, -0.1, 0.75)), cube(stone_dk, (0.3, 0.02, 0.05), loc=(0, -0.1, 0.6)),
+          cube(stone_dk, (0.35, 0.02, 0.05), loc=(0, -0.1, 0.45)),
+          sphere(moss, 0.4, loc=(0, 0, 0.02), scale=(1.2, 0.8, 0.25), segs=10, rings=6)]
+    o = join('gravestone', gs)
+    o.rotation_euler = (0.08, 0.06, 0)
+    out.append(o)
+
+    # A stone cross.
+    out.append(join('gravecross', [cube(stone, (0.18, 0.16, 1.3), loc=(0, 0, 0.65), bevel=0.02), cube(stone, (0.7, 0.16, 0.18), loc=(0, 0, 0.95), bevel=0.02),
+                                   cube(stone_dk, (0.4, 0.3, 0.12), loc=(0, 0, 0.06), bevel=0.02), sphere(moss, 0.3, loc=(0, 0, 0.02), scale=(1.2, 1, 0.25), segs=10, rings=6)]))
+
+    # A jack-o'-lantern grinning at the track, lit from inside.
+    pk = []
+    for k in range(8):
+        a = k * math.pi / 4
+        pk.append(sphere(pumpkin_m if k % 2 else pumpkin_dk, 0.22, loc=(0.15 * math.cos(a), 0.15 * math.sin(a), 0.27), scale=(1, 0.75, 1.1), segs=14, rings=10))
+    pk.append(sphere(pumpkin_m, 0.27, loc=(0, 0, 0.28), segs=16, rings=10))
+    pk.append(cyl(stem, 0.04, 0.16, loc=(0.02, 0, 0.6), rot=(0, 0.3, 0), verts=6))
+    for x in (-0.12, 0.12):
+        pk.append(cyl(face, 0.07, 0.06, loc=(x, -0.36, 0.36), rot=(math.pi / 2, 0, math.pi / 2), verts=3))
+    pk.append(cyl(face, 0.04, 0.06, loc=(0, -0.38, 0.27), rot=(math.pi / 2, 0, -math.pi / 2), verts=3))
+    pk.append(cube(face, (0.32, 0.06, 0.07), loc=(0, -0.36, 0.17)))
+    for x in (-0.08, 0.08):
+        pk.append(cube(pumpkin_m, (0.05, 0.07, 0.04), loc=(x, -0.37, 0.19)))
+    out.append(join('jackolantern', pk))
+
+    # A friendly cartoon ghost: a floating sheet with a wavy hem, big eyes and an "oooh" mouth.
+    gh = [sphere(sheet, 0.42, loc=(0, 0, 1.55), segs=18, rings=12), cyl(sheet, 0.42, 1.0, loc=(0, 0, 1.05), r2=0.6, verts=18)]
+    gh[1].rotation_euler = (math.pi, 0, 0)
+    apply_tf(gh[1])
+    for k in range(9):
+        a = 2 * math.pi * k / 9
+        gh.append(sphere(sheet, 0.16, loc=(0.52 * math.cos(a), 0.52 * math.sin(a), 0.57), segs=10, rings=6))
+    for x in (-0.15, 0.15):
+        gh.append(sphere(black, 0.08, loc=(x, -0.37, 1.62), scale=(0.8, 0.5, 1.2), segs=10, rings=8))
+    gh.append(sphere(black, 0.07, loc=(0, -0.4, 1.4), scale=(0.8, 0.5, 1.1), segs=10, rings=8))
+    for s in (-1, 1):
+        gh.append(sphere(sheet, 0.13, loc=(s * 0.5, -0.05, 1.2), scale=(1.4, 0.8, 0.8), segs=10, rings=8))
+    out.append(join('ghost', gh))
+
+    # A witch's cauldron bubbling green over a log fire.
+    cd = [sphere(iron, 0.5, loc=(0, 0, 0.6), scale=(1, 1, 0.8), segs=18, rings=10), cyl(iron, 0.44, 0.06, loc=(0, 0, 0.98), verts=18),
+          cyl(goo, 0.4, 0.04, loc=(0, 0, 0.97), verts=18)]
+    for k in range(3):
+        a = k * 2 * math.pi / 3
+        cd.append(cyl(iron, 0.05, 0.4, loc=(0.35 * math.cos(a), 0.35 * math.sin(a), 0.18), verts=6))
+        cd.append(cyl(log, 0.07, 0.8, loc=(0.1 * math.cos(a), 0.1 * math.sin(a), 0.07), rot=(math.pi / 2, 0, a), verts=8))
+    for x, y in ((0.1, 0.05), (-0.15, -0.1), (0.05, -0.18)):
+        cd.append(sphere(goo, 0.08, loc=(x, y, 1.02), segs=8, rings=6))
+    out.append(join('cauldron', cd))
+
+    # Iron railings: a 2.4 m run of spiked bars between two posts.
+    fe = [cube(iron, (0.1, 0.1, 1.5), loc=(-1.2, 0, 0.75)), sphere(iron, 0.08, loc=(-1.2, 0, 1.55), segs=8, rings=6),
+          cube(iron, (2.4, 0.04, 0.05), loc=(0, 0, 1.15)), cube(iron, (2.4, 0.04, 0.05), loc=(0, 0, 0.3))]
+    for k in range(8):
+        x = -1.2 + 0.3 * (k + 0.5)
+        fe.append(cyl(iron, 0.02, 1.25, loc=(x, 0, 0.67), verts=6))
+        fe.append(cyl(iron, 0.04, 0.12, loc=(x, 0, 1.36), r2=0.0, verts=4))
+    out.append(join('ironfence', fe))
+
+    # A crooked old gas lamp, the lantern facing the track.
+    out.append(join('gaslamp', [
+        limb(iron, (0, 0, 0), (0.08, 0, 1.6), 0.08, 0.06), limb(iron, (0.08, 0, 1.6), (-0.05, 0, 3.0), 0.06, 0.05),
+        cyl(iron, 0.16, 0.2, loc=(0, 0, 0.1), verts=10),
+        cube(iron, (0.04, 0.5, 0.04), loc=(-0.05, -0.22, 3.0)),
+        cube(glow, (0.24, 0.24, 0.32), loc=(-0.05, -0.45, 2.8)),
+        cyl(iron, 0.2, 0.16, loc=(-0.05, -0.45, 3.04), r2=0.04, verts=4, rot=(0, 0, math.pi / 4)),
+        cube(iron, (0.28, 0.28, 0.04), loc=(-0.05, -0.45, 2.62)),
+    ]))
+
+    # A crow perched on a broken post.
+    out.append(join('crow', [
+        cyl(log, 0.09, 1.1, loc=(0, 0, 0.55), verts=8),
+        sphere(black, 0.13, loc=(0, 0, 1.22), scale=(1.4, 0.8, 0.9), segs=10, rings=8),
+        sphere(black, 0.08, loc=(0.15, 0, 1.33), segs=8, rings=6),
+        cyl(face, 0.03, 0.1, loc=(0.25, 0, 1.33), rot=(0, math.pi / 2, 0), r2=0.0, verts=6),
+        cube(black, (0.2, 0.05, 0.04), loc=(-0.2, 0, 1.24), rot=(0, -0.3, 0)),
+    ]))
+
+
+def build_funfair(out):
+    red = mat('red', (230, 60, 50))
+    white = mat('white', (245, 245, 245))
+    yellow = mat('yellow', (255, 206, 60))
+    blue = mat('fair_blue', (50, 110, 220))
+    green = mat('fair_green', (60, 180, 90))
+    pink = mat('floss_pink', (255, 150, 200))
+    wood = mat('crate_wood', (196, 150, 92))
+    wood_dk = mat('crate_wood_dark', (150, 108, 62))
+    iron = mat('iron', (68, 68, 72))
+    bulb = mat('lamp_light', (255, 243, 176))
+    gold = mat('gold', (250, 200, 40))
+    fur = mat('teddy_fur', (190, 130, 70))
+    fur_lt = mat('teddy_fur_light', (230, 190, 140))
+    eye = mat('ghost_eye', (30, 26, 40))
+    corn = mat('popcorn', (255, 240, 200))
+
+    # A striped fairground tent with a pennant on top and the door flaps tied back.
+    tent = [striped_cone([red, white], 2.0, 1.6, loc=(0, 0, 0.8), verts=16, r2=2.0),
+            striped_cone([red, white], 2.15, 1.6, loc=(0, 0, 2.4), verts=16, r2=0.06),
+            cyl(wood_dk, 0.04, 0.8, loc=(0, 0, 3.5), verts=6), cube(yellow, (0.4, 0.02, 0.24), loc=(0.2, 0, 3.75)),
+            cube(eye, (0.9, 0.05, 1.3), loc=(0, -1.98, 0.65))]
+    for x in (-0.55, 0.55):
+        tent.append(cube(red, (0.35, 0.06, 1.4), loc=(x, -2.0, 0.75), rot=(0, x * 0.4, 0)))
+    for k in range(16):
+        a = 2 * math.pi * (k + 0.5) / 16
+        tent.append(sphere(yellow if k % 2 else blue, 0.12, loc=(2.12 * math.cos(a), 2.12 * math.sin(a), 1.55), scale=(1, 1, 1.3), segs=8, rings=6))
+    out.append(join('tent', tent))
+
+    # A candyfloss stand: a little striped cart with a fluffy pink cloud on a stick.
+    cf = [cube(white, (1.4, 0.8, 0.9), loc=(0, 0, 0.75), bevel=0.03), cube(pink, (1.42, 0.82, 0.15), loc=(0, 0, 0.5)),
+          cyl(iron, 0.22, 0.1, loc=(-0.45, -0.42, 0.3), rot=(math.pi / 2, 0, 0), verts=12), cyl(iron, 0.22, 0.1, loc=(0.45, -0.42, 0.3), rot=(math.pi / 2, 0, 0), verts=12)]
+    for x in (-0.6, 0.6):
+        cf.append(cyl(white, 0.03, 1.2, loc=(x, 0.3, 1.8), verts=6))
+    cf.append(striped_cone([pink, white], 0.95, 0.4, loc=(0, 0, 2.5), verts=12, r2=0.1))
+    cf.append(sphere(pink, 0.32, loc=(0.3, -0.2, 1.65), scale=(1, 1, 0.85), segs=12, rings=8))
+    cf.append(cyl(white, 0.015, 0.4, loc=(0.3, -0.2, 1.3), verts=5))
+    cf.append(sphere(pink, 0.25, loc=(-0.3, -0.1, 1.55), segs=12, rings=8))
+    out.append(join('candyfloss', cf))
+
+    # A bunch of balloons tied to a weight.
+    bl = [cyl(iron, 0.1, 0.1, loc=(0, 0, 0.05), verts=8)]
+    for k, (m, x, y, z) in enumerate([(red, 0, 0, 2.2), (yellow, 0.3, 0.1, 2.0), (blue, -0.3, 0.05, 2.05), (green, 0.1, -0.2, 2.45), (pink, -0.15, 0.2, 2.5)]):
+        bl.append(sphere(m, 0.22, loc=(x, y, z), scale=(1, 1, 1.2), segs=12, rings=8))
+        bl.append(limb(white, (0, 0, 0.1), (x, y, z - 0.26), 0.008, 0.008, verts=4))
+    out.append(join('balloons', bl))
+
+    # A popcorn cart: red and white with a glass box full of popcorn and big wheels.
+    pc = [cube(red, (1.1, 0.7, 0.7), loc=(0, 0, 0.75), bevel=0.03), cube(white, (1.12, 0.72, 0.1), loc=(0, 0, 0.9)),
+          cube(corn, (0.9, 0.55, 0.45), loc=(0, 0, 1.33)), cube(yellow, (1.1, 0.7, 0.08), loc=(0, 0, 1.6)),
+          striped_cone([red, white], 0.75, 0.3, loc=(0, 0, 1.8), verts=12, r2=0.05)]
+    for x in (-0.5, 0.5):
+        pc.append(cyl(iron, 0.22, 0.06, loc=(x, -0.38, 0.22), rot=(math.pi / 2, 0, 0), verts=14))
+        for y in (-0.33, 0.33):
+            pc.append(cyl(yellow, 0.02, 0.45, loc=(x, y, 1.35), verts=5))
+    out.append(join('popcorn', pc))
+
+    # A giant prize teddy bear sitting up.
+    td = [sphere(fur, 0.45, loc=(0, 0, 0.5), scale=(1, 0.9, 1.1), segs=14, rings=10), sphere(fur_lt, 0.3, loc=(0, -0.25, 0.48), scale=(1, 0.5, 1.1), segs=12, rings=8),
+          sphere(fur, 0.33, loc=(0, 0, 1.15), segs=14, rings=10), sphere(fur_lt, 0.13, loc=(0, -0.28, 1.08), scale=(1, 0.7, 0.8), segs=10, rings=8),
+          sphere(eye, 0.05, loc=(0, -0.38, 1.12), segs=8, rings=6), cube(red, (0.3, 0.06, 0.08), loc=(0, -0.24, 0.85))]
+    for x in (-0.24, 0.24):
+        td.append(sphere(fur, 0.11, loc=(x, 0, 1.43), scale=(1, 0.6, 1), segs=10, rings=6))
+        td.append(sphere(eye, 0.04, loc=(x * 0.5, -0.3, 1.22), segs=8, rings=6))
+        td.append(sphere(fur, 0.15, loc=(x * 1.6, -0.15, 0.6), scale=(1, 1, 1.6), segs=10, rings=6))
+        td.append(sphere(fur, 0.16, loc=(x, -0.35, 0.15), scale=(1, 1.5, 0.9), segs=10, rings=6))
+    out.append(join('teddy', td))
+
+    # Bunting: a post with a rope of little triangle flags to the next post 2.4 m along.
+    bt = [cyl(white, 0.05, 1.8, loc=(-1.2, 0, 0.9), verts=8), sphere(red, 0.08, loc=(-1.2, 0, 1.82), segs=8, rings=6)]
+    pts = [(-1.2 + 2.4 * i / 8, 1.7 - 0.25 * math.sin(math.pi * i / 8)) for i in range(9)]
+    for (x0, z0), (x1, z1) in zip(pts, pts[1:]):
+        d = math.hypot(x1 - x0, z1 - z0)
+        bt.append(cyl(white, 0.012, d * 1.05, loc=((x0 + x1) / 2, 0, (z0 + z1) / 2), rot=(0, math.atan2(x1 - x0, z1 - z0), 0), verts=4))
+    for i, (x, z) in enumerate(pts[:-1]):
+        x += 0.15
+        bt.append(cyl([red, yellow, blue, green][i % 4], 0.2, 0.02, loc=(x, 0, z - 0.24), rot=(math.pi / 2, 0, math.pi / 2), verts=3))
+    out.append(join('bunting', bt))
+
+    # A fairground lamp post: striped pole with a ring of bulbs and a star on top.
+    fl = [cyl(white, 0.08, 3.6, loc=(0, 0, 1.8), verts=10), cyl(red, 0.2, 0.2, loc=(0, 0, 0.1), verts=10)]
+    for z in (0.8, 1.6, 2.4):
+        fl.append(cyl(red, 0.085, 0.3, loc=(0, 0, z), verts=10))
+    fl.append(cyl(gold, 0.5, 0.06, loc=(0, 0, 3.4), verts=16))
+    for k in range(10):
+        a = 2 * math.pi * k / 10
+        fl.append(sphere(bulb, 0.07, loc=(0.5 * math.cos(a), 0.5 * math.sin(a), 3.33), segs=8, rings=6))
+    fl.append(sphere(bulb, 0.18, loc=(0, 0, 3.75), segs=10, rings=8))
+    out.append(join('fairlamp', fl))
+
+    # A single balloon on a string, tied to a peg at the track's edge.
+    out.append(join('balloon', [cyl(wood_dk, 0.03, 0.2, loc=(0, 0, 0.1), verts=6), limb(white, (0, 0, 0.18), (0.1, 0, 1.25), 0.008, 0.008, verts=4),
+                                sphere(red, 0.2, loc=(0.1, 0, 1.47), scale=(1, 1, 1.2), segs=12, rings=8), cyl(red, 0.04, 0.06, loc=(0.1, 0, 1.24), r2=0.0, verts=6)]))
 
 
 if __name__ == '__main__':

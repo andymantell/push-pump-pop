@@ -94,7 +94,7 @@ const GROUNDS: Record<Ground, GroundSound> = {
 };
 
 const BIOME_GROUND: Record<string, Ground> = {
-  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete',
+  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'sand', haunted: 'stone', funfair: 'wood',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -342,7 +342,7 @@ export class Sound {
   setScene(b: Biome, snow: boolean, bound = snow, scooter = false) {
     this.scooter = scooter;
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
-    this.railSound = b.id === 'jungle' || b.id === 'farm' ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
+    this.railSound = b.id === 'jungle' || b.id === 'farm' || b.id === 'pirate' ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
     this.snow = snow;
     this.bound = bound;
     // Start fresh: nothing the rider did on the last track should sound on this one.
@@ -1002,6 +1002,96 @@ export class Sound {
           const p = pan() * 0.5, len = fog ? 2.2 : 1.6;
           for (const f of fog ? [98, 147] : [110, 165]) this.tone(at, { type: 'sawtooth', f, gain: 0.03, attack: 0.15, decay: len, lp: 600, to: out, pan: p });
         });
+        break;
+      }
+      case 'pirate': {
+        // Surf on the rocks, a ship's timbers creaking, parrots and gulls, the ship's bell,
+        // and a cannon booming far off. Torchlit nights get crickets and the bell only.
+        bed(this.brown, { type: 'lowpass', f: 520, q: 0.7 }, 0.15, 7, 0.8, 220);
+        bed(this.pink, { type: 'highpass', f: 1800, q: 0.5 }, 0.022, 7, 0.9);
+        // Waves slapping the stepping stones.
+        every(1.2, 3.2, (at) => this.burst(at, { buf: this.brown, type: 'bandpass', f: 420 + Math.random() * 260, q: 1.4, gain: 0.1, attack: 0.03, decay: 0.3, to: out, pan: pan() }));
+        // Timbers creaking: a slow, rough glide.
+        every(6, 14, (at) => {
+          const f = 120 + Math.random() * 90, p = pan();
+          this.tone(at, { type: 'sawtooth', f, fEnd: f * 1.35, gain: 0.012, attack: 0.25, decay: 0.7, glide: 0.8, lp: 900, to: out, pan: p });
+        });
+        if (!night) {
+          // A parrot squawk: two harsh chirps.
+          every(8, 18, (at) => {
+            const p = pan();
+            for (let i = 0; i < 2; i++) this.tone(at + i * 0.16, { type: 'square', f: 1900, fEnd: 1300, gain: 0.012, attack: 0.01, decay: 0.12, glide: 0.1, lp: 3200, to: out, pan: p });
+          });
+          every(6, 14, (at) => {
+            const p = pan();
+            for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++)
+              this.tone(at + i * 0.4, { type: 'sawtooth', f: 1500, fEnd: 1000, gain: 0.016, attack: 0.04, decay: 0.3, glide: 0.3, lp: 2600, to: out, pan: p });
+          });
+          // A cannon far across the bay: a dull thud and a long rumble.
+          every(30, 60, (at) => this.burst(at, { buf: this.brown, type: 'lowpass', f: 160, q: 0.7, gain: 0.35, attack: 0.01, decay: 1.4, to: out, pan: pan() * 0.6 }));
+        } else every(0.6, 2, crickets);
+        // The ship's bell: two strokes.
+        every(20, 40, (at) => {
+          const p = pan() * 0.7;
+          for (let i = 0; i < 2; i++) for (const [f, g] of [[880, 0.02], [2210, 0.008], [3340, 0.004]] as const)
+            this.tone(at + i * 0.6, { f, gain: g, attack: 0.003, decay: 1.6, to: out, pan: p });
+        });
+        break;
+      }
+      case 'haunted': {
+        // Wind moaning through bare trees, owls, a creaking gate, crows, and now and then a
+        // friendly ghost going "whooo".
+        bed(this.pink, { type: 'bandpass', f: 520, q: 1.6 }, 0.07, 9, 0.8, 260);
+        bed(this.brown, { type: 'lowpass', f: 160, q: 0.7 }, 0.08, 6, 0.5);
+        every(0.6, 2, crickets);
+        // An owl: hoo, hoo-hoo.
+        every(8, 18, (at) => {
+          const p = pan();
+          [0, 0.55, 0.8].forEach((d, i) => this.tone(at + d, { f: i ? 380 : 400, fEnd: i ? 340 : 360, gain: 0.03, attack: 0.04, decay: 0.32, glide: 0.3, lp: 900, to: out, pan: p }));
+        });
+        // A gate creaking open on rusty hinges.
+        every(14, 30, (at) => {
+          const p = pan();
+          this.tone(at, { type: 'sawtooth', f: 520, fEnd: 780, gain: 0.01, attack: 0.1, decay: 1.1, glide: 1.0, lp: 1800, to: out, pan: p });
+          this.tone(at + 0.05, { type: 'square', f: 260, fEnd: 390, gain: 0.006, attack: 0.1, decay: 1.0, glide: 0.9, lp: 1200, to: out, pan: p });
+        });
+        // A crow's caw.
+        every(10, 22, (at) => {
+          const p = pan();
+          for (let i = 0; i < 2; i++) this.tone(at + i * 0.3, { type: 'sawtooth', f: 620, fEnd: 480, gain: 0.014, attack: 0.02, decay: 0.2, glide: 0.18, lp: 1600, to: out, pan: p });
+        });
+        // The friendly ghost: a long wobbling "whooo" that slides down.
+        every(18, 36, (at) => {
+          const p = pan() * 0.6;
+          this.tone(at, { f: 620, fEnd: 360, gain: 0.025, attack: 0.4, decay: 1.8, glide: 1.6, lp: 1400, to: out, pan: p });
+          this.tone(at, { f: 628, fEnd: 366, gain: 0.015, attack: 0.4, decay: 1.8, glide: 1.6, lp: 1400, to: out, pan: p });
+        });
+        break;
+      }
+      case 'funfair': {
+        // The crowd chattering, a fairground organ tune drifting over, coaster cars clacking up
+        // the lift hill and the screams of fun as they drop.
+        bed(this.pink, { type: 'bandpass', f: 700, q: 0.9 }, 0.05, 6, 0.6, 200);
+        bed(this.brown, { type: 'lowpass', f: 240, q: 0.7 }, 0.06, 5, 0.4);
+        const tune = [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047];
+        every(10, 20, (at) => {
+          const p = pan() * 0.5;
+          tune.forEach((f, i) => {
+            this.tone(at + i * 0.24, { type: 'square', f, gain: 0.006, attack: 0.01, decay: 0.2, lp: 1800, to: out, pan: p });
+            if (i % 3 === 0) this.tone(at + i * 0.24, { type: 'triangle', f: f / 4, gain: 0.01, attack: 0.01, decay: 0.3, to: out, pan: p });
+          });
+        });
+        every(16, 30, (at) => {
+          const p = pan();
+          for (let i = 0; i < 14; i++) this.burst(at + i * 0.16, { buf: this.brown, type: 'bandpass', f: 900, q: 3, gain: 0.04, attack: 0.002, decay: 0.05, to: out, pan: p });
+          // Then the drop: a few happy screams.
+          for (let k = 0; k < 3; k++) {
+            const f = 900 + Math.random() * 400;
+            this.tone(at + 2.6 + k * 0.15, { type: 'sawtooth', f, fEnd: f * 1.3, gain: 0.006, attack: 0.08, decay: 0.9, glide: 0.6, lp: 2400, to: out, pan: p });
+          }
+        });
+        if (night) every(0.8, 2.5, crickets);
+        else every(4, 10, bird);
         break;
       }
       case 'candy': {

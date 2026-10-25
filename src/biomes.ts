@@ -1,6 +1,6 @@
 // A biome sets the look, scenery and feel of a track. Track layouts live in src/tracks.
 
-export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall';
+export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall' | 'covesand' | 'cobbles' | 'fairboards' | 'lattice';
 
 export interface Surface {
   kind: SurfaceKind;
@@ -23,7 +23,7 @@ export interface Biome {
   ground: [number, number, number];
   /** How the ground behind the track rises or falls away. */
   groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat' | 'quay';
-  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour';
+  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour' | 'hollow' | 'fair';
   farColors: number[];
   clouds: number | null;
   particles: Particles | null;
@@ -61,7 +61,7 @@ export interface Biome {
   bigMoon?: boolean;
 }
 
-export type Particles = 'snow' | 'heavysnow' | 'embers' | 'ash' | 'rain' | 'petals' | 'leaves' | 'dust' | 'fireflies' | 'sprinkles';
+export type Particles = 'snow' | 'heavysnow' | 'embers' | 'ash' | 'rain' | 'petals' | 'leaves' | 'dust' | 'fireflies' | 'sprinkles' | 'wisps';
 
 export const BIOMES: Record<string, Biome> = {
   park: {
@@ -217,12 +217,61 @@ export const BIOMES: Record<string, Biome> = {
     pitFill: 'water', pitFillColor: 0x2a6a90, fallText: 'SPLASH!', sign: '#1f4a6a',
     friction: 1, maxSpeed: 17, swatch: '#3a88d0',
   },
+  pirate: {
+    id: 'pirate', name: 'Pirate Cove', blurb: 'Hop the stepping stones across the cove. Pump on every landing!',
+    sky: ['#1f88d8', '#86d4f4', '#fff2d4'], fog: [0xcfeef8, 60, 210],
+    hemi: [0xfff4e0, 0xc8b080, 1.5], sun: [0xfff0d0, 2.3],
+    top: { kind: 'covesand', base: '#e8d0a0', seam: '#c8a878', accent: '#fff4f0' },
+    front: { kind: 'strata', base: '#b88a5a', seam: '#9a6a44', accent: '#d0a474' },
+    band: 0x18b0c0,
+    ground: [0xf0d8a4, 0xe6c88e, 0xf6e4b8], groundShape: 'shore',
+    far: 'sea', farColors: [0x18a8c8, 0x9ae8f0], clouds: 0xffffff, particles: null,
+    back: [['palm', 5], ['barrel', 1.5], ['crate', 1], ['cannon', 1], ['chest', 0.8], ['cannonballs', 1], ['shell', 2], ['ropecoil', 1], ['anchor', 0.4], ['parrot', 0.8]], backZ: [-5, -18],
+    fence: { kind: 'ropefence', z: -2.8, spacing: 2.4 },
+    posts: { kind: 'jollyflag', z: -2.4, spacing: 46 },
+    edge: { kind: 'shell', z: -2.1, spacing: 14 },
+    pitFill: 'water', pitFillColor: 0x18a8c0, fallText: 'SPLASH!', sign: '#5a2a1a',
+    friction: 1, maxSpeed: 17, swatch: '#18b0c0',
+  },
+  haunted: {
+    id: 'haunted', name: 'Haunted Hollow', blurb: 'Drop off ledges in a spooky wood. Land on the slope to keep your speed!',
+    sky: ['#120e2e', '#3e2a62', '#c8705a'], fog: [0x3a2e52, 45, 170],
+    hemi: [0xb8a8e8, 0x2a2232, 1.0], sun: [0xd0c8ff, 1.0],
+    top: { kind: 'cobbles', base: '#7a7684', seam: '#4a4654', accent: '#5e7a52' },
+    front: { kind: 'stone', base: '#5a5266', seam: '#3a3444', accent: '#4e6a48' },
+    band: 0xf08a2a,
+    ground: [0x3e4a3e, 0x323e36, 0x4a5644], groundShape: 'hills',
+    far: 'hollow', farColors: [0x2e2846, 0x3a3254], clouds: 0x5a4a78, particles: null,
+    back: [['spookytree', 4], ['gravestone', 3], ['gravecross', 1.5], ['jackolantern', 1.5], ['pumpkin', 1], ['ghost', 0.5], ['cauldron', 0.3], ['crow', 0.7], ['rock', 1]], backZ: [-5, -22],
+    fence: { kind: 'ironfence', z: -3.0, spacing: 2.4 },
+    posts: { kind: 'gaslamp', z: -2.6, spacing: 22 },
+    edge: { kind: 'jackolantern', z: -2.1, spacing: 26 },
+    pitFill: 'dark', fallText: 'BOO!', sign: '#3a2a4a',
+    friction: 1, maxSpeed: 17, swatch: '#7a5aaa',
+    sunPos: [-10, 10, 5], stars: true, lights: true, haze: 0.2,
+  },
+  funfair: {
+    id: 'funfair', name: 'Funfair', blurb: 'Loop after loop at the fair. Pump between them to keep your speed!',
+    sky: ['#2f8ee0', '#8fd0f5', '#fff0d8'], fog: [0xd8eefa, 60, 200],
+    hemi: [0xfff4e8, 0x7a9a5a, 1.45], sun: [0xfff4e0, 2.2],
+    top: { kind: 'fairboards', base: '#d8b07a', seam: '#9a6a3a', accent: '#e84a3a' },
+    front: { kind: 'lattice', base: '#3a2a3a', seam: '#f4ecd8', accent: '#e84a3a' },
+    band: 0xf2c040,
+    ground: [0x7ac75a, 0x62b04a, 0x96d46a], groundShape: 'flat',
+    far: 'fair', farColors: [0x8cc7a0, 0x7ab894], clouds: 0xffffff, particles: null,
+    back: [['tent', 3], ['candyfloss', 1.5], ['balloons', 1.5], ['popcorn', 1.2], ['teddy', 0.8], ['tree', 1], ['bush', 1]], backZ: [-6, -24],
+    fence: { kind: 'bunting', z: -3.0, spacing: 2.4 },
+    posts: { kind: 'fairlamp', z: -2.6, spacing: 20 },
+    edge: { kind: 'balloon', z: -2.1, spacing: 17 },
+    pitFill: 'dark', fallText: 'WIPEOUT!', sign: '#c8302a',
+    friction: 1, maxSpeed: 17, swatch: '#e84a3a',
+  },
 };
 
 /** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
 export const WORLDS: string[][] = [
   ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
-  ['farm', 'candy', 'docks'],
+  ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair'],
 ];
 export const BIOME_ORDER = WORLDS.flat();
 export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));

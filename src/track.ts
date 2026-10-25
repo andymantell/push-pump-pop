@@ -116,9 +116,12 @@ export class Track {
   readonly mud: Mud[];
   readonly bouncers: Bouncer[];
   readonly stacks: Stack[];
+  /** Stepping stones: where the track rides over rock standing out of the water. */
+  readonly rocks: { x0: number; x1: number }[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = [], stacks: Stack[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = [], stacks: Stack[] = [], rocks: { x0: number; x1: number }[] = []) {
     this.mud = mud;
+    this.rocks = rocks;
     this.stacks = stacks;
     this.bouncers = bouncers;
     this.spots = spots;
@@ -208,6 +211,7 @@ export class TrackBuilder {
   mudPatches: Mud[] = [];
   bouncers: Bouncer[] = [];
   stacks: Stack[] = [];
+  rocks: { x0: number; x1: number }[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -308,6 +312,39 @@ export class TrackBuilder {
     this.pads.push({ x0: this.x, x1: this.x + n * len });
     this.stacks.push({ x0: this.x, x1: this.x + n * len, y: this.y });
     return this.flat(n * len);
+  }
+
+  /**
+   * Stepping stones: `n` rocks standing out of the water, each gap a little wider than the last.
+   * Land on the slope down the back of each rock, pump it for speed, and pop off the kicker at its
+   * front. Tagged 'stones' at the start and 'stonesend' before the last rock. Start it off a
+   * kicker; follow it with a last `pit()` and a `land()`.
+   */
+  stones(n: number, gap = 5.4, rise = 1.3): this {
+    this.spot('stones');
+    for (let i = 0; i < n; i++) {
+      if (i === n - 1) this.spot('stonesend');
+      this.pit(Math.min(gap + i * 1.0, 7.6), i === 0 ? -1.0 : -0.5);
+      const x0 = this.x;
+      this.land(i === 0 ? 28 : 16, i === 0 ? 2.6 : 1.6).flat(1).kicker(3.5, rise);
+      this.rocks.push({ x0, x1: this.x });
+    }
+    return this;
+  }
+
+  /**
+   * A drop-off: the ground falls away `h` metres at a lip, onto a landing `len` long that drops
+   * `fall` more. Roll off with speed and you come down on the slope; slowly, on the flat at its
+   * top. Tagged 'dropoff' at the lip (the landings check holds these to the downslope too).
+   */
+  dropoff(h: number, len = 14, fall = len * 0.12): this {
+    this.spot('dropoff');
+    this.drop(-h);
+    // Steep from the foot of the drop: land() only skips its rounded top edge after a gap.
+    this.pits.push({ x0: this.x, x1: this.x, lipY: this.y, landY: this.y, floorY: this.y });
+    this.land(len, fall);
+    this.pits.pop();
+    return this;
   }
 
   /** Near vertical drop (a lip edge). */
@@ -430,6 +467,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers, this.stacks);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers, this.stacks, this.rocks);
   }
 }

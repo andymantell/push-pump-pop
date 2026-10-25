@@ -2,6 +2,7 @@
 // downslope, with and without an ollie at each lip, and checks the balance of every jump:
 // - Doing well (pumping, ollieing at the lip), you come down on the downslope after it, or
 //   on a rail. Overshooting onto the flat run-out or the next upslope kills the flow.
+//   Rolling off a drop-off's lip counts as a jump too.
 // - Too slow, or rolling off without an ollie, you may land short on the flat deck on top:
 //   a gentle penalty, as you lose the downslope. Nobody ever overshoots.
 // - Gaps need speed: past the learning tracks, riders who never pump fall into many of
@@ -133,7 +134,9 @@ export function ride(trackId: string, pumpRate: number, ollie: boolean, seed: nu
     if (air && (r.grounded || r.grind)) {
       const a = air;
       air = null;
-      if (a.inPipe || r.inPipe || r.airTime < MIN_AIR || a.up < RAMP_SLOPE) continue;
+      // Off a ramp, or rolling off a drop-off's lip.
+      const dropoff = track.spots.some((sp) => sp.tag === 'dropoff' && a.from > sp.x - 2 && a.from < sp.x + 0.5);
+      if (a.inPipe || r.inPipe || r.airTime < MIN_AIR || (a.up < RAMP_SLOPE && !dropoff)) continue;
       // Flying off the top of a roller is pumping too fast, not a jump (the playtest checks
       // those), and a bump on the far edge of a gap is the landing still going on.
       if (track.spots.some((sp) => sp.tag === 'crest' && Math.abs(sp.x - a.from) < 3)) continue;

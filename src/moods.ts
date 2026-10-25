@@ -159,6 +159,38 @@ const TRACK_MOODS: Record<string, Mood> = {
   },
   'docks-10': { ...mood('golden'), label: 'Sailing day', sun: [0xffd8a0, 2.3] },
   'docks-mega': mood('dusk'),
+
+  // Pirate Cove: one sunny lagoon track, then the cove's weather turns with the story.
+  'pirate-2': { ...mood('morning'), label: 'Low tide' },
+  'pirate-3': mood('golden'),
+  'pirate-4': { ...mood('overcast'), label: 'Squall', cloudCount: 34, particles: 'rain' },
+  'pirate-5': mood('sunset'),
+  'pirate-6': { ...mood('golden'), label: 'Treasure hunt', sun: [0xffd8a0, 2.3] },
+  'pirate-7': { ...mood('mist'), label: 'Kraken mist', haze: 0.5, sky: ['#7a9aa0', '#a8c4c4', '#cfdcd8'], fogColor: 0xbcd0cc },
+  'pirate-8': { ...mood('night'), label: 'Torchlit', haze: 0.12 },
+  'pirate-pipe': mood('dusk'),
+
+  // Haunted Hollow: always after dark. Dusk, the moon coming up, fog, and will-o'-wisps.
+  'haunted-2': { ...mood('night'), label: 'Full moon', bigMoon: true },
+  'haunted-3': { ...mood('night'), label: 'Graveyard fog', haze: 0.5, sky: ['#1a1830', '#3a3a5a', '#6a6a88'], fogColor: 0x5a5a78 },
+  'haunted-4': { ...mood('dusk'), label: 'Pumpkin night', sky: ['#1a1238', '#5a2a5a', '#e07a3a'] },
+  'haunted-5': { ...mood('night'), label: "Will-o'-the-wisps", particles: 'wisps' },
+  'haunted-6': { ...mood('rain'), label: 'Stormy night', sky: ['#0a0c1e', '#1e2240', '#3a3a5a'], hemi: [0xa0a8d8, 0x30304a, 0.7], sun: [0xc8d8ff, 0.6], stars: false, lights: true },
+  'haunted-7': { ...mood('night'), label: 'Harvest moon', bigMoon: true, sky: ['#120e2e', '#3a2450', '#a0503a'] },
+  'haunted-8': { ...mood('night'), label: 'Midnight', particles: 'wisps', haze: 0.3 },
+  'haunted-pipe': { ...mood('night'), label: 'Full moon', bigMoon: true },
+
+  // Funfair: a day at the fair, from the morning opening to all the lights on at night.
+  'funfair-2': mood('morning'),
+  'funfair-3': { ...mood('golden'), label: 'Afternoon' },
+  'funfair-4': { ...mood('overcast'), label: 'Breezy', cloudCount: 30 },
+  'funfair-5': mood('golden'),
+  'funfair-6': { ...mood('morning'), label: 'Candyfloss sky', sky: ['#5a9ae0', '#f4b8d8', '#fff0e0'], clouds: 0xffe0f0 },
+  'funfair-7': mood('sunset'),
+  'funfair-8': mood('dusk'),
+  'funfair-9': { ...mood('night'), label: 'Fair lights', haze: 0.1 },
+  'funfair-10': { ...mood('sunset'), label: 'Last ride', sky: ['#3a2a7a', '#f06a8a', '#ffc070'] },
+  'funfair-pipe': { ...mood('dusk'), label: 'Showtime' },
   'candy-pipe': { ...mood('sunset'), label: 'Candyfloss sunset', sky: ['#6a4ab0', '#ff8ac8', '#ffc8a0'], clouds: 0xffb8e0, fogColor: 0xf8c0d8 },
   'volcano-mega': { label: 'Eruption', sky: ['#2a0808', '#8a1a10', '#ff6a20'], hemi: [0xffb090, 0x601818, 1.7], eruption: true },
 };

@@ -848,6 +848,267 @@ export const LANDMARKS: Record<string, Landmark> = {
     g.add(sign);
     return g;
   } },
+  pirateship: { z: -38, r: 0, on: 'sea', build: () => {
+    // A pirate galleon at anchor: dark hull, gold trim, three masts with sails and the black flag.
+    const hull = 0x4a2a18, trim = 0xe0b040, sail = 0xf4ecd8;
+    const g = group(box(22, 4, 7, hull, [0, 1.5, 0]), box(22.2, 0.4, 7.2, trim, [0, 3.4, 0]));
+    g.add(box(6, 3, 7, hull, [-9, 5, 0]), box(6.2, 0.3, 7.2, trim, [-9, 6.5, 0]), mesh(new THREE.ConeGeometry(3.5, 6, 4), hull, [13, 1.8, 0], [0, Math.PI / 4, -Math.PI / 2]));
+    for (let x = -6; x <= 8; x += 3.5) g.add(box(0.8, 0.8, 0.1, 0x1a1a1a, [x, 2, 3.55]), cyl(0.15, 0.15, 0.8, 0x2a2a2a, [x, 2, 3.9], 8, [Math.PI / 2, 0, 0]));
+    for (const [x, h] of [[-5, 14], [2, 17], [9, 12]] as const) {
+      g.add(cyl(0.25, 0.3, h, 0x6a4422, [x, 3.5 + h / 2, 0], 8));
+      for (const [y, w] of [[0.35, 1], [0.65, 0.8]] as const) {
+        const s = mesh(new THREE.PlaneGeometry(6 * w, 3.6 * w, 4, 1), new THREE.MeshLambertMaterial({ color: sail, side: THREE.DoubleSide }), [x, 3.5 + h * y + 1, 0.5]);
+        const p = s.geometry.getAttribute('position') as THREE.BufferAttribute;
+        for (let k = 0; k < p.count; k++) p.setZ(k, 0.6 * Math.cos((p.getX(k) / (3 * w)) * Math.PI / 2));
+        s.geometry.computeVertexNormals();
+        g.add(s);
+      }
+    }
+    const flag = textPanel('☠', 2.6, 1.6, '#1a1a1a', '#ffffff');
+    flag.position.set(2, 21.5, 0);
+    g.add(flag);
+    return g;
+  } },
+  skullrock: { z: -30, r: 0, on: 'sea', build: () => {
+    // A great rock in the shape of a skull, waves round its foot.
+    const rock = 0xb8aa98;
+    const g = new THREE.Group();
+    const dome = mesh(new THREE.SphereGeometry(7, 14, 10), rock, [0, 6, 0]);
+    dome.scale.set(1, 1.1, 0.8);
+    g.add(dome, box(8, 4, 5, rock, [0, 1.5, 1.5]));
+    for (const x of [-2.6, 2.6]) {
+      const eye = mesh(new THREE.SphereGeometry(1.7, 10, 8), 0x2a2420, [x, 7, 5.1]);
+      eye.scale.z = 0.5;
+      g.add(eye);
+    }
+    g.add(mesh(new THREE.ConeGeometry(0.9, 1.6, 3), 0x2a2420, [0, 4.6, 5.4], [Math.PI, 0, 0]));
+    for (let i = 0; i < 5; i++) g.add(box(0.9, 1.4, 0.4, 0xe8e0d0, [-2 + i, 2.6, 4.05]));
+    g.add(mesh(new THREE.TorusGeometry(7.5, 0.5, 6, 24), 0xe8f8ff, [0, 0.1, 0], [Math.PI / 2, 0, 0]));
+    return g;
+  } },
+  fort: { z: -18, r: 8, build: () => {
+    // A stone fort on the cliff: battlements, cannons poking out, the black flag on top.
+    const stone = 0xa89c88, dark = 0x2a2a2e;
+    const g = group(box(14, 6, 7, stone, [0, 3, 0]));
+    for (let x = -6.5; x <= 6.6; x += 1.3) g.add(box(0.8, 0.9, 7.2, stone, [x, 6.45, 0]));
+    g.add(box(4, 10, 4, stone, [-5, 5, -1]));
+    for (let x = -6.5; x <= -3.4; x += 1.0) g.add(box(0.6, 0.8, 4.2, stone, [x, 10.4, -1]));
+    for (const x of [-2, 1.5, 5]) g.add(box(1.2, 1, 0.3, dark, [x, 4, 3.55]), cyl(0.25, 0.3, 1.6, dark, [x, 4, 4.2], 10, [Math.PI / 2, 0, 0]));
+    g.add(mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.3, 14, 1, false, 0, Math.PI), 0x4a2a18, [0, 1.6, 3.55], [Math.PI / 2, 0, 0]), box(2.8, 1.6, 0.3, 0x4a2a18, [0, 0.8, 3.55]));
+    g.add(cyl(0.08, 0.08, 4, 0x6a4422, [-5, 12.8, -1], 6));
+    const flag = textPanel('☠', 2, 1.3, '#1a1a1a', '#ffffff');
+    flag.position.set(-3.9, 14, -1);
+    g.add(flag);
+    return g;
+  } },
+  tavern: { z: -14, r: 6, build: () => {
+    // A ramshackle pirate tavern on stilts with a swinging sign.
+    const wood = 0x8a5a30, dark = 0x5a3a1a;
+    const g = new THREE.Group();
+    for (const x of [-3.5, 3.5]) for (const z of [-2.5, 2.5]) g.add(cyl(0.2, 0.2, 2, dark, [x, 1, z], 6));
+    g.add(box(8, 0.4, 6, dark, [0, 2.1, 0]), box(7.4, 4, 5.4, wood, [0, 4.3, 0]));
+    for (let y = 2.6; y < 6.2; y += 0.6) g.add(box(7.5, 0.06, 5.5, dark, [0, y, 0]));
+    for (const sgn of [1, -1]) g.add(box(8.4, 0.3, 3.6, 0x6a8a3a, [0, 7.3, sgn * 1.35], [sgn * 0.6, 0, 0]));
+    g.add(box(1.4, 2.4, 0.2, 0x3a2410, [0, 3.5, 2.75]));
+    for (const x of [-2.4, 2.4]) g.add(box(1.2, 1, 0.1, 0xffd080, [x, 4.6, 2.72]));
+    g.add(box(0.1, 1.2, 0.1, dark, [3.9, 6, 2.9]), box(1.6, 0.1, 0.1, dark, [3.2, 6.6, 2.9]));
+    const sign = textPanel('THE JOLLY PUMP', 2.8, 0.9, '#e8d4a8', '#5a2a1a', '#5a2a1a');
+    sign.position.set(3.2, 5.9, 3);
+    g.add(sign);
+    for (let i = 0; i < 4; i++) g.add(box(0.5, 0.35, 0.05, wood, [-3.2 + i * 0.1, 0.5 + i * 0.4, 3.2]));
+    return g;
+  } },
+  treasure: { z: -9, r: 4, build: () => {
+    // X marks the spot: a dug-up chest of gold beside a shovel, a map pinned on a post.
+    const g = new THREE.Group();
+    for (const a of [0.7, -0.7]) g.add(box(2.4, 0.05, 0.35, 0xc8302a, [0, 0.03, 0], [0, a, 0]));
+    const mound = mesh(new THREE.SphereGeometry(1.4, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0xe0c890, [2.2, 0, -0.5]);
+    mound.scale.y = 0.4;
+    g.add(mound, box(1.4, 0.8, 0.9, 0x8a5028, [0.6, 0.4, -0.4]), box(1.42, 0.12, 0.92, 0xe0b040, [0.6, 0.6, -0.4]));
+    for (let i = 0; i < 9; i++) g.add(cyl(0.12, 0.12, 0.04, 0xf2c428, [0.6 + Math.cos(i) * 0.3, 0.85 + (i % 3) * 0.06, -0.4 + Math.sin(i) * 0.2], 10));
+    g.add(beam([2.6, 0, -0.2], [2.9, 1.6, -0.5], 0.08, 0x6a4422), box(0.35, 0.45, 0.05, 0x9a9aa2, [2.55, 0.15, -0.18], [0, 0, 0.18]));
+    g.add(cyl(0.07, 0.07, 1.6, 0x6a4422, [-2, 0.8, 0], 6));
+    const map = textPanel('X', 0.9, 0.7, '#e8d4a8', '#c8302a');
+    map.position.set(-2, 1.3, 0.1);
+    g.add(map);
+    return g;
+  } },
+  // ---- Haunted Hollow
+  manor: { z: -26, r: 12, build: () => {
+    // A crooked old manor on the hill: leaning towers, pointed roofs, glowing windows, a bat-shaped weathervane.
+    const wall = 0x5a4a6a, roof = 0x2a2238, trim = 0x3a3048, lit = glow(0xffc860);
+    const g = group(box(16, 9, 8, wall, [0, 4.5, 0]), box(16.4, 0.5, 8.4, trim, [0, 9.2, 0]));
+    const r1 = mesh(new THREE.ConeGeometry(10, 5, 4), roof, [0, 11.9, 0], [0, Math.PI / 4, 0]);
+    r1.scale.z = 0.55;
+    g.add(r1);
+    for (const [x, h, lean] of [[-9, 15, 0.06], [8.5, 18, -0.08]] as const) {
+      const t = group(cyl(2.2, 2.4, h, wall, [0, h / 2, 0], 8), mesh(new THREE.ConeGeometry(2.9, 5, 8), roof, [0, h + 2.5, 0]));
+      for (let y = 3; y < h - 1; y += 4) t.add(box(0.9, 1.4, 0.1, lit, [0, y, 2.3]));
+      t.position.set(x, 0, 0.5);
+      t.rotation.z = lean;
+      g.add(t);
+    }
+    for (const x of [-5, -1.5, 2, 5.5]) for (const y of [2.6, 6.4]) {
+      g.add(box(1.4, 1.9, 0.1, (x + y) % 3 > 1 ? lit : 0x1a1424, [x, y, 4.05]), box(1.7, 0.2, 0.2, trim, [x, y - 1.05, 4.1]));
+    }
+    g.add(box(2, 3.2, 0.2, 0x3a2418, [0, 1.6, 4.1]), cyl(1.1, 1.1, 0.2, 0x3a2418, [0, 3.2, 4.1], 12, [Math.PI / 2, 0, 0]));
+    g.add(box(4, 0.4, 2, 0x6a6474, [0, 0.2, 5]), box(3, 0.4, 1.2, 0x6a6474, [0, 0.6, 4.6]));
+    g.add(cyl(0.06, 0.06, 2.5, 0x1a1424, [8.5, 21.5, 0.5], 6), box(1.4, 0.4, 0.06, 0x1a1424, [8.5, 22.2, 0.5]));
+    return g;
+  } },
+  graveyardgate: { z: -9, r: 5, build: () => {
+    // Stone gateposts with an iron arch, the gate hanging open, and a sign over the top.
+    const stone = 0x8a8494, iron = 0x24222a;
+    const g = new THREE.Group();
+    for (const x of [-2.4, 2.4]) g.add(box(0.9, 3, 0.9, stone, [x, 1.5, 0]), box(1.1, 0.3, 1.1, stone, [x, 3.15, 0]), ball(0.35, stone, [x, 3.6, 0], 10));
+    const arch = mesh(new THREE.TorusGeometry(2.4, 0.07, 6, 24, Math.PI), iron, [0, 3.2, 0]);
+    g.add(arch);
+    for (let i = 0; i < 9; i++) g.add(cyl(0.03, 0.03, 2.4, iron, [-1.9 + i * 0.2, 1.3, 0.9 + i * 0.12], 5));
+    g.add(box(1.8, 0.06, 0.06, iron, [-1.1, 2.3, 1.4], [0, -0.6, 0]), box(1.8, 0.06, 0.06, iron, [-1.1, 0.4, 1.4], [0, -0.6, 0]));
+    const sign = textPanel('HOLLOW', 2.8, 0.7, '#2a2238', '#e8e0f8', '#8a84a4');
+    sign.position.set(0, 4.6, 0.05);
+    g.add(sign);
+    for (const x of [-4.5, 4.5]) for (let k = 0; k < 3; k++) g.add(box(0.1, 1.6, 0.1, iron, [x + (x < 0 ? k : -k) * 0.6, 0.8, 0]));
+    return g;
+  } },
+  giantpumpkin: { z: -12, r: 5, build: () => {
+    // A prize pumpkin as big as a shed, carved with a huge grin, glowing from inside.
+    const g = new THREE.Group(), face = glow(0xffb030);
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * Math.PI * 2;
+      const seg = ball(2.2, k % 2 ? 0xf08020 : 0xd86818, [Math.cos(a) * 1.4, 2.6, Math.sin(a) * 1.4], 16);
+      seg.scale.set(0.8, 1.1, 0.8);
+      g.add(seg);
+    }
+    g.add(ball(2.6, 0xf08020, [0, 2.7, 0], 18), cyl(0.3, 0.4, 1.4, 0x5a7a2a, [0.2, 5.8, 0], 8));
+    for (const x of [-1.1, 1.1]) g.add(mesh(new THREE.CircleGeometry(0.6, 3), face, [x, 3.4, 3.62], [0, 0, Math.PI / 2]));
+    g.add(mesh(new THREE.CircleGeometry(0.35, 3), face, [0, 2.6, 3.7], [0, 0, -Math.PI / 2]));
+    const mouth = box(2.8, 0.6, 0.1, face, [0, 1.7, 3.55]);
+    g.add(mouth, box(0.4, 0.3, 0.12, 0xf08020, [-0.6, 1.9, 3.6]), box(0.4, 0.3, 0.12, 0xf08020, [0.6, 1.5, 3.6]));
+    g.add(box(1.6, 1.1, 0.08, 0xe8d4a8, [3.8, 0.9, 1.5], [0, -0.3, 0.05]), cyl(0.06, 0.06, 1.4, 0x5a3a1a, [3.8, 0.4, 1.4], 6));
+    const tag = textPanel('1ST PRIZE', 1.4, 0.7, '#e8d4a8', '#c8302a');
+    tag.position.set(3.82, 0.95, 1.56);
+    tag.rotation.y = -0.3;
+    g.add(tag);
+    return g;
+  } },
+  witchhut: { z: -14, r: 6, build: () => {
+    // A witch's hut on crooked stilts: a lopsided pointy roof, a round window, a broom by the door.
+    const wood = 0x5a4a3a, dark = 0x3a2e24, roof = 0x3a3a5a;
+    const g = new THREE.Group();
+    for (const [x, z] of [[-2, -1.6], [2, -1.6], [-2, 1.6], [2, 1.6]]) g.add(beam([x * 1.1, 0, z * 1.1], [x, 2.2, z], 0.25, dark));
+    g.add(box(5, 0.3, 4, dark, [0, 2.3, 0]));
+    const body = box(4.2, 3.2, 3.6, wood, [0, 4, 0], [0, 0, 0.05]);
+    g.add(body);
+    const r1 = mesh(new THREE.ConeGeometry(3.6, 4.5, 6), roof, [0.3, 7.6, 0], [0, 0, -0.15]);
+    g.add(r1, ball(0.25, 0xffd040, [1.0, 9.8, 0], 8));
+    g.add(mesh(new THREE.CircleGeometry(0.55, 16), glow(0x9aff6a), [-0.9, 4.4, 1.82]), box(1, 1.9, 0.1, dark, [1, 3.4, 1.82]));
+    g.add(beam([2.4, 2.4, 1.9], [2.0, 4.6, 2.0], 0.08, 0x8a6a3a), cyl(0.05, 0.4, 0.9, 0xc8a050, [2.45, 2.65, 1.9], 8));
+    for (let i = 0; i < 4; i++) g.add(box(0.8, 0.12, 0.6, dark, [-0.2 + i * 0.25, 0.5 + i * 0.55, 2.8]));
+    return g;
+  } },
+  spookyoak: { z: -16, r: 6, build: () => {
+    // A huge old hollow oak with a face in its trunk: two glowing eyes and a gaping mouth.
+    const bark = 0x5a4e56, dark = 0x3a3038, eye = glow(0xfff080);
+    const g = group(cyl(1.6, 2.6, 9, bark, [0, 4.5, 0], 9));
+    for (let a = 0; a < 6; a++) {
+      const ang = (a / 6) * Math.PI * 2;
+      g.add(beam([0, 0.6, 0], [Math.cos(ang) * 3.4, -0.2, Math.sin(ang) * 3.4], 0.7, dark));
+    }
+    for (const [ang, up, len] of [[0.6, 9, 6], [2.5, 8, 6.5], [1.6, 10, 4], [3.6, 7, 5], [-0.6, 8.5, 5]] as const) {
+      const tip: V3 = [Math.cos(ang) * len, up + 3, Math.sin(ang) * 1.2];
+      g.add(beam([0, up - 1.5, 0], tip, 0.55, bark));
+      for (const d of [-0.8, 0.8]) g.add(beam(tip, [tip[0] + Math.cos(ang + d) * 2, tip[1] + 1.2, tip[2]], 0.2, dark));
+    }
+    for (const x of [-0.6, 0.6]) g.add(mesh(new THREE.CircleGeometry(0.28, 12), eye, [x, 5.6, 2.12]));
+    const m = mesh(new THREE.CircleGeometry(0.7, 14), 0x140e18, [0, 4.2, 2.2]);
+    m.scale.y = 1.3;
+    g.add(m);
+    return g;
+  } },
+  // ---- Funfair
+  carousel: { z: -14, r: 7, build: () => {
+    // A merry-go-round: striped canopy, gold poles, painted horses at different heights.
+    const g = group(cyl(5.2, 5.4, 0.6, 0xf4ecd8, [0, 0.3, 0], 24), cyl(0.6, 0.6, 5.2, 0xf2c040, [0, 2.9, 0], 12));
+    const stripes = [0xe84a3a, 0xf4ecd8];
+    for (let k = 0; k < 16; k++) {
+      const a0 = (k / 16) * Math.PI * 2;
+      g.add(mesh(new THREE.ConeGeometry(5.8, 2.2, 16, 1, false, a0, Math.PI / 8), stripes[k % 2], [0, 6.3, 0]));
+    }
+    g.add(cyl(5.8, 5.8, 0.7, 0xf2c040, [0, 4.9, 0], 24), ball(0.4, 0xf2c040, [0, 7.6, 0], 10));
+    const horses = [0xf4f0e8, 0x8a5a30, 0x3a3a3a, 0xf4f0e8, 0xd8a050, 0xf4f0e8];
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2, x = Math.cos(a) * 4, z = Math.sin(a) * 4, y = 1.6 + (k % 2) * 0.5;
+      g.add(cyl(0.06, 0.06, 4.2, 0xf2c040, [x, 2.7, z], 6));
+      const h = group(box(1.4, 0.5, 0.4, horses[k], [0, 0, 0]), box(0.35, 0.7, 0.3, horses[k], [0.65, 0.4, 0], [0, 0, -0.4]),
+        box(0.45, 0.25, 0.28, horses[k], [0.9, 0.7, 0]), box(0.15, 0.4, 0.42, 0xe84a3a, [0.45, 0.6, 0]));
+      for (const lx of [-0.5, 0.5]) h.add(box(0.12, 0.6, 0.12, horses[k], [lx, -0.45, 0], [0, 0, lx * 0.6]));
+      h.position.set(x, y, z);
+      h.rotation.y = -a;
+      g.add(h);
+    }
+    return g;
+  } },
+  helterskelter: { z: -16, r: 5, build: () => {
+    // A helter-skelter tower with a striped slide spiralling down and a pointed roof.
+    const g = group(cyl(1.6, 2, 11, 0xf4ecd8, [0, 5.5, 0], 12), mesh(new THREE.ConeGeometry(2.6, 3, 12), 0xe84a3a, [0, 12.5, 0]));
+    g.add(cyl(0.05, 0.05, 1.4, 0x5a3a1a, [0, 14.6, 0], 6), box(0.9, 0.5, 0.04, 0xf2c040, [0.45, 15.0, 0]));
+    const n = 60;
+    for (let i = 0; i < n; i++) {
+      const t = i / n, a = t * Math.PI * 2 * 3, y = 10.5 - t * 9.8;
+      const seg = box(1.2, 0.18, 1.1, i % 6 < 3 ? 0xf2c040 : 0x3a7ad8, [Math.cos(a) * 2.6, y, Math.sin(a) * 2.6], [0, -a, -0.25]);
+      g.add(seg);
+    }
+    for (let k = 0; k < 4; k++) g.add(box(0.5, 0.8, 0.1, 0x2a2238, [0, 3 + k * 2.4, 2.02]));
+    return g;
+  } },
+  coasterhill: { z: -24, r: 10, build: () => {
+    // A wooden roller coaster's lift hill: white trestles, a red track, a train of cars at the top.
+    const frame = 0xf4ecd8, rail = 0xe84a3a;
+    const g = new THREE.Group();
+    const y = (x: number) => x < 0 ? 16 * Math.max(0, 1 + x / 14) : 16 * Math.max(0, 1 - x / 9) ** 1.5;
+    for (let x = -14; x <= 9; x += 1) g.add(beam([x, y(x) + 0.3, 0], [x + 1, y(x + 1) + 0.3, 0], 0.35, rail));
+    for (let x = -12; x <= 8; x += 2) {
+      const h = y(x);
+      if (h < 0.5) continue;
+      g.add(beam([x - 0.8, 0, -1], [x, h, 0], 0.2, frame), beam([x + 0.8, 0, 1], [x, h, 0], 0.2, frame), cyl(0.12, 0.12, h, frame, [x, h / 2, 0], 6));
+      if (h > 4) g.add(box(1.8, 0.12, 0.12, frame, [x, h * 0.5, 0], [0, 0, 0.6]));
+    }
+    for (let k = 0; k < 3; k++) {
+      const x = -2.6 + k * 1.3;
+      g.add(box(1.2, 0.7, 1.1, [0x3a7ad8, 0xf2c040, 0x4ab84a][k], [x, y(x) + 0.8, 0], [0, 0, Math.atan2(y(x + 0.5) - y(x - 0.5), 1)]));
+    }
+    return g;
+  } },
+  balloonarch: { z: -6, r: 4, build: () => {
+    // An arch of balloons, all colours, with a sign hanging from it.
+    const cols = [0xe84a3a, 0xf2c040, 0x3a7ad8, 0x4ab84a, 0xff96c8];
+    const g = new THREE.Group();
+    for (let i = 0; i <= 28; i++) {
+      const a = (i / 28) * Math.PI;
+      g.add(ball(0.42, cols[i % cols.length], [Math.cos(a) * 4, Math.sin(a) * 4.5, (i % 2) * 0.3 - 0.15], 10));
+    }
+    const sign = textPanel('FUNFAIR', 3.4, 0.9, '#f4ecd8', '#e84a3a', '#e84a3a');
+    sign.position.set(0, 3.6, 0.3);
+    g.add(sign);
+    return g;
+  } },
+  bigtop: { z: -22, r: 10, build: () => {
+    // The circus big top: a huge striped tent with flags on its poles.
+    const g = new THREE.Group();
+    const stripes = [0xe84a3a, 0xf4ecd8];
+    for (let k = 0; k < 20; k++) {
+      const a0 = (k / 20) * Math.PI * 2;
+      g.add(mesh(new THREE.CylinderGeometry(9, 9, 5, 20, 1, true, a0, Math.PI / 10), stripes[k % 2], [0, 2.5, 0]));
+      g.add(mesh(new THREE.ConeGeometry(10, 6, 20, 1, false, a0, Math.PI / 10), stripes[(k + 1) % 2], [0, 8, 0]));
+    }
+    for (const x of [-3, 3]) g.add(cyl(0.15, 0.15, 13, 0xf2c040, [x, 6.5, 0], 6), box(1.2, 0.6, 0.05, 0x3a7ad8, [x + 0.6, 12.6, 0]));
+    g.add(box(3, 3.4, 0.2, 0x2a2238, [0, 1.7, 9]));
+    const sign = textPanel('BIG TOP', 4, 1, '#f2c040', '#c8302a', '#c8302a');
+    sign.position.set(0, 4.3, 9.1);
+    g.add(sign);
+    return g;
+  } },
 };
 
 /** Which landmarks each track has, spread along it in order. */
@@ -882,4 +1143,13 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'docks-1': ['harbourclock', 'tugboat'], 'docks-2': ['gantry', 'cargoship'], 'docks-3': ['fishmarket', 'warehouse'], 'docks-4': ['gantry', 'tugboat'],
   'docks-5': ['lighthouse', 'ferry'], 'docks-6': ['ferry', 'harbourclock'], 'docks-7': ['cargoship', 'gantry'], 'docks-8': ['warehouse', 'tugboat'],
   'docks-9': ['lighthouse', 'cargoship'], 'docks-10': ['gantry', 'ferry'], 'docks-mega': ['gantry'],
+  'pirate-1': ['treasure', 'pirateship'], 'pirate-2': ['shipwreck', 'tavern'], 'pirate-3': ['fort'], 'pirate-4': ['skullrock', 'treasure'],
+  'pirate-5': ['fort', 'pirateship'], 'pirate-6': ['tavern', 'skullrock'], 'pirate-7': ['shipwreck', 'lighthouse'], 'pirate-8': ['pirateship', 'fort'],
+  'pirate-pipe': ['pirateship'],
+  'haunted-1': ['graveyardgate', 'spookyoak'], 'haunted-2': ['manor'], 'haunted-3': ['witchhut', 'graveyardgate'], 'haunted-4': ['giantpumpkin', 'spookyoak'],
+  'haunted-5': ['manor', 'witchhut'], 'haunted-6': ['spookyoak', 'giantpumpkin'], 'haunted-7': ['graveyardgate', 'manor'], 'haunted-8': ['manor'],
+  'haunted-pipe': ['manor'],
+  'funfair-1': ['balloonarch', 'ferris'], 'funfair-2': ['carousel', 'coasterhill'], 'funfair-3': ['coasterhill'], 'funfair-4': ['helterskelter', 'bigtop'],
+  'funfair-5': ['helterskelter', 'carousel'], 'funfair-6': ['bigtop', 'ferris'], 'funfair-7': ['carousel', 'coasterhill'], 'funfair-8': ['bigtop', 'helterskelter'],
+  'funfair-9': ['ferris', 'carousel'], 'funfair-10': ['coasterhill', 'balloonarch'], 'funfair-pipe': ['bigtop'],
 };

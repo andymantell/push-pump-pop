@@ -218,6 +218,74 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
         for (let i = 0; i < 20; i++) c.fillRect(r() * 256, 10 + r() * 14, 2 + r() * 5, 2);
         break;
       }
+      case 'covesand': {
+        // Damp packed sand: ripples left by the tide, little shells and pebbles.
+        speckle(c, 1000, 0.05, 0.07);
+        c.strokeStyle = s.seam;
+        c.lineWidth = 3;
+        for (let y = 20; y < 256; y += 36) {
+          c.beginPath();
+          for (let x = 0; x <= 256; x += 8) c.lineTo(x, y + Math.sin(x * 0.07 + y) * 4);
+          c.stroke();
+        }
+        for (let i = 0; i < 14; i++) {
+          c.fillStyle = r() > 0.5 ? s.accent ?? '#fff' : '#f0a8a0';
+          const x = r() * 256, y = r() * 256;
+          c.beginPath(); c.arc(x, y, 3 + r() * 3, Math.PI, 0); c.fill();
+        }
+        break;
+      }
+      case 'cobbles': {
+        // Old round cobbles in rows, moss in the cracks between them.
+        c.fillStyle = s.seam;
+        c.fillRect(0, 0, 256, 256);
+        for (let row = 0; row < 11; row++) {
+          const y = row * 23.3 + 11.6;
+          for (let x = (row % 2) * 12 - 12; x < 268; x += 22 + r() * 6) {
+            const w = 9 + r() * 3, h = 9 + r() * 2;
+            c.fillStyle = s.base;
+            c.beginPath(); c.ellipse(x + 11, y, w, h, r() * 0.6, 0, Math.PI * 2); c.fill();
+            c.fillStyle = `rgba(0,0,0,${0.05 + r() * 0.15})`;
+            c.beginPath(); c.ellipse(x + 11, y + 2, w, h - 2, 0, 0, Math.PI); c.fill();
+            c.fillStyle = 'rgba(255,255,255,0.12)';
+            c.beginPath(); c.ellipse(x + 9, y - 3, w * 0.5, h * 0.35, 0, 0, Math.PI * 2); c.fill();
+          }
+        }
+        c.fillStyle = s.accent ?? s.seam;
+        for (let i = 0; i < 40; i++) c.fillRect(r() * 256, r() * 256, 4 + r() * 8, 2 + r() * 2);
+        break;
+      }
+      case 'fairboards': {
+        // Painted boardwalk: boards across the track, every few one a bright painted stripe.
+        for (let i = 0; i < 12; i++) {
+          const x = i * 21.33;
+          c.fillStyle = i % 4 === 0 ? s.accent ?? s.seam : `rgba(0,0,0,${0.02 + r() * 0.08})`;
+          c.globalAlpha = i % 4 === 0 ? 0.55 : 1;
+          c.fillRect(x, 0, 21.33, 256);
+          c.globalAlpha = 1;
+          c.fillStyle = s.seam;
+          c.fillRect(x, 0, 2.5, 256);
+          c.fillStyle = 'rgba(0,0,0,0.4)';
+          c.fillRect(x + 9, 24, 3, 3);
+          c.fillRect(x + 9, 228, 3, 3);
+        }
+        speckle(c, 400, 0.05, 0.05);
+        break;
+      }
+      case 'lattice': {
+        // A wooden coaster frame: posts and rails with cross braces, dark between them.
+        c.strokeStyle = s.seam;
+        c.lineWidth = 10;
+        for (const x of [0, 128, 256]) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 256); c.stroke(); }
+        for (const y of [0, 128, 256]) { c.beginPath(); c.moveTo(0, y); c.lineTo(256, y); c.stroke(); }
+        c.lineWidth = 6;
+        for (const [x, y] of [[0, 0], [128, 0], [0, 128], [128, 128]]) {
+          c.beginPath(); c.moveTo(x, y); c.lineTo(x + 128, y + 128); c.moveTo(x + 128, y); c.lineTo(x, y + 128); c.stroke();
+        }
+        c.fillStyle = 'rgba(0,0,0,0.25)';
+        for (const x of [0, 128, 256]) c.fillRect(x + 3, 0, 3, 256);
+        break;
+      }
       case 'quaywall': {
         // Granite blocks in courses, weed and wet stain low down, iron rungs here and there.
         c.fillStyle = s.seam;
@@ -313,6 +381,7 @@ const PARTICLES: Record<Particles, ParticleLook> = {
   dust: { n: 1300, color: 0xe0c090, size: 0.08, vx: 7, vy: -0.3, sway: 0.4, opacity: 0.7 },
   sprinkles: { n: 500, color: 0xffffff, size: 0.12, vx: 0.3, vy: -1.4, sway: 0.6, colors: [0xff5a9a, 0x5ad0ff, 0xffe04a, 0x7aea6a, 0xb07aff] },
   fireflies: { n: 220, color: 0xfff27a, size: 0.22, vx: 0, vy: 0, sway: 0, wander: 0.8, blink: true },
+  wisps: { n: 90, color: 0x8affd0, size: 0.34, vx: 0.2, vy: 0.1, sway: 0, wander: 0.5, blink: true },
 };
 
 let lava: THREE.CanvasTexture | null = null;
@@ -436,6 +505,7 @@ export class World {
     this.buildMud();
     this.buildBouncers();
     this.buildStacks();
+    this.buildRocks();
     this.buildPitFills();
     this.buildStairs();
     this.buildRails();
@@ -449,7 +519,7 @@ export class World {
     this.buildSky();
   }
 
-  /** Lava always glows; lamps and windows only when the mood turns them on. The models'
+  /** Lava, jack-o'-lantern faces and witches' brew always glow; lamps and windows only when the mood turns them on. The models'
    * materials are shared by every track, so this is set afresh for each one. */
   private lightUp() {
     const on = !!this.biome.lights;
@@ -460,7 +530,7 @@ export class World {
         for (const mat of ([] as THREE.Material[]).concat(mesh.material)) {
           const t = mat as THREE.MeshToonMaterial;
           if (!t.emissive) continue;
-          if (t.name === 'lava' || t.name === 'ember') t.emissive.copy(t.color).multiplyScalar(0.8);
+          if (t.name === 'lava' || t.name === 'ember' || t.name === 'pumpkin_glow' || t.name === 'goo_glow') t.emissive.copy(t.color).multiplyScalar(0.8);
           else if (t.name === 'lamp_light' || t.name === 'window_glow') t.emissive.copy(t.color).multiplyScalar(on ? 1 : 0);
         }
       });
@@ -767,6 +837,101 @@ export class World {
             this.group.add(post);
           }
         }
+      }
+    }
+  }
+
+  private seaMat?: THREE.Material;
+  /** Stepping stones: weathered rock on top, a craggy face down to the water, boulders around. */
+  private buildRocks() {
+    const tr = this.track;
+    if (!tr.rocks.length) return;
+    const tex = canvasTexture(256, 256, (c) => {
+      c.fillStyle = '#8a8478';
+      c.fillRect(0, 0, 256, 256);
+      const r = rng(41);
+      // Blotches of lighter and darker stone, then cracks, lichen and barnacles.
+      for (let i = 0; i < 90; i++) {
+        c.fillStyle = r() > 0.5 ? 'rgba(60,54,48,0.28)' : 'rgba(190,182,166,0.3)';
+        c.beginPath();
+        c.ellipse(r() * 256, r() * 256, 8 + r() * 26, 5 + r() * 14, r() * 3, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.strokeStyle = 'rgba(40,34,30,0.35)';
+      c.lineWidth = 1.5;
+      for (let i = 0; i < 8; i++) {
+        let x = r() * 256, y = r() * 256;
+        c.beginPath(); c.moveTo(x, y);
+        for (let k = 0; k < 4; k++) { x += (r() - 0.5) * 50; y += (r() - 0.5) * 50; c.lineTo(x, y); }
+        c.stroke();
+      }
+      for (let i = 0; i < 18; i++) {
+        c.fillStyle = r() > 0.4 ? 'rgba(200,190,90,0.45)' : 'rgba(110,150,80,0.45)';
+        c.beginPath(); c.ellipse(r() * 256, r() * 256, 4 + r() * 9, 3 + r() * 6, 0, 0, Math.PI * 2); c.fill();
+      }
+      for (let i = 0; i < 60; i++) {
+        c.fillStyle = 'rgba(240,236,224,0.7)';
+        c.beginPath(); c.arc(r() * 256, r() * 256, 1 + r() * 1.6, 0, Math.PI * 2); c.fill();
+      }
+    });
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    const mat = toon(0xffffff, { map: tex });
+    mat.userData.outlineParameters = { visible: false };
+    const wet = toon(0x4a4640);
+    wet.userData.outlineParameters = { visible: false };
+    const half = TRACK_W / 2, r = rng(77);
+    for (const rock of tr.rocks) {
+      const x0 = rock.x0, x1 = rock.x1;
+      const n = Math.max(2, Math.ceil((x1 - x0) / 0.1));
+      // The top: rock over the full width, with ragged edges where it meets the sand behind.
+      const top = new Float32Array((n + 1) * 2 * 3), topUv = new Float32Array((n + 1) * 2 * 2);
+      // The face: from the top down to a jagged waterline a few metres below.
+      const face = new Float32Array((n + 1) * 2 * 3), faceUv = new Float32Array((n + 1) * 2 * 2);
+      const seed = x0 * 1.3;
+      // The sea laps a little below the rock's lowest point.
+      let low = Infinity;
+      for (let x = x0; x <= x1; x += 0.25) low = Math.min(low, tr.height(x));
+      const water = low - 0.7;
+      for (let i = 0; i <= n; i++) {
+        const x = x0 + (x1 - x0) * i / n, y = tr.height(x);
+        const wob = 0.25 * Math.sin(x * 1.9 + seed) + 0.15 * Math.sin(x * 4.3 + seed * 2);
+        top.set([x, y + 0.02, half + 0.02, x, y + 0.02, -half - 0.4 + wob], i * 6);
+        topUv.set([x / 4, 0, x / 4, 0.8], i * 4);
+        const bottom = water - 0.4 - 0.5 * Math.abs(Math.sin(x * 2.7 + seed)) - 0.3 * Math.abs(Math.sin(x * 6.1));
+        face.set([x, y + 0.02, half + 0.03, x, bottom, half + 0.03], i * 6);
+        faceUv.set([x / 4, y / 4, x / 4, bottom / 4], i * 4);
+      }
+      const idx: number[] = [];
+      for (let i = 0; i < n; i++) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+      const strip = (pos: Float32Array, uv: Float32Array, flip: boolean) => {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+        g.setIndex(flip ? idx.map((_, i) => idx[i - (i % 3) + [0, 2, 1][i % 3]]) : idx);
+        g.computeVertexNormals();
+        const m = new THREE.Mesh(g, mat);
+        m.receiveShadow = true;
+        this.group.add(m);
+      };
+      strip(top, topUv, false);
+      strip(face, faceUv, true);
+      // The sea in front, flush with the water in the gaps either side.
+      const sea = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, water - (tr.minY - 25)), this.seaMat ??= toon(this.biome.pitFillColor ?? 0x2aa6d9));
+      (sea.material as THREE.Material).userData.outlineParameters = { visible: false };
+      sea.position.set((x0 + x1) / 2, (water + tr.minY - 25) / 2, half + 0.1);
+      this.group.add(sea);
+      const foam = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.08, 0.3), this.waterTop(x1 - x0, false));
+      foam.position.set((x0 + x1) / 2, water, half + 0.1);
+      this.group.add(foam);
+      // Boulders tumbled round each rock: half sunk and wet in front, dry on the sand behind.
+      for (let x = x0 + 0.8; x < x1 - 0.5; x += 2 + r() * 3) {
+        const front = r() > 0.4, s = front ? 0.25 + r() * 0.35 : 0.4 + r() * 0.6, y = tr.height(x);
+        const b = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), front ? wet : mat);
+        b.position.set(x, front ? water : y - s * 0.35, front ? half + 0.25 + r() * 0.3 : -half - 0.6 - r() * 1.2);
+        b.rotation.set(r() * 3, r() * 3, r() * 3);
+        b.scale.y = 0.7;
+        b.castShadow = true;
+        this.group.add(b);
       }
     }
   }
@@ -1140,6 +1305,110 @@ export class World {
           far.add(s);
         }
         break;
+      case 'hollow': {
+        // Dark rolling hills with bare trees on the skyline and a crooked castle far off.
+        const dark = mat(0x1c1830);
+        for (let i = 0; i * 22 < len + 120; i++) {
+          const rad = 28 + (i * 37) % 25;
+          const s = new THREE.Mesh(new THREE.SphereGeometry(rad, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(b.farColors[i % 2]));
+          s.scale.y = 0.4;
+          s.position.set(i * 22 - 40, tr.minY - 2, -120 - (i % 3) * 15);
+          far.add(s);
+        }
+        const r = rng(91);
+        for (let x = -40; x < len + 80; x += 14 + r() * 20) {
+          const t = new THREE.Group(), h = 6 + r() * 6;
+          t.add(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.7, h, 5), dark));
+          t.children[0].position.y = h / 2;
+          for (let k = 0; k < 4; k++) {
+            const br = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.25, 3 + r() * 2, 4), dark);
+            const a = (k % 2 ? 1 : -1) * (0.5 + r() * 0.6);
+            br.position.set(Math.sin(a) * 1.4, h * (0.55 + k * 0.12), 0);
+            br.rotation.z = -a;
+            t.add(br);
+          }
+          t.position.set(x, tr.minY + 6 + r() * 6, -98 - r() * 10);
+          far.add(t);
+        }
+        // The castle: towers with pointed roofs and a few lit windows.
+        const win = new THREE.MeshBasicMaterial({ color: 0xffc860, fog: false });
+        for (let c = 0; c * 260 < len + 100; c++) {
+          const castle = new THREE.Group();
+          for (const [x, w, h] of [[-8, 4, 22], [-2, 7, 16], [5, 4, 26], [10, 3, 18]] as const) {
+            const tw = new THREE.Mesh(new THREE.BoxGeometry(w, h, 4), dark);
+            tw.position.set(x, h / 2, 0);
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.75, w * 1.6, 4), dark);
+            roof.position.set(x, h + w * 0.8, 0);
+            roof.rotation.y = Math.PI / 4;
+            castle.add(tw, roof);
+            for (let k = 0; k < 2; k++) {
+              const wnd = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.2), win);
+              wnd.position.set(x + (k ? 0.8 : -0.8), h * (0.5 + k * 0.25), 2.05);
+              castle.add(wnd);
+            }
+          }
+          castle.position.set(c * 260 + 90, tr.minY + 8, -150);
+          far.add(castle);
+        }
+        break;
+      }
+      case 'fair': {
+        // Green hills with the tops of tents, a far big wheel and a coaster's hills on the skyline.
+        for (let i = 0; i * 22 < len + 120; i++) {
+          const rad = 30 + (i * 37) % 25;
+          const s = new THREE.Mesh(new THREE.SphereGeometry(rad, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(b.farColors[i % 2]));
+          s.scale.y = 0.35;
+          s.position.set(i * 22 - 40, tr.minY - 2, -120 - (i % 3) * 15);
+          far.add(s);
+        }
+        const stripes = [0xe84a3a, 0x3a7ad8, 0xf2c040, 0x4ab84a];
+        const r = rng(57);
+        for (let x = -30; x < len + 60; x += 18 + r() * 24) {
+          const h = 4 + r() * 3, c = stripes[Math.floor(r() * stripes.length)];
+          const t = new THREE.Mesh(new THREE.ConeGeometry(4 + r() * 2, h, 10), mat(c));
+          t.position.set(x, tr.minY + 3 + h / 2, -90 - r() * 12);
+          far.add(t);
+        }
+        // A coaster: white track over hills on stilts.
+        const frame = mat(0xf4ecd8);
+        for (let c = 0; c * 200 < len + 100; c++) {
+          const x0 = c * 200 - 20;
+          let prev: THREE.Vector3 | null = null;
+          for (let k = 0; k <= 40; k++) {
+            const x = x0 + k * 3, y = tr.minY + 10 + 9 * Math.abs(Math.sin(k * 0.22)) + (k < 8 ? k * 1.5 : 12 - Math.min(12, (k - 8) * 0.6));
+            const p = new THREE.Vector3(x, y, -110);
+            if (prev) {
+              const seg = new THREE.Mesh(new THREE.BoxGeometry(prev.distanceTo(p), 0.5, 1.2), frame);
+              seg.position.copy(prev).add(p).multiplyScalar(0.5);
+              seg.rotation.z = Math.atan2(p.y - prev.y, p.x - prev.x);
+              far.add(seg);
+            }
+            if (k % 3 === 0) {
+              const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, y - tr.minY, 0.3), frame);
+              leg.position.set(x, (y + tr.minY) / 2, -110);
+              far.add(leg);
+            }
+            prev = p;
+          }
+        }
+        {
+          // A big wheel far off.
+          const g = new THREE.Group();
+          const rim = new THREE.Mesh(new THREE.TorusGeometry(11, 0.4, 6, 40), frame);
+          g.add(rim);
+          for (let k = 0; k < 12; k++) {
+            const sp = new THREE.Mesh(new THREE.BoxGeometry(0.25, 22, 0.25), frame);
+            sp.rotation.z = (k / 12) * Math.PI;
+            g.add(sp);
+            const car = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 1), mat(stripes[k % 4]));
+            car.position.set(Math.cos((k / 12) * Math.PI * 2) * 11, Math.sin((k / 12) * Math.PI * 2) * 11 - 1, 0);
+            g.add(car);
+          }
+          g.position.set(len * 0.6, tr.minY + 16, -130);
+          far.add(g);
+        }
+        break;
+      }
       case 'fields': {
         // Patchwork farmland: rolling hills striped with crop rows, hedges along the top.
         const stripes = b.farColors.map((col, k) => {
@@ -1412,7 +1681,7 @@ export class World {
       for (let i = 0; i < p.n; i++) col.set(c.setHex(p.colors[i % p.colors.length]).toArray(), i * 3);
       g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     }
-    const glow = kind === 'fireflies' || kind === 'embers';
+    const glow = kind === 'fireflies' || kind === 'embers' || kind === 'wisps';
     const common = { color: p.color, transparent: true, opacity: p.opacity ?? 0.9, depthWrite: false, blending: glow ? THREE.AdditiveBlending : THREE.NormalBlending };
     this.particles = stride === 2
       ? new THREE.LineSegments(g, new THREE.LineBasicMaterial(common))
@@ -1527,6 +1796,20 @@ export class World {
       o.add(halo);
       this.addLamp(x, y + 4.9 * scale, z + 0.55 * scale, 0xfff0d0, 50, 14);
     }
+    if (this.biome.lights && kind === 'gaslamp') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(-0.05, 2.8, 0.45);
+      halo.scale.setScalar(1.8);
+      o.add(halo);
+      this.addLamp(x, y + 2.8 * scale, z + 0.45 * scale, 0xffd890, 30, 11);
+    }
+    if (this.biome.lights && kind === 'fairlamp') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(0, 3.5, 0);
+      halo.scale.setScalar(2.4);
+      o.add(halo);
+      this.addLamp(x, y + 3.5 * scale, z, 0xfff0c0, 34, 12);
+    }
     if (this.biome.lights && kind === 'gumlamp') {
       const halo = new THREE.Sprite(haloMaterial());
       halo.position.set(0, 2.66, 0);
@@ -1600,7 +1883,7 @@ export class World {
       }
       if (b.posts.kind === 'liftpylon') this.buildLift(tops);
     }
-    if (b.lights && !['lamp', 'gumlamp', 'docklamp'].includes(b.posts?.kind ?? '')) this.buildNightLights(end);
+    if (b.lights && !['lamp', 'gumlamp', 'docklamp', 'gaslamp', 'fairlamp'].includes(b.posts?.kind ?? '')) this.buildNightLights(end);
     if (b.edge) for (let x = 6; x < end; x += b.edge.spacing * (0.7 + r() * 0.6)) this.placeProp(b.edge.kind, x, b.edge.z, 1, r() * Math.PI);
     for (const p of this.track.props) this.placeProp(p.kind, p.x, p.z, p.scale, p.rot);
     this.buildBlobs();
@@ -1608,7 +1891,7 @@ export class World {
 
   /** After dark, worlds without street lamps get lamps (towns) or burning torches (the wild). */
   private buildNightLights(end: number) {
-    const wild = ['desert', 'jungle', 'volcano', 'snow', 'farm'].includes(this.biome.id);
+    const wild = ['desert', 'jungle', 'volcano', 'snow', 'farm', 'pirate'].includes(this.biome.id);
     if (!wild) {
       for (let x = 9; x < end; x += 18) this.placeProp('lamp', x, -2.6);
       return;
