@@ -935,6 +935,7 @@ def build_props():
     build_farm(out)
     build_candy(out)
     build_docks(out)
+    build_pirate(out)
     export(os.path.join(OUT, 'props.glb'), out)
 
 
@@ -1763,14 +1764,17 @@ def build_docks(out):
 
     # A little yellow forklift.
     fk = [cube(yellow, (1.6, 1.0, 0.7), loc=(-0.1, 0, 0.6), bevel=0.05),
-          cube(black, (0.5, 0.9, 0.06), loc=(-0.3, 0, 2.1)),
+          cube(black, (1.0, 1.0, 0.07), loc=(-0.25, 0, 2.12), bevel=0.02),
+          cyl(black, 0.12, 0.03, loc=(0.0, 0, 1.25), rot=(0, 0.6, 0), verts=12),
+          cyl(black, 0.02, 0.35, loc=(-0.05, 0, 1.08), rot=(0, 0.6, 0), verts=6),
           cube(black, (0.25, 0.9, 0.4), loc=(-0.75, 0, 1.05))]
     for x in (-0.8, 0.0):
         for y in (-0.45, 0.45):
             fk.append(cyl(black, 0.25, 0.2, loc=(x + 0.3, y, 0.25), rot=(math.pi / 2, 0, 0), verts=14))
     for y in (-0.45, 0.45):
-        fk.append(cube(black, (0.06, 0.06, 1.5), loc=(-0.65, y, 1.35)))
-        fk.append(cube(black, (0.06, 0.06, 1.5), loc=(0.15, y, 1.35)))
+        # Roll cage posts from the body up to the roof.
+        fk.append(cube(black, (0.07, 0.07, 1.2), loc=(-0.68, y, 1.53)))
+        fk.append(cube(black, (0.07, 0.07, 1.2), loc=(0.18, y, 1.53)))
         fk.append(cube(iron, (0.1, 0.12, 2.2), loc=(0.75, y * 0.6, 1.1)))
         fk.append(cube(iron, (0.9, 0.12, 0.05), loc=(1.2, y * 0.6, 0.06)))
     out.append(join('forklift', fk))
@@ -1840,6 +1844,84 @@ def build_docks(out):
         cyl(bollard_m, 0.24, 0.1, loc=(0, 0, 0.68), verts=14),
         cyl(yellow, 0.172, 0.08, loc=(0, 0, 0.3), verts=14),
     ]))
+
+
+def build_pirate(out):
+    iron = mat('iron', (68, 68, 72))
+    wood = mat('crate_wood', (196, 150, 92))
+    wood_dk = mat('crate_wood_dark', (150, 108, 62))
+    carriage = mat('cannon_wood', (120, 70, 36))
+    gold = mat('gold', (250, 200, 40))
+    chest_m = mat('chest_wood', (140, 80, 40))
+    gem_r = mat('gem_red', (220, 30, 60))
+    gem_b = mat('gem_blue', (40, 120, 230))
+    shell_m = mat('shell', (250, 214, 196))
+    shell_dk = mat('shell_dark', (230, 160, 140))
+    flag = mat('pirate_flag', (24, 24, 28))
+    white = mat('white', (245, 245, 245))
+    red = mat('parrot_red', (220, 40, 40))
+    blue = mat('parrot_blue', (40, 110, 220))
+    yellow = mat('parrot_yellow', (250, 200, 40))
+    beak = mat('parrot_beak', (40, 40, 44))
+
+    # A ship's cannon on a wooden carriage, pointing out to sea (-Y is towards the camera, so +Y).
+    cn = [cube(carriage, (0.8, 1.1, 0.35), loc=(0, 0, 0.42), bevel=0.03)]
+    for x in (-0.42, 0.42):
+        for y in (-0.38, 0.38):
+            cn.append(cyl(carriage, 0.18, 0.08, loc=(x, y, 0.18), rot=(0, math.pi / 2, 0), verts=12))
+    cn.append(cyl(iron, 0.2, 1.5, loc=(0, 0.25, 0.75), rot=(math.radians(80), 0, 0), r2=0.15, verts=16))
+    cn.append(sphere(iron, 0.17, loc=(0, -0.48, 0.66), segs=12, rings=8))
+    cn.append(cyl(iron, 0.19, 0.08, loc=(0, 0.97, 0.88), rot=(math.radians(80), 0, 0), verts=16))
+    out.append(join('cannon', cn))
+
+    out.append(join('cannonballs', [sphere(iron, 0.15, loc=(x, y, z), segs=10, rings=8) for x, y, z in
+        [(-0.15, -0.09, 0.15), (0.15, -0.09, 0.15), (0, 0.17, 0.15), (0, 0.0, 0.39)]]))
+
+    # A treasure chest, lid open, spilling gold.
+    ch = [cube(chest_m, (0.9, 0.55, 0.45), loc=(0, 0, 0.225), bevel=0.02)]
+    for x in (-0.35, 0.35):
+        ch.append(cube(gold, (0.06, 0.57, 0.47), loc=(x, 0, 0.225)))
+    lid = cyl(chest_m, 0.28, 0.9, loc=(0, 0.3, 0.6), rot=(0, math.pi / 2, 0), verts=16)
+    ch.append(lid)
+    ch.append(ico(gold, 0.36, loc=(0, 0, 0.42), scale=(1.1, 0.65, 0.3), sub=2, jitter=0.3, seed=7))
+    for i in range(8):
+        a = i * 0.8
+        ch.append(cyl(gold, 0.06, 0.015, loc=(0.6 * math.cos(a), -0.4 + 0.1 * math.sin(a), 0.01), verts=10))
+    ch.append(ico(gem_r, 0.07, loc=(0.15, -0.05, 0.52), sub=1))
+    ch.append(ico(gem_b, 0.06, loc=(-0.18, 0.05, 0.5), sub=1))
+    out.append(join('chest', ch))
+
+    # A scallop shell lying on the sand.
+    sh = [sphere(shell_m, 0.22, loc=(0, 0, 0.0), scale=(1, 0.9, 0.35), segs=16, rings=8)]
+    for k in range(7):
+        a = math.pi * (k + 0.5) / 7
+        sh.append(cube(shell_dk, (0.02, 0.2, 0.03), loc=(0.11 * math.cos(a), 0.1 * math.sin(a) - 0.05, 0.07), rot=(0, 0, a - math.pi / 2)))
+    sh.append(cube(shell_m, (0.12, 0.08, 0.05), loc=(0, -0.2, 0.03)))
+    out.append(join('shell', sh))
+
+    # A parrot on a perch.
+    out.append(join('parrot', [
+        cyl(wood_dk, 0.04, 1.4, loc=(0, 0, 0.7), verts=8),
+        cyl(wood_dk, 0.03, 0.6, loc=(0, 0, 1.4), rot=(0, math.pi / 2, 0), verts=8),
+        sphere(red, 0.12, loc=(0, 0, 1.6), scale=(0.9, 0.9, 1.4), segs=12, rings=8),
+        sphere(red, 0.09, loc=(0, -0.04, 1.8), segs=10, rings=8),
+        cyl(beak, 0.04, 0.08, loc=(0, -0.12, 1.79), rot=(math.pi / 2, 0, 0), r2=0.005, verts=6),
+        sphere(white, 0.03, loc=(0.05, -0.09, 1.83), segs=6, rings=4),
+        sphere(blue, 0.09, loc=(0.09, 0.02, 1.58), scale=(0.4, 0.9, 1.4), segs=10, rings=6),
+        sphere(blue, 0.09, loc=(-0.09, 0.02, 1.58), scale=(0.4, 0.9, 1.4), segs=10, rings=6),
+        cube(yellow, (0.06, 0.04, 0.3), loc=(0, 0.06, 1.38), rot=(0.4, 0, 0)),
+    ]))
+
+    # A flagpole flying the skull and crossbones.
+    fl = [cyl(wood_dk, 0.06, 5.0, loc=(0, 0, 2.5), verts=8), sphere(gold, 0.09, loc=(0, 0, 5.05), segs=8, rings=6),
+          cube(flag, (1.4, 0.03, 0.9), loc=(0.72, 0, 4.4))]
+    fl.append(sphere(white, 0.17, loc=(0.72, -0.03, 4.5), scale=(1, 0.3, 1), segs=12, rings=8))
+    fl.append(cube(white, (0.18, 0.04, 0.1), loc=(0.72, -0.03, 4.32)))
+    for a in (0.6, -0.6):
+        fl.append(cube(white, (0.6, 0.04, 0.06), loc=(0.72, -0.03, 4.15), rot=(0, a, 0)))
+    fl.append(sphere(flag, 0.04, loc=(0.66, -0.07, 4.5), segs=6, rings=4))
+    fl.append(sphere(flag, 0.04, loc=(0.78, -0.07, 4.5), segs=6, rings=4))
+    out.append(join('jollyflag', fl))
 
 
 if __name__ == '__main__':
