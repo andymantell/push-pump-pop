@@ -26,24 +26,24 @@ interface GroundSound {
 const GROUNDS: Record<Ground, GroundSound> = {
   // Smooth slabs: a clean roar and a tk-tk over each joint.
   concrete: {
-    rumble: { type: 'lowpass', f: 180, q: 0.7, gain: 0.9, fSpeed: 12 },
-    hiss: { type: 'bandpass', f: 900, q: 0.8, gain: 0.35, fSpeed: 40 },
+    rumble: { type: 'lowpass', f: 420, q: 0.7, gain: 0.55, fSpeed: 16 },
+    hiss: { type: 'bandpass', f: 900, q: 0.8, gain: 0.55, fSpeed: 40 },
     grit: { type: 'bandpass', f: 3000, q: 1, gain: 0.12 },
     seam: { every: 3, gain: 0.6, f: 1500, q: 1.5, jitter: 0 },
     land: { type: 'bandpass', f: 900, q: 0.9, gain: 1, decay: 0.12, thump: 1 },
   },
   // Boardwalk planks: hollow, booming, and a clatter over every gap between boards.
   wood: {
-    rumble: { type: 'bandpass', f: 150, q: 3, gain: 2.6, fSpeed: 6 },
-    hiss: { type: 'bandpass', f: 700, q: 1, gain: 0.22, fSpeed: 25 },
+    rumble: { type: 'bandpass', f: 260, q: 2.5, gain: 1.4, fSpeed: 8 },
+    hiss: { type: 'bandpass', f: 700, q: 1, gain: 0.35, fSpeed: 25 },
     grit: { type: 'bandpass', f: 2000, q: 1, gain: 0.06 },
     seam: { every: 0.45, gain: 0.55, f: 320, q: 5, jitter: 0.05 },
     land: { type: 'bandpass', f: 190, q: 4, gain: 2.2, decay: 0.35, thump: 1.3 },
   },
   // Gravelly tar roofs: duller roar, lots of little stones.
   tar: {
-    rumble: { type: 'lowpass', f: 140, q: 0.7, gain: 0.7, fSpeed: 8 },
-    hiss: { type: 'bandpass', f: 600, q: 0.7, gain: 0.2, fSpeed: 20 },
+    rumble: { type: 'lowpass', f: 340, q: 0.7, gain: 0.45, fSpeed: 10 },
+    hiss: { type: 'bandpass', f: 600, q: 0.7, gain: 0.32, fSpeed: 20 },
     grit: { type: 'bandpass', f: 2600, q: 0.8, gain: 0.4 },
     land: { type: 'lowpass', f: 700, q: 0.7, gain: 0.9, decay: 0.1, thump: 0.9 },
   },
@@ -56,23 +56,23 @@ const GROUNDS: Record<Ground, GroundSound> = {
   },
   // Sandy canyon paths: gritty and hissy, soft landings.
   sand: {
-    rumble: { type: 'lowpass', f: 220, q: 0.6, gain: 0.45, fSpeed: 6 },
+    rumble: { type: 'lowpass', f: 450, q: 0.6, gain: 0.3, fSpeed: 8 },
     hiss: { type: 'bandpass', f: 1800, q: 0.6, gain: 0.6, fSpeed: 40 },
     grit: { type: 'bandpass', f: 3500, q: 0.9, gain: 0.7 },
     land: { type: 'bandpass', f: 1400, q: 0.6, gain: 1, decay: 0.22, thump: 0.6 },
   },
   // Mossy temple flagstones: uneven joints that clunk.
   stone: {
-    rumble: { type: 'lowpass', f: 260, q: 0.8, gain: 1, fSpeed: 10 },
-    hiss: { type: 'bandpass', f: 1100, q: 1, gain: 0.25, fSpeed: 25 },
+    rumble: { type: 'lowpass', f: 460, q: 0.8, gain: 0.6, fSpeed: 12 },
+    hiss: { type: 'bandpass', f: 1100, q: 1, gain: 0.4, fSpeed: 25 },
     grit: { type: 'bandpass', f: 2200, q: 1, gain: 0.2 },
     seam: { every: 1.5, gain: 0.9, f: 650, q: 2, jitter: 0.4 },
     land: { type: 'bandpass', f: 600, q: 1, gain: 1.1, decay: 0.15, thump: 1 },
   },
   // Rough lava rock: a heavy, crunchy roar.
   basalt: {
-    rumble: { type: 'lowpass', f: 200, q: 0.9, gain: 1.1, fSpeed: 14 },
-    hiss: { type: 'bandpass', f: 1400, q: 0.7, gain: 0.35, fSpeed: 30 },
+    rumble: { type: 'lowpass', f: 420, q: 0.9, gain: 0.65, fSpeed: 16 },
+    hiss: { type: 'bandpass', f: 1400, q: 0.7, gain: 0.5, fSpeed: 30 },
     grit: { type: 'bandpass', f: 1800, q: 0.8, gain: 0.85 },
     land: { type: 'bandpass', f: 1000, q: 0.8, gain: 1.2, decay: 0.18, thump: 1 },
   },
@@ -281,7 +281,8 @@ export class Sound {
     const p = GROUNDS[this.ground];
     const rumble = this.filter(p.rumble), hiss = this.filter(p.hiss), grit = this.filter(p.grit);
     const rumbleGain = this.gain(p.rumble.gain, gain), hissGain = this.gain(p.hiss.gain, gain), gritGain = this.gain(p.grit.gain, gain);
-    this.loop(this.brown).connect(rumble).connect(rumbleGain);
+    // Keep the deepest bass out: wheels whir more than they boom.
+    this.loop(this.brown).connect(this.filter({ type: 'highpass', f: 160, q: 0.7 })).connect(rumble).connect(rumbleGain);
     this.loop(this.white).connect(hiss).connect(hissGain);
     const gritSrc = this.loop(this.crackle);
     gritSrc.connect(grit).connect(gritGain);
