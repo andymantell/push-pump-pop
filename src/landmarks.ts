@@ -745,6 +745,109 @@ export const LANDMARKS: Record<string, Landmark> = {
     }
     return g;
   } },
+  gantry: { z: -17, r: 10, build: () => {
+    // A ship-to-shore container crane: tall legs, a boom reaching out over the water, a box on the hook.
+    const red = 0xd8502a, white = 0xf4f0e8;
+    const g = new THREE.Group();
+    for (const x of [-6, 6]) for (const z of [-3, 3]) {
+      g.add(box(0.8, 22, 0.8, red, [x, 11, z]));
+      g.add(box(1.4, 0.8, 1.4, 0x3a3a3e, [x, 0.4, z]));
+    }
+    for (const y of [8, 15, 22]) for (const z of [-3, 3]) g.add(box(12.8, 0.7, 0.7, red, [0, y, z]));
+    for (const x of [-6, 6]) g.add(beam([x, 1, -3], [x, 14, 3], 0.35, red), beam([x, 14, -3], [x, 22, 3], 0.35, red));
+    // The boom, out over the water behind (-z), and a machine house on top.
+    g.add(box(1.6, 1.4, 34, red, [0, 23.5, -9]), box(5, 3.2, 5, white, [0, 25.6, 1.5]));
+    g.add(beam([0, 30, 1.5], [0, 23.8, -24], 0.25, red), beam([0, 30, 1.5], [0, 23.8, 6], 0.25, red), box(1, 5, 1, red, [0, 27.5, 1.5]));
+    g.add(beam([0, 23, -6], [0, 12, -6], 0.08, 0x3a3a3e), box(6.1, 2.6, 2.44, 0x2a6ab0, [0, 10.7, -6]));
+    const sign = textPanel('PUMP LINE', 6, 1.4, '#f4f0e8', '#d8502a', '#d8502a');
+    sign.position.set(0, 18.5, 3.5);
+    g.add(sign);
+    return g;
+  } },
+  warehouse: { z: -17, r: 9, build: () => {
+    // A brick warehouse with a curved roof, big loading doors and the harbour's name on it.
+    const brick = 0xa8583a, roof = 0x6a7a88, trim = 0xf0e8d8;
+    const g = group(box(16, 7, 8, brick, [0, 3.5, 0]));
+    const vault = mesh(new THREE.CylinderGeometry(4.2, 4.2, 16.4, 20, 1, false, -Math.PI / 2, Math.PI), roof, [0, 7, 0], [0, 0, Math.PI / 2]);
+    vault.scale.set(1, 1, 0.45);
+    g.add(vault);
+    for (const x of [-5, 0, 5]) {
+      g.add(box(3.4, 4.6, 0.2, 0x3a4a58, [x, 2.3, 4.05]));
+      for (let k = 0; k < 6; k++) g.add(box(3.4, 0.08, 0.22, 0x5a6a78, [x, 0.4 + k * 0.75, 4.06]));
+      g.add(box(3.8, 0.25, 0.3, trim, [x, 4.75, 4.1]));
+    }
+    for (const x of [-7.4, 7.4]) g.add(box(0.4, 7, 0.3, trim, [x, 3.5, 4.06]));
+    const sign = textPanel('HARBOUR', 7, 1.2, '#f0e8d8', '#2a4a6a', '#2a4a6a');
+    sign.position.set(0, 6, 4.12);
+    g.add(sign);
+    return g;
+  } },
+  fishmarket: { z: -11, r: 6, build: () => {
+    // Striped market stalls with fish on ice and crates of crabs.
+    const g = new THREE.Group();
+    const stripes = [[0x2a6ab0, 0xf4f0e8], [0xd8442a, 0xf4f0e8], [0x3a8a4a, 0xf4f0e8]];
+    stripes.forEach(([c1, c2], i) => {
+      const x = (i - 1) * 4.2;
+      g.add(box(3.6, 1, 1.6, 0x8a6a4a, [x, 0.5, 0]), box(3.6, 0.15, 1.6, 0xe8f4ff, [x, 1.05, 0]));
+      for (let k = 0; k < 6; k++) g.add(box(0.6, 0.1, 1.9, k % 2 ? c1 : c2, [x - 1.5 + k * 0.6, 2.6 - 0.15, 0.2], [0.3, 0, 0]));
+      for (const sx of [-1.7, 1.7]) g.add(box(0.1, 2.5, 0.1, 0xe8e8e8, [x + sx, 1.25, 0.75]), box(0.1, 2.5, 0.1, 0xe8e8e8, [x + sx, 1.25, -0.75]));
+      for (let k = 0; k < 5; k++) {
+        const fish = ball(0.14, [0x9ab0c0, 0xf09080, 0xb8c0c8][(k + i) % 3], [x - 1.2 + k * 0.6, 1.2, 0.2], 8);
+        fish.scale.set(2.4, 0.6, 0.8);
+        g.add(fish);
+      }
+    });
+    const sign = textPanel('FRESH FISH', 4, 0.8, '#f4f0e8', '#2a6ab0', '#2a6ab0');
+    sign.position.set(0, 3.4, 0.2);
+    g.add(sign, cyl(0.06, 0.06, 1, 0xe8e8e8, [-1.6, 2.9, 0.2], 6), cyl(0.06, 0.06, 1, 0xe8e8e8, [1.6, 2.9, 0.2], 6));
+    return g;
+  } },
+  harbourclock: { z: -15, r: 4, build: () => {
+    // The harbour master's office: a white tower with a clock, a flag and a weather vane.
+    const white = 0xf4f0e8, blue = 0x2a4a6a;
+    const g = group(box(6, 4, 5, white, [0, 2, 0]), box(6.6, 0.4, 5.6, blue, [0, 4.2, 0]), box(3, 7, 3, white, [0, 7.5, 0]));
+    g.add(mesh(new THREE.ConeGeometry(2.4, 2.4, 4), blue, [0, 12.2, 0], [0, Math.PI / 4, 0]));
+    const face = mesh(new THREE.CircleGeometry(1, 24), 0xfffbe8, [0, 9, 1.52]);
+    g.add(face, box(0.08, 0.7, 0.05, 0x222222, [0, 9.3, 1.56]), box(0.5, 0.08, 0.05, 0x222222, [0.22, 9, 1.56]));
+    g.add(mesh(new THREE.TorusGeometry(1, 0.08, 6, 24), blue, [0, 9, 1.52]));
+    for (const x of [-1.8, 0, 1.8]) g.add(box(1, 1.3, 0.1, 0x8ab8d8, [x, 2.4, 2.52]));
+    g.add(cyl(0.05, 0.05, 3, 0xd8d8d8, [2.6, 5.7, 0], 6), box(1.2, 0.7, 0.04, 0xd84a2a, [3.2, 6.8, 0]));
+    return g;
+  } },
+  cargoship: { z: -48, r: 0, on: 'sea', build: () => {
+    // A big container ship at anchor, stacked high.
+    const g = group(box(60, 6, 12, 0x2a3a58, [0, 1.5, 0]), box(60.2, 1.2, 12.2, 0xc83a2a, [0, -0.9, 0]));
+    g.add(mesh(new THREE.ConeGeometry(6, 10, 4, 1), 0x2a3a58, [33, 1.5, 0], [0, Math.PI / 4, -Math.PI / 2]));
+    g.add(box(8, 10, 11, 0xf4f0e8, [-24, 9.5, 0]), box(9, 1, 12, 0x2a3a58, [-24, 14.8, 0]), box(1.4, 4, 1.4, 0xd8502a, [-26, 17, 0]));
+    for (let x = -24; x < -20; x += 1.5) g.add(box(0.1, 1, 11.1, 0x2a3a4a, [x, 12, 0]));
+    const cols = [0xc8442a, 0x2a6ab0, 0x3a8a4a, 0xe0a030, 0x8a8a92, 0x2a8a8a];
+    for (let i = 0; i < 10; i++) {
+      const h = 2 + ((i * 7) % 4);
+      for (let k = 0; k < h; k++) g.add(box(3.8, 2.5, 11, cols[(i * 3 + k * 5) % 6], [-16 + i * 4.4, 5.75 + k * 2.6, 0]));
+    }
+    return g;
+  } },
+  tugboat: { z: -30, r: 0, on: 'sea', build: () => {
+    // A little red tug with a fat tyre bumper and a puffing funnel.
+    const g = group(box(9, 2.2, 3.6, 0xc83a2a, [0, 0.6, 0]), box(9.2, 0.5, 3.8, 0x2a2a2e, [0, -0.3, 0]));
+    g.add(mesh(new THREE.ConeGeometry(1.8, 3, 4), 0xc83a2a, [5.2, 0.6, 0], [0, Math.PI / 4, -Math.PI / 2]));
+    g.add(box(3.5, 2.2, 2.8, 0xf4f0e8, [-0.8, 2.8, 0]), box(3.8, 0.3, 3.1, 0x2a4a6a, [-0.8, 4, 0]), cyl(0.5, 0.6, 2.4, 0x2a2a2e, [-2.8, 3.6, 0], 12), box(1.2, 0.3, 1.25, 0xe0a030, [-2.8, 4.2, 0]));
+    for (const x of [-1.8, -0.8, 0.2]) g.add(box(0.6, 0.7, 0.05, 0x8ab8d8, [x, 3.1, 1.42]));
+    g.add(mesh(new THREE.TorusGeometry(1, 0.35, 8, 20), 0x2a2a2e, [6.2, 0.4, 0], [0, Math.PI / 2, 0]));
+    for (let i = 0; i < 3; i++) g.add(ball(0.5 + i * 0.25, 0xe8e8ec, [-2.8 - i * 0.8, 5.4 + i * 1.1, 0], 8));
+    return g;
+  } },
+  ferry: { z: -40, r: 0, on: 'sea', build: () => {
+    // A car ferry: white decks, a blue hull, a funnel with a star.
+    const g = group(box(40, 5, 10, 0x2a5aa8, [0, 1, 0]), box(38, 3, 9.5, 0xf4f0e8, [-1, 5, 0]), box(30, 2.6, 9, 0xf4f0e8, [-3, 7.8, 0]));
+    for (let x = -18; x < 18; x += 2) g.add(box(1.2, 0.8, 0.05, 0x3a5a7a, [x, 5.4, 4.8]), box(1.2, 0.8, 0.05, 0x3a5a7a, [x - 3, 8, 4.55]));
+    g.add(cyl(1.6, 1.8, 5, 0xf4f0e8, [-8, 11.5, 0], 14), cyl(1.62, 1.62, 1.2, 0x2a5aa8, [-8, 13.4, 0], 14));
+    g.add(mesh(new THREE.ConeGeometry(5, 7, 4), 0x2a5aa8, [22, 1, 0], [0, Math.PI / 4, -Math.PI / 2]));
+    const sign = textPanel('ISLAND FERRY', 12, 1.4, '#f4f0e8', '#2a5aa8');
+    sign.position.set(0, 2, 5.05);
+    g.add(sign);
+    return g;
+  } },
 };
 
 /** Which landmarks each track has, spread along it in order. */
@@ -776,4 +879,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'candy-1': ['lolliarch'], 'candy-2': ['bigcupcake', 'gingerhouse'], 'candy-3': ['gumball', 'donutwheel'], 'candy-4': ['chocfall'],
   'candy-5': ['layercake', 'lolliarch'], 'candy-6': ['gingerhouse', 'gumball'], 'candy-7': ['donutwheel', 'bigcupcake'], 'candy-8': ['gingercastle'],
   'candy-pipe': ['donutwheel'],
+  'docks-1': ['harbourclock', 'tugboat'], 'docks-2': ['gantry', 'cargoship'], 'docks-3': ['fishmarket', 'warehouse'], 'docks-4': ['gantry', 'tugboat'],
+  'docks-5': ['lighthouse', 'ferry'], 'docks-6': ['ferry', 'harbourclock'], 'docks-7': ['cargoship', 'gantry'], 'docks-8': ['warehouse', 'tugboat'],
+  'docks-9': ['lighthouse', 'cargoship'], 'docks-10': ['gantry', 'ferry'], 'docks-mega': ['gantry'],
 };

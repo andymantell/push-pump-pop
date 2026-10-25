@@ -83,6 +83,13 @@ export interface Bouncer {
   lift: number;
 }
 
+/** Shipping containers the track rides along the top of, `y` being their roof. */
+export interface Stack {
+  x0: number;
+  x1: number;
+  y: number;
+}
+
 export interface Prop {
   kind: PropKind;
   x: number;
@@ -108,9 +115,11 @@ export class Track {
   readonly pads: Pad[];
   readonly mud: Mud[];
   readonly bouncers: Bouncer[];
+  readonly stacks: Stack[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = [], stacks: Stack[] = []) {
     this.mud = mud;
+    this.stacks = stacks;
     this.bouncers = bouncers;
     this.spots = spots;
     this.pads = pads;
@@ -198,6 +207,7 @@ export class TrackBuilder {
   pads: Pad[] = [];
   mudPatches: Mud[] = [];
   bouncers: Bouncer[] = [];
+  stacks: Stack[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -287,6 +297,17 @@ export class TrackBuilder {
     this.spot('bouncer');
     this.bouncers.push({ x0: this.x, x1: this.x + len, lift });
     return this.flat(len);
+  }
+
+  /**
+   * A row of `n` shipping containers (6.1 m each) to ride along the roof of: flat, and a pad
+   * for manuals. Reach them down a ramp or over a gap, and leave off the end.
+   */
+  containers(n: number, len = 6.1): this {
+    this.spot('containers');
+    this.pads.push({ x0: this.x, x1: this.x + n * len });
+    this.stacks.push({ x0: this.x, x1: this.x + n * len, y: this.y });
+    return this.flat(n * len);
   }
 
   /** Near vertical drop (a lip edge). */
@@ -409,6 +430,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers, this.stacks);
   }
 }

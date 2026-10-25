@@ -9,8 +9,9 @@ import { JUNGLE } from './levels/jungle';
 import { VOLCANO } from './levels/volcano';
 import { FARM } from './levels/farm';
 import { CANDY, CANDY_PIPE } from './levels/candy';
+import { DOCKS } from './levels/docks';
 
 export { PIPE_TIME } from './levels/common';
 export type { TrackDef } from './levels/common';
 
-export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE];
+export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS];

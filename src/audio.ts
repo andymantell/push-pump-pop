@@ -94,7 +94,7 @@ const GROUNDS: Record<Ground, GroundSound> = {
 };
 
 const BIOME_GROUND: Record<string, Ground> = {
-  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit',
+  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -936,6 +936,31 @@ export class Sound {
               this.tone(at + [0, 0.16, 0.32, 0.52][i], { type: 'sawtooth', f: f0, fEnd: f1, gain: 0.02, attack: 0.02, decay: d, glide: d, lp: 2200, to: out, pan: p }));
           });
         }
+        break;
+      }
+      case 'docks': {
+        // Water slapping the harbour wall, gulls, chains and the crane's beeps; ship horns and a foghorn in the fog.
+        const fog = b.mood === 'Sea fog';
+        bed(this.brown, { type: 'lowpass', f: 380, q: 0.8 }, 0.1, 5, 0.7, 120);
+        bed(this.pink, { type: 'bandpass', f: 1400, q: 0.8 }, 0.02, 3.3, 0.9);
+        every(0.8, 2.5, (at) => this.burst(at, { buf: this.brown, type: 'bandpass', f: 500 + Math.random() * 300, q: 1.5, gain: 0.12, attack: 0.02, decay: 0.25, to: out, pan: pan() }));
+        if (!night && !fog) every(4, 10, (at) => {
+          const p = pan();
+          for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++)
+            this.tone(at + i * 0.35, { type: 'sawtooth', f: 1600, fEnd: 1050, gain: 0.018, attack: 0.03, decay: 0.28, glide: 0.28, lp: 2800, to: out, pan: p });
+        });
+        // Chains clanking as a container is lifted.
+        every(9, 20, (at) => {
+          const p = pan();
+          for (let i = 0; i < 6; i++) this.tone(at + i * 0.09 + Math.random() * 0.03, { f: 1800 + Math.random() * 900, gain: 0.012, attack: 0.002, decay: 0.08, to: out, pan: p });
+        });
+        // The crane's warning beeps.
+        if (!fog) every(14, 30, (at) => { const p = pan(); for (let i = 0; i < 3; i++) this.tone(at + i * 0.5, { type: 'square', f: 1200, gain: 0.008, attack: 0.005, decay: 0.25, lp: 2500, to: out, pan: p }); });
+        // A big ship's horn far off, or the foghorn every few seconds in the fog.
+        every(fog ? 9 : 25, fog ? 14 : 50, (at) => {
+          const p = pan() * 0.5, len = fog ? 2.2 : 1.6;
+          for (const f of fog ? [98, 147] : [110, 165]) this.tone(at, { type: 'sawtooth', f, gain: 0.03, attack: 0.15, decay: len, lp: 600, to: out, pan: p });
+        });
         break;
       }
       case 'candy': {

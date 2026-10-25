@@ -1,6 +1,6 @@
 // A biome sets the look, scenery and feel of a track. Track layouts live in src/tracks.
 
-export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake';
+export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall';
 
 export interface Surface {
   kind: SurfaceKind;
@@ -22,8 +22,8 @@ export interface Biome {
   band: number;
   ground: [number, number, number];
   /** How the ground behind the track rises or falls away. */
-  groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat';
-  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops';
+  groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat' | 'quay';
+  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour';
   farColors: number[];
   clouds: number | null;
   particles: Particles | null;
@@ -200,12 +200,29 @@ export const BIOMES: Record<string, Biome> = {
     pitFill: 'water', pitFillColor: 0x6a3a1a, fallText: 'SPLOSH!', sign: '#c8387a',
     friction: 1, maxSpeed: 17, swatch: '#ff8ac8',
   },
+  docks: {
+    id: 'docks', name: 'Harbour Docks', blurb: 'Manual along the containers, grind the quay. Keep the combo going.',
+    sky: ['#3a88d0', '#9ccbec', '#e4eef4'], fog: [0xc8dce8, 60, 210],
+    hemi: [0xeef6ff, 0x6a7680, 1.45], sun: [0xfff4e4, 2.1],
+    top: { kind: 'quay', base: '#b4b0a8', seam: 'rgba(0,0,0,0.22)', accent: '#f2c428' },
+    front: { kind: 'quaywall', base: '#7c7a74', seam: '#5a5852', accent: '#3e5a3a' },
+    band: 0xf2c428,
+    ground: [0xa8a49c, 0x9c9890, 0xb4b0a8], groundShape: 'quay',
+    far: 'harbour', farColors: [0x2a7aa8, 0x8ac8e0, 0x6a7a88, 0xe85a2a, 0x3a6a9a], clouds: 0xffffff, particles: null,
+    back: [['container', 2], ['container2', 2], ['container3', 1.5], ['crate', 2], ['barrel', 2], ['pallets', 1.5], ['ropecoil', 1.5],
+      ['lobsterpots', 1], ['net', 1], ['forklift', 0.6], ['anchor', 0.4], ['gull', 1.2], ['lifebuoy', 0.6]], backZ: [-4.5, -19],
+    fence: { kind: 'chainrail', z: -3.0, spacing: 2.4 },
+    posts: { kind: 'docklamp', z: -2.5, spacing: 26 },
+    edge: { kind: 'bollard', z: -2.1, spacing: 14 },
+    pitFill: 'water', pitFillColor: 0x2a6a90, fallText: 'SPLASH!', sign: '#1f4a6a',
+    friction: 1, maxSpeed: 17, swatch: '#3a88d0',
+  },
 };
 
 /** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
 export const WORLDS: string[][] = [
   ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
-  ['farm', 'candy'],
+  ['farm', 'candy', 'docks'],
 ];
 export const BIOME_ORDER = WORLDS.flat();
 export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));

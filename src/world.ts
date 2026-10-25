@@ -204,6 +204,41 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
         for (let i = 0; i < 70; i++) { c.beginPath(); c.arc(r() * 256, r() * 256, 1.5 + r() * 2, 0, Math.PI * 2); c.fill(); }
         break;
       }
+      case 'quay': {
+        // Big concrete slabs, worn and stained, a painted safety line along the front edge.
+        speckle(c, 1100, 0.07, 0.05);
+        c.fillStyle = 'rgba(60,50,40,0.08)';
+        for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(r() * 256, r() * 256, 8 + r() * 22, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = s.seam;
+        c.fillRect(0, 0, 5, 256);
+        c.fillRect(128, 0, 3, 128);
+        c.fillStyle = s.accent ?? '#f2c428';
+        c.fillRect(0, 10, 256, 14);
+        c.fillStyle = 'rgba(0,0,0,0.15)';
+        for (let i = 0; i < 20; i++) c.fillRect(r() * 256, 10 + r() * 14, 2 + r() * 5, 2);
+        break;
+      }
+      case 'quaywall': {
+        // Granite blocks in courses, weed and wet stain low down, iron rungs here and there.
+        c.fillStyle = s.seam;
+        for (let y = 0; y < 256; y += 42) {
+          c.fillRect(0, y, 256, 4);
+          const off = (y / 42) % 2 ? 0 : 48;
+          for (let x = off; x < 256 + 96; x += 96) c.fillRect(x - 48, y, 4, 42);
+        }
+        for (let i = 0; i < 18; i++) {
+          c.fillStyle = `rgba(0,0,0,${0.04 + r() * 0.08})`;
+          c.fillRect(Math.floor(r() * 3) * 96, Math.floor(r() * 6) * 42 + 4, 92, 38);
+        }
+        speckle(c, 600, 0.06, 0.05);
+        c.fillStyle = s.accent ?? '#3e5a3a';
+        c.globalAlpha = 0.5;
+        for (let x = 0; x < 256; x += 6) c.fillRect(x, 214 + Math.sin(x * 0.3) * 4, 6, 42);
+        c.globalAlpha = 1;
+        c.fillStyle = '#5a3a2a';
+        for (const y of [70, 100, 130]) c.fillRect(176, y, 28, 5);
+        break;
+      }
       case 'windows': {
         c.fillStyle = s.seam;
         for (let y = 0; y < 256; y += 64) c.fillRect(0, y, 256, 6);
@@ -359,6 +394,18 @@ export class World {
   /** Lights that pool on the ground: lamps at night, and lava. */
   readonly lamps: Lamp[] = [];
   private groundCache: Float32Array;
+  private quayCache!: Float32Array;
+
+  private cached(a: Float32Array, x: number) {
+    const f = Math.max(0, Math.min(a.length - 1.001, x));
+    const i = Math.floor(f), t = f - i;
+    return a[i] * (1 - t) + a[i + 1] * t;
+  }
+
+  /** The harbour water level at x: it follows the quay down the track, out of sight of the camera. */
+  seaY(x: number): number {
+    return this.cached(this.quayCache, x) - 3.4;
+  }
   private particles: THREE.Points | THREE.LineSegments | null = null;
   private particleKind: ParticleLook | null = null;
   private particleStride = 1;
@@ -373,10 +420,22 @@ export class World {
     for (let i = 0; i < this.groundCache.length; i++) {
       this.groundCache[i] = Math.min(this.smoothed(i, 5), track.surface(i)) - 0.25;
     }
+    // A harbour quay is level, give or take the track's slope, rather than following every roller.
+    this.quayCache = new Float32Array(this.groundCache.length);
+    if (this.biome.groundShape === 'quay') for (let i = 0; i < this.quayCache.length; i++) this.quayCache[i] = this.smoothed(i, 24) - 0.6;
+    // Container stacks stand on the quay: the ground behind them is two boxes down.
+    for (const st of track.stacks) {
+      for (let i = Math.max(0, Math.floor(st.x0) - 2); i <= Math.min(this.groundCache.length - 1, Math.ceil(st.x1) + 2); i++) {
+        const out = Math.max(0, st.x0 - i, i - st.x1);
+        this.groundCache[i] = Math.min(this.groundCache[i], st.y - 5.2 + out * 2.2);
+        this.quayCache[i] = Math.min(this.quayCache[i], st.y - 5.2 + out * 2.2);
+      }
+    }
     this.lightUp();
     this.buildTrack();
     this.buildMud();
     this.buildBouncers();
+    this.buildStacks();
     this.buildPitFills();
     this.buildStairs();
     this.buildRails();
@@ -483,6 +542,12 @@ export class World {
         return near + 0.6 * Math.sin(x * 0.2) * Math.min(1, back / 4) - Math.max(0, back - 8) * 0.35;
       case 'roof':
         return back < 11 ? near : near - 40;
+      case 'quay': {
+        // A level quay, then the harbour wall down to the water.
+        if (back >= 22) return this.seaY(x) - 0.6;
+        const w = Math.min(1, Math.max(0, (back - 2) / 5));
+        return near + (this.cached(this.quayCache, x) - near) * w * w * (3 - 2 * w);
+      }
     }
   }
 
@@ -654,6 +719,58 @@ export class World {
       this.jellies.push({ mesh: g, x0: pad.x0, x1: pad.x1, t: 9 });
     });
   }
+  /** Shipping containers under the track where it rides along their roofs. */
+  private buildStacks() {
+    const tr = this.track;
+    if (!tr.stacks.length) return;
+    const colors = [0xc8442a, 0x2a6ab0, 0x3a8a4a, 0xe0a030, 0x8a8a92, 0x2a8a8a];
+    const tex = canvasTexture(256, 128, (c) => {
+      // Corrugated steel: light and dark ribs, a rail top and bottom, a painted logo panel.
+      c.fillStyle = '#ffffff';
+      c.fillRect(0, 0, 256, 128);
+      for (let x = 0; x < 256; x += 8) {
+        c.fillStyle = 'rgba(0,0,0,0.16)';
+        c.fillRect(x, 0, 3, 128);
+        c.fillStyle = 'rgba(255,255,255,0.25)';
+        c.fillRect(x + 4, 0, 2, 128);
+      }
+      c.fillStyle = 'rgba(0,0,0,0.3)';
+      c.fillRect(0, 0, 256, 8);
+      c.fillRect(0, 120, 256, 8);
+      c.fillStyle = 'rgba(80,40,20,0.18)';
+      for (let i = 0; i < 12; i++) c.fillRect(Math.random() * 256, 100 + Math.random() * 20, 4 + Math.random() * 10, 2 + Math.random() * 6);
+      c.fillStyle = 'rgba(255,255,255,0.75)';
+      c.font = '900 26px system-ui, sans-serif';
+      c.fillText('PUMP LINE', 22, 52);
+      c.font = '700 14px monospace';
+      c.fillText('PPP 042 1987 4', 24, 72);
+    });
+    const corner = toon(0x3a3a3e);
+    const H = 2.6, L = 6.1;
+    let k = 0;
+    for (const st of tr.stacks) {
+      for (let x = st.x0; x < st.x1 - 0.2; x += L) {
+        const len = Math.min(L, st.x1 - x);
+        for (let level = 0; level < 2; level++) {
+          const c = colors[(k++ * 7 + level * 3) % colors.length];
+          const map = tex.clone();
+          map.repeat.set(len / L, 1);
+          map.needsUpdate = true;
+          const box = new THREE.Mesh(new THREE.BoxGeometry(len - 0.05, H, TRACK_W + 0.1), toon(c, { map }));
+          box.position.set(x + len / 2, st.y - H / 2 - level * H, 0);
+          box.receiveShadow = true;
+          this.group.add(box);
+          // Corner posts and the door end of each box.
+          for (const ex of [x + 0.1, x + len - 0.1]) {
+            const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, H, 0.16), corner);
+            post.position.set(ex, st.y - H / 2 - level * H, TRACK_W / 2 + 0.03);
+            this.group.add(post);
+          }
+        }
+      }
+    }
+  }
+
   /** A pad just bounced someone: wobble it. */
   bounce(x: number) {
     for (const j of this.jellies) if (x >= j.x0 - 0.5 && x <= j.x1 + 0.5) j.t = 0;
@@ -810,7 +927,7 @@ export class World {
   private waterTop(w: number, lava = false): THREE.Material {
     const fill = new THREE.Color(this.biome.pitFillColor ?? 0x2aa6d9);
     // A dark fill is a river of chocolate: glossy swirls, not foam.
-    const choc = !lava && fill.getHSL({ h: 0, s: 0, l: 0 }).l < 0.3;
+    const choc = !lava && fill.getHSL({ h: 0, s: 0, l: 0 }, THREE.SRGBColorSpace).l < 0.3;
     const base = lava ? new THREE.Color(0xff8a20) : choc ? fill.clone().lerp(new THREE.Color(0xa05a2a), 0.4) : fill.lerp(new THREE.Color(0xffffff), 0.35);
     const tex = canvasTexture(128, 128, (c) => {
       c.fillStyle = `#${base.getHexString()}`;
@@ -835,6 +952,8 @@ export class World {
     const len = this.track.length;
     const nx = Math.ceil(len) + 40;
     const zs = [-TRACK_W / 2 + 0.05, -2.5, -4, -7, -10.9, -11.1, -16, -23, -32, -45, -60, -80];
+    // The harbour wall drops straight into the water.
+    if (this.biome.groundShape === 'quay') zs.splice(8, 0, -24.4);
     const pos = new Float32Array(nx * zs.length * 3);
     const col = new Float32Array(nx * zs.length * 3);
     const [c1, c2, c3] = this.biome.ground.map((c) => new THREE.Color(c));
@@ -956,6 +1075,66 @@ export class World {
           const w = new THREE.Mesh(new THREE.BoxGeometry(2 + r() * 4, 0.05, 0.3), new THREE.MeshBasicMaterial({ color: b.farColors[1] }));
           w.position.set(r() * (len + 100) - 50, tr.minY - 2.95, -30 - r() * 60);
           far.add(w);
+        }
+        break;
+      }
+      case 'harbour': {
+        // The harbour: water right up to the quay, ships at anchor, cranes and a far shore.
+        const [water, foam, shore, hull1, hull2] = b.farColors;
+        // The water follows the quay's level along the track (see seaY), as one strip out to the horizon.
+        const xs: number[] = [];
+        for (let x = -120; x <= len + 200; x += 4) xs.push(x);
+        const pos = new Float32Array(xs.length * 2 * 3);
+        xs.forEach((x, i) => pos.set([x, this.seaY(x), -23.6, x, this.seaY(x), -600], i * 6));
+        const idx: number[] = [];
+        for (let i = 0; i < xs.length - 1; i++) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+        const sg = new THREE.BufferGeometry();
+        sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        sg.setIndex(idx);
+        sg.computeVertexNormals();
+        far.add(new THREE.Mesh(sg, toon(water, { side: THREE.DoubleSide })));
+        for (let i = 0; i < len / 4; i++) {
+          const w = new THREE.Mesh(new THREE.BoxGeometry(1.5 + r() * 3, 0.04, 0.25), new THREE.MeshBasicMaterial({ color: foam }));
+          const x = r() * (len + 100) - 50;
+          w.position.set(x, this.seaY(x) + 0.04, -26 - r() * 60);
+          far.add(w);
+        }
+        // The far shore: low hills with warehouses and a few cranes.
+        for (let x = -100; x < len + 200; x += 30 + r() * 30) {
+          const hill = new THREE.Mesh(new THREE.SphereGeometry(30 + r() * 20, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), hazed(0x7a9a7a, 0.45));
+          hill.scale.y = 0.25;
+          hill.position.set(x, this.seaY(x), -230 - r() * 30);
+          far.add(hill);
+        }
+        for (let x = -80; x < len + 150; x += 12 + r() * 20) {
+          const w = 8 + r() * 14, h = 4 + r() * 6;
+          const shed = new THREE.Mesh(new THREE.BoxGeometry(w, h, 8), hazed(r() > 0.5 ? shore : 0xa89a8a, 0.35));
+          shed.position.set(x, this.seaY(x) + h / 2, -200 - r() * 20);
+          far.add(shed);
+        }
+        const craneMat = hazed(0xd8502a, 0.3);
+        for (let x = 20; x < len + 100; x += 70 + r() * 50) {
+          const z = -190 - r() * 15, base = this.seaY(x);
+          const c = new THREE.Group();
+          for (const dx of [-3, 3]) c.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 22, 0.8), craneMat).translateX(dx).translateY(11));
+          c.add(new THREE.Mesh(new THREE.BoxGeometry(34, 1.2, 1.2), craneMat).translateY(21).translateX(6));
+          c.add(new THREE.Mesh(new THREE.BoxGeometry(5, 3, 3), craneMat).translateY(23));
+          c.position.set(x, base, z);
+          far.add(c);
+        }
+        // Ships at anchor: hulls with a superstructure and a few stacked boxes.
+        for (let x = -30; x < len + 100; x += 60 + r() * 60) {
+          const z = -90 - r() * 60, L = 30 + r() * 25;
+          const ship = new THREE.Group();
+          ship.add(new THREE.Mesh(new THREE.BoxGeometry(L, 4, 7), hazed(r() > 0.5 ? hull1 : hull2, 0.25)).translateY(1));
+          ship.add(new THREE.Mesh(new THREE.BoxGeometry(5, 6, 6), hazed(0xf2f0ea, 0.25)).translateX(-L / 2 + 4).translateY(6));
+          const cols = [0xd84a2a, 0x2a6ab0, 0x3a9a5a, 0xe8a830, 0x8a8a92];
+          for (let k = 0; k < Math.floor(L / 4) - 3; k++) {
+            const hh = 1 + Math.floor(r() * 3);
+            ship.add(new THREE.Mesh(new THREE.BoxGeometry(3.6, hh * 1.3, 6), hazed(cols[Math.floor(r() * 5)], 0.3)).translateX(-L / 2 + 9 + k * 4).translateY(3 + hh * 0.65));
+          }
+          ship.position.set(x, this.seaY(x), z);
+          far.add(ship);
         }
         break;
       }
@@ -1212,6 +1391,13 @@ export class World {
       o.add(halo);
       this.addLamp(x, y + 1.5, z + 0.35, 0xffc070, 18, 8);
     }
+    if (this.biome.lights && kind === 'docklamp') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(0, 4.9, 0.55);
+      halo.scale.setScalar(2.4);
+      o.add(halo);
+      this.addLamp(x, y + 4.9 * scale, z + 0.55 * scale, 0xfff0d0, 50, 14);
+    }
     if (this.biome.lights && kind === 'gumlamp') {
       const halo = new THREE.Sprite(haloMaterial());
       halo.position.set(0, 2.66, 0);
@@ -1252,7 +1438,7 @@ export class World {
       const x = tr.startX + (end - tr.startX) * (names.length === 1 ? 0.45 : 0.28 + i * 0.44);
       const o = lm.build(this.rand);
       let y: number;
-      if (lm.on === 'sea') y = tr.minY - 3;
+      if (lm.on === 'sea') y = this.biome.groundShape === 'quay' ? this.seaY(x) : tr.minY - 3;
       else if (lm.on === 'air') y = tr.height(x);
       else {
         y = this.groundY(x, lm.z);
@@ -1285,7 +1471,7 @@ export class World {
       }
       if (b.posts.kind === 'liftpylon') this.buildLift(tops);
     }
-    if (b.lights && b.posts?.kind !== 'lamp' && b.posts?.kind !== 'gumlamp') this.buildNightLights(end);
+    if (b.lights && !['lamp', 'gumlamp', 'docklamp'].includes(b.posts?.kind ?? '')) this.buildNightLights(end);
     if (b.edge) for (let x = 6; x < end; x += b.edge.spacing * (0.7 + r() * 0.6)) this.placeProp(b.edge.kind, x, b.edge.z, 1, r() * Math.PI);
     for (const p of this.track.props) this.placeProp(p.kind, p.x, p.z, p.scale, p.rot);
     this.buildBlobs();

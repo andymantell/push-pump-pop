@@ -76,7 +76,7 @@ it; Load backup picks it). Installed copies also ask `navigator.storage.persist(
 
 Keep rollers long (12 m or more) so there's time to tap on each downslope.
 
-Mud (`mud(len)`, or `muddy(fn)` around any pieces) drags you back while you roll through it, so pump the muddy dips. Jelly pads (`bouncer(len, lift)`) fling you up at `lift` m/s, a quarter higher if you pump as you hit them; put a gap or a landing after one like a kicker.
+Mud (`mud(len)`, or `muddy(fn)` around any pieces) drags you back while you roll through it, so pump the muddy dips. Jelly pads (`bouncer(len, lift)`) fling you up at `lift` m/s, a quarter higher if you pump as you hit them; put a gap or a landing after one like a kicker. Containers (`containers(n)`) are a row of shipping containers to ride along the top of: reach them down a ramp and leave off the end.
 
 The plan for the first 70 tracks is `docs/level-plan.md`; World 2 (opens after Volcano 5) is planned in `docs/world-2-plan.md`. `art/props.html?names=a,b` shows a contact sheet of props from `props.glb`.
 

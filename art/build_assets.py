@@ -934,6 +934,7 @@ def build_props():
     build_volcano(out)
     build_farm(out)
     build_candy(out)
+    build_docks(out)
     export(os.path.join(OUT, 'props.glb'), out)
 
 
@@ -1659,6 +1660,185 @@ def build_candy(out):
         cyl(lemon, 0.18, 0.08, loc=(0, 0, 2.42), verts=14),
         sphere(glow, 0.22, loc=(0, 0, 2.66), segs=14, rings=10),
         cyl(lemon, 0.12, 0.06, loc=(0, 0, 2.9), verts=12),
+    ]))
+
+
+def container_prop(name, colour, rib_colour):
+    """A 20 ft shipping container, corrugated sides, doors on one end, corner castings."""
+    body = mat(name + '_paint', colour)
+    rib = mat(name + '_rib', rib_colour)
+    steel = mat('container_corner', (58, 58, 62))
+    L, W, H = 6.06, 2.44, 2.59
+    bits = [cube(body, (L, W, H), loc=(0, 0, H / 2))]
+    for i in range(1, 30):
+        x = -L / 2 + i * L / 30
+        for y in (-W / 2 - 0.015, W / 2 + 0.015):
+            bits.append(cube(rib, (0.07, 0.03, H - 0.3), loc=(x, y, H / 2)))
+    for x in (-L / 2 + 0.06, L / 2 - 0.06):
+        for y in (-W / 2 + 0.06, W / 2 - 0.06):
+            bits.append(cube(steel, (0.18, 0.18, H + 0.02), loc=(x, y, H / 2)))
+    for z in (0.08, H - 0.08):
+        for y in (-W / 2, W / 2):
+            bits.append(cube(steel, (L, 0.06, 0.16), loc=(0, y, z)))
+    # Door end: two doors, four locking bars.
+    for k in range(4):
+        y = -W / 2 + 0.35 + k * (W - 0.7) / 3
+        bits.append(cyl(steel, 0.03, H - 0.4, loc=(L / 2 + 0.04, y, H / 2), verts=6))
+    bits.append(cube(steel, (0.04, 0.04, H - 0.3), loc=(L / 2 + 0.03, 0, H / 2)))
+    return join(name, bits)
+
+
+def build_docks(out):
+    wood = mat('crate_wood', (196, 150, 92))
+    wood_dk = mat('crate_wood_dark', (150, 108, 62))
+    drum_b = mat('drum_blue', (40, 100, 170))
+    drum_r = mat('drum_red', (200, 60, 40))
+    steel = mat('dock_steel', (150, 156, 164))
+    iron = mat('iron', (68, 68, 72))
+    bollard_m = mat('bollard', (40, 44, 48))
+    yellow = mat('safety_yellow', (242, 196, 40))
+    rope = mat('rope', (214, 186, 130))
+    net_m = mat('net', (60, 110, 90))
+    float_m = mat('float', (240, 120, 30))
+    white = mat('white', (245, 245, 245))
+    red = mat('buoy_red', (220, 50, 40))
+    gull_grey = mat('gull_grey', (150, 156, 166))
+    beak = mat('beak', (250, 180, 40))
+    black = mat('black', (30, 30, 34))
+    glow = mat('lamp_light', (255, 243, 176))
+
+    out.append(container_prop('container', (200, 68, 42), (176, 54, 32)))
+    out.append(container_prop('container2', (42, 106, 176), (32, 86, 150)))
+    out.append(container_prop('container3', (58, 138, 74), (44, 112, 58)))
+
+    # Wooden crate with planks and corner battens.
+    cr = [cube(wood, (1.0, 1.0, 1.0), loc=(0, 0, 0.5))]
+    for x in (-0.48, 0.48):
+        for y in (-0.48, 0.48):
+            cr.append(cube(wood_dk, (0.1, 0.1, 1.02), loc=(x, y, 0.5)))
+    for y in (-0.51, 0.51):
+        cr.append(cube(wood_dk, (1.0, 0.03, 0.1), loc=(0, y, 0.5), rot=(0, 0.78, 0)))
+    out.append(join('crate', cr))
+
+    # Oil drums, a blue one and a red one leaning.
+    out.append(join('barrel', [
+        cyl(drum_b, 0.3, 0.9, loc=(0, 0, 0.45), verts=18),
+        cyl(drum_b, 0.31, 0.04, loc=(0, 0, 0.3), verts=18), cyl(drum_b, 0.31, 0.04, loc=(0, 0, 0.6), verts=18),
+        cyl(drum_r, 0.3, 0.9, loc=(0.68, 0.1, 0.45), verts=18),
+        cyl(iron, 0.31, 0.03, loc=(0.68, 0.1, 0.9), verts=18),
+    ]))
+
+    # A stack of pallets.
+    pl = []
+    for k in range(4):
+        z = k * 0.15
+        for x in (-0.5, 0, 0.5):
+            pl.append(cube(wood_dk, (0.1, 1.0, 0.08), loc=(x, 0, z + 0.04)))
+        for i in range(6):
+            pl.append(cube(wood, (1.2, 0.13, 0.025), loc=(0, -0.42 + i * 0.17, z + 0.1)))
+    out.append(join('pallets', pl))
+
+    # A coil of rope on the quay.
+    rc = []
+    for k in range(4):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.42 - k * 0.04, minor_radius=0.055, location=(0, 0, 0.06 + k * 0.1), major_segments=24, minor_segments=8)
+        rc.append(finish(bpy.context.object, rope, True))
+    out.append(join('ropecoil', rc))
+
+    # Lobster pots stacked up, with a float.
+    lp = []
+    for i, (x, z) in enumerate([(-0.4, 0.25), (0.4, 0.25), (0, 0.75)]):
+        lp.append(cube(net_m, (0.75, 0.55, 0.45), loc=(x, 0, z - 0.02)))
+        for k in range(3):
+            lp.append(cyl(wood_dk, 0.02, 0.56, loc=(x - 0.3 + k * 0.3, 0, z + 0.2), rot=(math.pi / 2, 0, 0), verts=6))
+    lp.append(sphere(float_m, 0.17, loc=(0.75, 0.25, 0.17), segs=12, rings=8))
+    out.append(join('lobsterpots', lp))
+
+    # A heap of fishing net with orange floats.
+    nt = [ico(net_m, 0.7, loc=(0, 0, 0.2), scale=(1.4, 1, 0.45), sub=2, jitter=0.25, seed=33, smooth=True)]
+    for k in range(6):
+        a = k * 1.1
+        nt.append(sphere(float_m, 0.1, loc=(0.8 * math.cos(a), 0.55 * math.sin(a), 0.33), segs=10, rings=6))
+    out.append(join('net', nt))
+
+    # A little yellow forklift.
+    fk = [cube(yellow, (1.6, 1.0, 0.7), loc=(-0.1, 0, 0.6), bevel=0.05),
+          cube(black, (0.5, 0.9, 0.06), loc=(-0.3, 0, 2.1)),
+          cube(black, (0.25, 0.9, 0.4), loc=(-0.75, 0, 1.05))]
+    for x in (-0.8, 0.0):
+        for y in (-0.45, 0.45):
+            fk.append(cyl(black, 0.25, 0.2, loc=(x + 0.3, y, 0.25), rot=(math.pi / 2, 0, 0), verts=14))
+    for y in (-0.45, 0.45):
+        fk.append(cube(black, (0.06, 0.06, 1.5), loc=(-0.65, y, 1.35)))
+        fk.append(cube(black, (0.06, 0.06, 1.5), loc=(0.15, y, 1.35)))
+        fk.append(cube(iron, (0.1, 0.12, 2.2), loc=(0.75, y * 0.6, 1.1)))
+        fk.append(cube(iron, (0.9, 0.12, 0.05), loc=(1.2, y * 0.6, 0.06)))
+    out.append(join('forklift', fk))
+
+    # An old anchor on the quay.
+    an = [cyl(iron, 0.08, 2.0, loc=(0, 0, 1.0), verts=10)]
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.8, minor_radius=0.09, location=(0, 0, 1.0), rotation=(math.pi / 2, 0, 0), major_segments=24, minor_segments=8)
+    ring = bpy.context.object
+    bm = bmesh.new()
+    bm.from_mesh(ring.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.y > 0.0], context='VERTS')
+    bm.to_mesh(ring.data)
+    bm.free()
+    an.append(finish(ring, iron, True))
+    for sx in (-1, 1):
+        an.append(cyl(iron, 0.14, 0.4, loc=(sx * 0.8, 0, 1.15), rot=(0, sx * 0.4, 0), r2=0.0, verts=8))
+    an.append(cyl(iron, 0.06, 1.2, loc=(0, 0, 1.8), rot=(0, math.pi / 2, 0), verts=8))
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.18, minor_radius=0.05, location=(0, 0, 2.15), rotation=(math.pi / 2, 0, 0), major_segments=16, minor_segments=6)
+    an.append(finish(bpy.context.object, iron, True))
+    out.append(join('anchor', an))
+
+    # A gull standing about.
+    out.append(join('gull', [
+        sphere(white, 0.16, loc=(0, 0, 0.3), scale=(1.5, 0.9, 0.9), segs=12, rings=8),
+        sphere(white, 0.09, loc=(0.2, 0, 0.43), segs=10, rings=6),
+        cyl(beak, 0.025, 0.12, loc=(0.32, 0, 0.42), rot=(0, math.pi / 2, 0), r2=0.005, verts=6),
+        sphere(gull_grey, 0.15, loc=(-0.04, 0, 0.35), scale=(1.5, 1.0, 0.5), segs=12, rings=6),
+        sphere(black, 0.06, loc=(-0.25, 0, 0.33), scale=(1.4, 0.8, 0.5), segs=8, rings=6),
+        cyl(beak, 0.012, 0.18, loc=(0.03, 0.05, 0.09), verts=5), cyl(beak, 0.012, 0.18, loc=(0.03, -0.05, 0.09), verts=5),
+    ]))
+
+    # A lifebuoy on its post.
+    lb = [cyl(wood_dk, 0.06, 1.6, loc=(0, 0, 0.8), verts=8), cube(wood_dk, (0.1, 0.4, 0.6), loc=(0, 0.0, 1.25))]
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.32, minor_radius=0.09, location=(0, -0.3, 1.25), rotation=(math.pi / 2, 0, 0), major_segments=24, minor_segments=8)
+    ring = bpy.context.object
+    ring.data.materials.append(white)
+    ring.data.materials.append(red)
+    for p in ring.data.polygons:
+        a = math.atan2(p.center.z - 1.25, p.center.x)
+        p.material_index = 1 if int((a + math.pi) / (math.pi / 2)) % 2 else 0
+        p.use_smooth = True
+    lb.append(ring)
+    out.append(join('lifebuoy', lb))
+
+    # Quay edge rail: one 2.4 m bay, a post on the left and a hanging chain.
+    ch = [cyl(yellow, 0.05, 1.0, loc=(-1.2, 0, 0.5), verts=10), sphere(yellow, 0.07, loc=(-1.2, 0, 1.02), segs=10, rings=6)]
+    for i in range(20):
+        t = (i + 0.5) / 20
+        x = -1.2 + t * 2.4
+        z = 0.9 - 0.25 * math.sin(math.pi * t)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.07, minor_radius=0.02, location=(x, 0, z), rotation=(0, 0, 0) if i % 2 else (math.pi / 2, 0, 0), major_segments=10, minor_segments=4)
+        ch.append(finish(bpy.context.object, iron, True))
+    out.append(join('chainrail', ch))
+
+    # Tall floodlight post with a lamp head facing the track (+Y is towards the camera in game? lamps face -Y).
+    out.append(join('docklamp', [
+        cyl(steel, 0.12, 5.0, loc=(0, 0, 2.5), r2=0.08, verts=10),
+        cube(steel, (0.2, 0.7, 0.08), loc=(0, -0.3, 4.95)),
+        cube(iron, (0.6, 0.3, 0.35), loc=(0, -0.55, 4.9), bevel=0.04),
+        cube(glow, (0.5, 0.05, 0.25), loc=(0, -0.71, 4.88)),
+    ]))
+
+    # A mooring bollard.
+    out.append(join('bollard', [
+        cyl(bollard_m, 0.24, 0.12, loc=(0, 0, 0.06), verts=14),
+        cyl(bollard_m, 0.17, 0.55, loc=(0, 0, 0.38), r2=0.14, verts=14),
+        cyl(bollard_m, 0.24, 0.1, loc=(0, 0, 0.68), verts=14),
+        cyl(yellow, 0.172, 0.08, loc=(0, 0, 0.3), verts=14),
     ]))
 
 

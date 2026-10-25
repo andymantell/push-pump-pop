@@ -10,7 +10,7 @@ The ground rules, difficulty scale, challenges and par calibration in `level-pla
 |---|-------|-----------|-------:|-----------|-------|--------|
 | 1 | Autumn Farm | mud patches you pump through | 8 | 2 to 5 | Barn Halfpipe | built |
 | 2 | Candy Kingdom | jelly bounce pads | 8 | 3 to 6 | Jelly Bowl | built |
-| 3 | Harbour Docks | long manual and ledge combos on containers | 10 | 4 to 7 | mega ramp | planned |
+| 3 | Harbour Docks | long manual and ledge combos on containers | 10 | 4 to 7 | Harbour Crane Mega Ramp | built |
 | 4 | Pirate Cove | stepping-stone gaps close together | 8 | 5 to 7 | half pipe | planned |
 | 5 | Haunted Hollow | big drop-offs in the dark | 8 | 5 to 8 | half pipe | planned |
 | 6 | Funfair | loops chained together, coaster rails | 10 | 6 to 8 | half pipe | planned |
@@ -68,3 +68,26 @@ candy canes (a glassy grind), and the ambience is music-box twinkles and chocola
 | 7 | candy-7 | Sugar Rush | 6 | long chains, gaps | doughnut wheel, giant cupcake | candy dusk |
 | 8 | candy-8 | Candy Castle | 6 | everything | gingerbread castle | night lights |
 | bonus | candy-pipe | Jelly Bowl | - | - | doughnut wheel | candyfloss sunset |
+
+## Harbour Docks: containers and combos
+
+`containers(n)` lays `n` shipping containers (6.1 m each) for the track to ride along the
+roof of. They're flat and count as a manual pad; the quay behind them sits two boxes down, so
+reach them down a ramp (`ease`) and leave off the end over the water (`pit` then `land`). The
+quay is level behind the track (smoothed over 24 m), with a granite harbour wall down to the
+water 22 m back; the water follows the quay's level along the track (`seaY`) so it's always in
+view. Gaps are harbour water.
+
+| # | id | Name | Diff | New | Landmarks | Mood |
+|---|----|------|----:|-----|-----------|------|
+| 1 | docks-1 | Quayside | 4 | manual pads, quay ledges, containers | harbour clock, tug | morning |
+| 2 | docks-2 | Container Yard | 4 | off the containers over the water | gantry crane, cargo ship | grey sky |
+| 3 | docks-3 | Fish Market | 5 | market steps and handrails | fish market, warehouse | early market |
+| 4 | docks-4 | Crane Line | 5 | rails and ledges in a row | gantry crane, tug | golden |
+| 5 | docks-5 | Pier Gaps | 5 | gaps over the water | lighthouse, ferry | sea fog |
+| 6 | docks-6 | Ferry Ramp | 6 | big kickers | ferry, harbour clock | sunset |
+| 7 | docks-7 | Stack Attack | 6 | stack to stack combos | cargo ship, gantry crane | drizzle |
+| 8 | docks-8 | Night Shift | 6 | everything under floodlights | warehouse, tug | night |
+| 9 | docks-9 | Storm Surge | 7 | three-gap sets | lighthouse, cargo ship | thunderstorm |
+| 10 | docks-10 | Big Ship | 7 | everything, a 7 m gap | gantry crane, ferry | sailing day |
+| bonus | docks-mega | Harbour Crane Mega Ramp | - | - | gantry crane | dusk |
