@@ -280,6 +280,8 @@ export class Rider {
 
   /** Waiting on the coping of a half pipe for a tap to drop in. */
   perched = false;
+  /** Past the finish: brake to a standstill by this x, with no pushing. */
+  stopAt: number | null = null;
   /** Dropping in: how far through leaning onto the wall (0 to 1), or -1. */
   dropT = -1;
   private lipX = 0;
@@ -334,6 +336,7 @@ export class Rider {
     this.falling = false;
     this.perched = false;
     this.dropT = -1;
+    this.stopAt = null;
   }
 
   /** Stand on the coping of the first wall, tail on the deck, ready to drop in. */
@@ -797,13 +800,17 @@ export class Rider {
 
       // Auto push on flat ground when slow, so you never get stuck.
       this.pushing = false;
-      if (!this.bailing && !this.manual && !this.opts.pipe && !this.opts.mega && this.v < MIN_PUSH_SPEED) {
+      // Past the finish: brake hard enough to stop by stopAt, gently if there's room.
+      const braking = this.stopAt !== null && !this.bailing && this.v >= 0;
+      if (braking) a -= Math.min(8, Math.max(1.5, this.v * this.v / (2 * Math.max(0.5, this.stopAt! - this.x))));
+      if (!braking && !this.bailing && !this.manual && !this.opts.pipe && !this.opts.mega && this.v < MIN_PUSH_SPEED) {
         a += 4 + GRAVITY * Math.max(0, sin);
         this.pushing = true;
       }
 
       this.v += a * dt;
       this.v = Math.max(-this.opts.maxSpeed, Math.min(this.opts.maxSpeed, this.v));
+      if (braking && this.v < 0) this.v = 0;
 
       // The ground falls away faster than gravity can hold us: take off.
       const kappa = -tr.curvature(this.x) / Math.pow(1 + k * k, 1.5);

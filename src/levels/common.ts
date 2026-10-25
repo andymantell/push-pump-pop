@@ -24,12 +24,17 @@ export interface TrackDef {
   build: () => Track;
 }
 
+/** After the finish line the rider brakes to a stop this far on. */
+export const STOP_AFTER_FINISH = 20;
+/** Flat ground past the stop, so the finish camera never sees the end of the world. */
+const RUN_OUT = 20;
+
 export function layout(startY: number, startX: number, fn: (b: TrackBuilder) => void): () => Track {
   return () => {
     const b = new TrackBuilder(startY);
     fn(b);
     const finishX = b.x;
-    b.sign('FINISH').flat(40);
+    b.flat(STOP_AFTER_FINISH + RUN_OUT);
     return b.build(startX, finishX);
   };
 }
@@ -47,7 +52,8 @@ export function mega(drop: number, gap: number, qp: number): () => Track {
     b.sign('GAP!').kicker(7, kick, 1.8).pit(gap, -1.2);
     // Steepest where you come down, curving out flat at the bottom.
     b.rollIn(land / 0.2, land).flat(18);
-    b.sign('QUARTER PIPE').quarterpipe(qp, 8);
+    // A long deck behind the quarter pipe, so big airs never show the end of the world.
+    b.sign('QUARTER PIPE').quarterpipe(qp, 20);
     return b.build(3, Infinity);
   };
 }
@@ -57,8 +63,10 @@ export const PIPE_TIME = 60;
 export function pipe(radius: number, flatLen: number): () => Track {
   return () => {
     const b = new TrackBuilder(0);
-    b.halfpipe(radius, flatLen, 8);
-    const centre = 8 + radius * 0.96 + flatLen / 2;
+    // Long decks, so the camera never sees past the ends.
+    const deck = 16;
+    b.halfpipe(radius, flatLen, deck);
+    const centre = deck + radius * 0.96 + flatLen / 2;
     return b.build(centre, Infinity);
   };
 }

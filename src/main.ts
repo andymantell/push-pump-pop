@@ -12,7 +12,7 @@ import { ScooterRig } from './scooter';
 import { RIDES, RideId, rideGoes, savedRide, saveRide, signFor } from './ride';
 import { challengesOf, parOf } from './progress';
 import { loadAssets } from './assets';
-import { TRACKS, TrackDef, PIPE_TIME } from './tracks';
+import { TRACKS, TrackDef, PIPE_TIME, STOP_AFTER_FINISH } from './tracks';
 import { Progress } from './progress';
 import { MegaRun, MEGA_DROPS } from './mega';
 import { ChallengeRun, icon } from './challenges';
@@ -660,13 +660,16 @@ function frame(now: number) {
         if (mega.next(rider)) { popup(`DROP ${mega.drop}!`, 'big'); sound.blip(); }
         else finish();
       }
-    } else if (rider.x >= track.finishX && finishTimer === 0 && !lives.out) finishTimer = 0.001;
+    } else if (rider.x >= track.finishX && finishTimer === 0 && !lives.out) {
+      finishTimer = 0.001;
+      rider.stopAt = track.finishX + STOP_AFTER_FINISH;
+    }
     if (finishTimer > 0) {
       finishTimer += dt;
       if (finishTimer > 1.2 && rider.grounded) finish();
     }
   } else if (state === 'finished' && !lives.out) {
-    // Roll on past the finish line; after running out of lives everything stays frozen.
+    // Roll on past the finish line to a stop; after running out of lives everything stays frozen.
     rider.update(dt);
     moved = true;
   }
