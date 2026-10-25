@@ -35,7 +35,7 @@ export const VOLCANO: TrackDef[] = [
       b.rollers(2, 13, 1.12).flat(3);
       b.sign('LAVA!').kicker(3.5, 1.0).pit(6, -0.5).land(27).flat(5);
       b.rollers(2, 12, 1.12).flat(3);
-      b.kicker(4, 1.2).pit(5.8, -0.8).land(21).flat(4);
+      b.kicker(4, 1.2).pit(5.8, -0.8).land(24).flat(4);
       b.flat(3).ease(10, -1.5).kicker(4, 1.5).pit(7, -1.2).land(30).flat(4);
       b.rollers(3, 12, 1.26).flat(3);
       b.kicker(4, 1.4).pit(7.1, -1.2).land(23).flat(10);
@@ -60,7 +60,7 @@ export const VOLCANO: TrackDef[] = [
       b.flat(8).sign('PUMP FOR SPEED').ease(10, -3).flat(6);
       for (const len of [4.2, 4.1, 4.1, 4.3]) {
         b.ease(6, -0.8).rollers(4, 13, 1.26).flat(3);
-        b.sign('LAVA!').flat(4).kicker(4, 1.3).pit(len, -1.0).land(26).flat(8);
+        b.sign('LAVA!').flat(4).kicker(4, 1.3).pit(len, -1.0).land(30).flat(8);
         b.kicker(4, 1.1).flat(2).land(26).flat(6);
       }
       b.rollers(2, 13, 1.12).flat(10);
@@ -125,7 +125,7 @@ export const VOLCANO: TrackDef[] = [
     // Deep craters to pump out of, each with a lava gap at the top of the far side.
     build: layout(10, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(10, -4).flat(6);
-      for (const [len, depth, gap] of [[27, 4, 3.5], [30, 5, 3.5], [27, 4, 4], [30, 5, 4]]) {
+      for (const [len, depth, gap] of [[27, 4, 4], [30, 5, 3.7], [27, 4, 4], [30, 5, 4]]) {
         b.rollers(2, 13, 1.12).flat(4);
         if (gap === 2.5 && depth === 4) b.sign('PUMP OUT, OLLIE THE LAVA');
         b.valley(len, depth).pit(gap, -0.6).land(18).flat(8);
@@ -214,7 +214,7 @@ export const VOLCANO: TrackDef[] = [
       // Park: kickers.
       b.kicker(4, 1.3).flat(4).land(31).flat(4).kicker(4, 1.4).flat(4).land(24).flat(6);
       // Beach: flow and a gap.
-      b.rollers(3, 15, 1.4).flat(4).kicker(4.5, 1.4).pit(4.1, -1.0).land(23).flat(6);
+      b.rollers(3, 15, 1.4).flat(4).kicker(4.5, 1.4).pit(4.1, -1.0).land(28).flat(6);
       // Rooftops: stairs and a rail.
       b.flat(8).stairs(7).flat(8).rail(10, 0.6).flat(6);
       // Snow: a big kicker onto a long landing.

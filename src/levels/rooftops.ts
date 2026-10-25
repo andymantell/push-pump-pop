@@ -90,7 +90,7 @@ export const ROOFTOPS: TrackDef[] = [
       b.flat(10).stairs(7).flat(10);
       b.rollers(2, 14, 1.0).flat(4);
       b.flat(10).stairs(6).flat(10);
-      b.sign('GAP!').flat(4).kicker(4, 1.3).pit(3.6, -1.4).land(18).flat(8);
+      b.rollers(2, 14, 1.0).flat(2).sign('GAP!').flat(2).kicker(4, 1.3).pit(3.6, -1.4).land(18).flat(8);
       b.rollers(2, 14, 1.0).flat(4);
       b.sign('BIG STAIRS').flat(10).stairs(9).flat(10);
       b.rollers(2, 14, 1.0).flat(4);
@@ -193,7 +193,7 @@ export const ROOFTOPS: TrackDef[] = [
         b.rollers(3, 14, 1.1).flat(4);
         b.sign(i === 0 ? 'THREE GAPS: ONE COMBO!' : 'GAP SET').flat(9);
         for (let k = 0; k < 3; k++) {
-          b.kicker(4, 1.3).pit([5, 6.5, 7][k], -1.0).land(k === 0 ? 24 : 20, 2.2).flat(k < 2 ? 3 : 1);
+          b.kicker(4, 1.3).pit([5, 6.5, 7][k], -1.0).land(k === 0 ? 28 : 20, 2.6).flat(k < 2 ? 3 : 1);
         }
         b.flat(8);
       }

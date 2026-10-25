@@ -198,7 +198,7 @@ export const PARK: TrackDef[] = [
       b.sign('DROP').drop(-0.3).ease(7, -2.3).flat(6);
       b.kicker(3.5, 1.2).flat(4).land(33).flat(3);
       b.sign('OLLIE ON: GRIND').flat(6).rail(8, 0.5).flat(6);
-      b.sign('BIG GAP!').flat(3).ease(10, -0.5).flat(4).kicker(5, 1.7).pit(7, -1.7).land(26).flat(6);
+      b.sign('BIG GAP!').flat(3).ease(10, -1).flat(4).kicker(5, 1.7).pit(6.5, -1.7).land(26).flat(6);
       b.rollers(3, 12, 1.05).flat(5);
       b.sign('STAIRS').flat(5).stairs(5).flat(8);
       b.sign('BIG AIR').ease(14, -5).flat(3).kicker(5, 1.9, 2.3).spot('bigair').flat(4).land(36, 5).flat(8);

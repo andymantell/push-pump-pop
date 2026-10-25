@@ -58,7 +58,7 @@ export const BEACH: TrackDef[] = [
       b.rollers(3, 15, 1.5).flat(6);
       b.sign('LONG RAIL').flat(12).rail(32, 0.5).flat(10);
       b.rollers(2, 15, 1.4).flat(4);
-      b.sign('WATER GAP').flat(6).kicker(4, 1.3).pit(3, -1.0).land(18).flat(8);
+      b.sign('WATER GAP').flat(6).kicker(4, 1.3).pit(3, -1.0).land(21).flat(8);
       b.rollers(3, 15, 1.5).flat(6);
       b.flat(10).rail(12, 0.6).flat(10);
       b.ease(12, -2).flat(10);
@@ -77,7 +77,7 @@ export const BEACH: TrackDef[] = [
       b.rollers(4, 14, 1.2).flat(4);
       b.sign('NO HILLS HERE').rollers(3, 14, 1.3).flat(4);
       b.rollers(3, 14, 1.3).flat(6);
-      b.sign('GAP! YOU NEED SPEED').flat(8).kicker(4, 1.2).pit(2.5, -1.2).land(28).flat(10);
+      b.sign('GAP! YOU NEED SPEED').flat(8).kicker(4, 1.2).pit(2.5, -1.2).land(32).flat(10);
     }),
   },
   {
@@ -91,7 +91,7 @@ export const BEACH: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(12, -4).flat(6);
       for (const [len, amp] of [[3.5, 1.4], [4, 1.5], [4.5, 1.5]]) {
         b.rollers(4, 15, amp).flat(6);
-        b.sign('WATER GAP').flat(4).kicker(4, 1.4).pit(len, -1.0).land(27).flat(8);
+        b.sign('WATER GAP').flat(4).kicker(4, 1.4).pit(len, -1.0).land(31).flat(8);
       }
       // Two kickers close together: one combo over both.
       b.sign('DOUBLE UP').rollers(2, 15, 1.4).flat(6);
@@ -158,7 +158,7 @@ export const BEACH: TrackDef[] = [
       }
       b.sign('WATER GAP').ease(8, -1.5).flat(3).kicker(5, 1.7).pit(6.9, -1.4).land(28).flat(8);
       b.rollers(2, 15, 1.4).flat(4);
-      b.sign('GRIND OFF THE JETTY').ease(10, -0.5).flat(12).rail(12, 0.5).pit(6.5, -1.4).land(16).flat(8);
+      b.sign('GRIND OFF THE JETTY').ease(10, -0.5).flat(12).rail(12, 0.5).pit(6, -1.4).land(16).flat(8);
       b.ease(12, -2).flat(10);
     }),
   },

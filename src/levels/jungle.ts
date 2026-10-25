@@ -160,7 +160,7 @@ export const JUNGLE: TrackDef[] = [
       b.rollers(3, 12, 0.98).flat(3);
       for (let i = 0; i < 4; i++) {
         if (i === 0) b.sign('RAIL, GAP, RAIL');
-        b.flat(8).rail(8, 0.5).flat(3).kicker(4, 1.3).pit(3.5, -0.8).land(18).flat(6).rail(8, 0.5).flat(4);
+        b.flat(8).rail(8, 0.5).flat(3).kicker(4, 1.3).pit(3.5, -0.8).land(22).flat(6).rail(8, 0.5).flat(4);
         b.rollers(2, 12, 0.98).flat(3);
       }
       b.flat(10);

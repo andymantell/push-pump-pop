@@ -140,7 +140,7 @@ export const DESERT: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(10, -4).flat(6);
       b.valley(24, 3).flat(2).rollers(2, 12, 1.0).flat(2).valley(30, 5).flat(4);
       b.rollers(3, 15, 1.4).flat(4);
-      b.sign('GAP!').kicker(4.5, 1.4).pit(4.1, -1.0).land(18).flat(6);
+      b.sign('GAP!').kicker(4.5, 1.4).pit(4.1, -1.0).land(21).flat(6);
       b.sign('KEEP IT GOING!').kicker(4, 1.3).flat(4).land(18).flat(2).kicker(4, 1.4).flat(4).land(18).flat(2).kicker(4, 1.5).flat(4).land(18).flat(6);
       b.valley(27, 4).flat(2).rollers(2, 14, 1.2).flat(2).valley(24, 3).flat(4);
       b.rollers(2, 13, 1.26).flat(4);
@@ -184,13 +184,13 @@ export const DESERT: TrackDef[] = [
       b.rollers(2, 13, 1.26).flat(4);
       b.sign('LOOP!').ease(14, -4).flat(4).loop(2.4).flat(4);
       b.flat(4).kicker(4, 1.4).flat(1.5).land(25).flat(3).kicker(4, 1.4).flat(4).land(18).flat(8);
-      b.valley(30, 5).flat(4);
-      b.sign('GAP!').kicker(4.5, 1.5).pit(4, -1.0).land(18).flat(6);
+      b.valley(30, 5).flat(2).ease(6, -0.8);
+      b.sign('GAP!').kicker(4.5, 1.5).pit(4.4, -1.0).land(18).flat(6);
       b.rollers(2, 13, 1.26).flat(4);
       b.sign('LOOP!').ease(14, -4).flat(4).loop(2.4).flat(4);
       b.flat(4).kicker(4, 1.4).flat(1.5).land(25).flat(3).kicker(4, 1.4).flat(4).land(18).flat(8);
       b.valley(27, 4).flat(4);
-      b.sign('GAP!').ease(8, -1.5).kicker(4.5, 1.6).pit(4.5, -1.2).land(22).flat(6);
+      b.sign('GAP!').ease(8, -1.5).kicker(4.5, 1.6).pit(4.5, -1.2).land(26).flat(6);
       b.ease(10, -2).flat(10);
     }),
   },
