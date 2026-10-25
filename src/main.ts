@@ -13,6 +13,7 @@ import { Progress } from './progress';
 import { MegaRun, MEGA_DROPS } from './mega';
 import { ChallengeRun, icon } from './challenges';
 import { BIOMES, BIOME_ORDER } from './biomes';
+import { biomeFor } from './moods';
 import { Track } from './track';
 import { watchForUpdates } from './version';
 import { Replays, Player, Clip, HudSnap, MAX_CLIPS } from './replay';
@@ -42,7 +43,7 @@ const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 500);
 const assets = await loadAssets();
 let def: TrackDef = TRACKS[0];
 let track: Track = def.build();
-let world = new World(track, BIOMES[def.biome], assets.props, def.id);
+let world = new World(track, biomeFor(BIOMES[def.biome], def.id), assets.props, def.id);
 world.applyEnvironment(scene, hemi, sun);
 scene.add(world.group);
 
@@ -166,7 +167,7 @@ function loadTrack(d: TrackDef) {
     def = d;
     scene.remove(world.group);
     track = d.build();
-    world = new World(track, BIOMES[d.biome], assets.props, d.id);
+    world = new World(track, biomeFor(BIOMES[d.biome], d.id), assets.props, d.id);
     world.applyEnvironment(scene, hemi, sun);
     scene.add(world.group);
   }
@@ -288,7 +289,8 @@ function showCard(d: TrackDef) {
   const runs = TRACKS.filter((t) => t.biome === d.biome && (t.kind ?? 'run') === 'run');
   const n = runs.indexOf(d);
   $('c-name').textContent = d.name;
-  $('c-world').textContent = n >= 0 ? `${b.name} ${n + 1}` : `${b.name} bonus`;
+  const mood = biomeFor(b, d.id).mood;
+  $('c-world').textContent = (n >= 0 ? `${b.name} ${n + 1}` : `${b.name} bonus`) + (mood ? ` \u00b7 ${mood}` : '');
   $('c-list').innerHTML = challengeList(d, progress.challenges(d));
   show('card');
   state = 'select';
@@ -436,6 +438,7 @@ const camPos = new THREE.Vector3(track.startX + 3, track.height(track.startX) + 
 const camLook = new THREE.Vector3();
 let camOverride: { pos: number[]; look: number[] } | null = null;
 function updateCamera(dt: number) {
+  const sunOff = world.biome.sunPos ?? [-6, 12, 10];
   if (camOverride) {
     camera.position.fromArray(camOverride.pos);
     camera.lookAt(new THREE.Vector3().fromArray(camOverride.look));
@@ -459,7 +462,7 @@ function updateCamera(dt: number) {
     camera.position.set(camPos.x, camPos.y + 1, camPos.z);
     camLook.set(camPos.x, camPos.y, 0);
     camera.lookAt(camLook);
-    sun.position.set(camPos.x - 6, camPos.y + 12, 10);
+    sun.position.set(camPos.x + sunOff[0], camPos.y + sunOff[1], sunOff[2]);
     sun.target.position.set(camPos.x, camPos.y, 0);
     return;
   }
@@ -479,7 +482,7 @@ function updateCamera(dt: number) {
   camera.position.set(camPos.x, camPos.y + 1.2, camPos.z);
   camLook.set(camPos.x, camPos.y, 0);
   camera.lookAt(camLook);
-  sun.position.set(camPos.x - 6, camPos.y + 12, 10);
+  sun.position.set(camPos.x + sunOff[0], camPos.y + sunOff[1], sunOff[2]);
   sun.target.position.set(camPos.x, camPos.y, 0);
 }
 
@@ -548,7 +551,8 @@ function frame(now: number) {
 
   skater.update(dt, rider, (x) => track.height(x), (x) => track.slope(x));
   updateCamera(dt);
-  world.update(dt, camPos.x, camPos.y);
+  // The camera itself, so scenery tied to the sky also follows a camera set by hand.
+  world.update(dt, camera.position.x, camera.position.y - 1.2);
   if (state === 'playing' || state === 'finished') replays.record(dt, camPos, rider.grounded, comboSnap);
   if (chipTimer > 0) {
     chipTimer -= dt;

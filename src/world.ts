@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Track, DX, LOOP_SHIFT } from './track';
-import { Biome, Surface } from './biomes';
+import { Biome, Particles, Surface } from './biomes';
 import { toon } from './toon';
 
 export const TRACK_W = 3;
@@ -171,12 +171,59 @@ function mesaShape(x: number, y: number, z: number, rad: number, h: number, r: (
   return g;
 }
 
+interface ParticleLook {
+  n: number;
+  color: number;
+  size: number;
+  vx: number;
+  vy: number;
+  opacity?: number;
+  sway?: number;
+  swaySpeed?: number;
+  /** Drift about in all directions (fireflies). */
+  wander?: number;
+  blink?: boolean;
+}
+
+const PARTICLES: Record<Particles, ParticleLook> = {
+  snow: { n: 700, color: 0xffffff, size: 0.12, vx: 0, vy: -1.2 },
+  heavysnow: { n: 1800, color: 0xffffff, size: 0.14, vx: -2.5, vy: -2.4, sway: 0.6 },
+  embers: { n: 700, color: 0xff8a3a, size: 0.09, vx: 0, vy: 1.5 },
+  ash: { n: 1000, color: 0x9a928c, size: 0.1, vx: 0.6, vy: -0.7, sway: 0.5, opacity: 0.8 },
+  rain: { n: 1400, color: 0xdde8f8, size: 0, vx: -3, vy: -16, sway: 0, opacity: 0.7 },
+  petals: { n: 260, color: 0xf8b8d0, size: 0.13, vx: 0.8, vy: -0.8, sway: 1.4, swaySpeed: 2 },
+  leaves: { n: 260, color: 0xe07a24, size: 0.16, vx: 1.0, vy: -1.0, sway: 1.6, swaySpeed: 1.6 },
+  dust: { n: 1300, color: 0xe0c090, size: 0.08, vx: 7, vy: -0.3, sway: 0.4, opacity: 0.7 },
+  fireflies: { n: 220, color: 0xfff27a, size: 0.22, vx: 0, vy: 0, sway: 0, wander: 0.8, blink: true },
+};
+
+let halo: THREE.SpriteMaterial | null = null;
+/** A soft glow around a lit lamp. */
+function haloMaterial(): THREE.SpriteMaterial {
+  if (halo) return halo;
+  const tex = canvasTexture(64, 64, (c) => {
+    const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,240,180,0.9)');
+    g.addColorStop(0.3, 'rgba(255,220,140,0.35)');
+    g.addColorStop(1, 'rgba(255,200,120,0)');
+    c.fillStyle = g;
+    c.fillRect(0, 0, 64, 64);
+  });
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  halo = new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  halo.userData.outlineParameters = { visible: false };
+  return halo;
+}
+
 export class World {
   readonly group = new THREE.Group();
   private groundCache: Float32Array;
-  private particles: THREE.Points | null = null;
-  private particleVel = 0;
+  private particles: THREE.Points | THREE.LineSegments | null = null;
+  private particleKind: ParticleLook | null = null;
+  private particleStride = 1;
   private clouds = new THREE.Group();
+  /** Things on the sky (stars, aurora) that barely move as the camera goes by. */
+  private sky = new THREE.Group();
   private rand: () => number;
 
   constructor(private track: Track, readonly biome: Biome, private models: Models, seed: string) {
@@ -185,6 +232,7 @@ export class World {
     for (let i = 0; i < this.groundCache.length; i++) {
       this.groundCache[i] = Math.min(this.smoothed(i, 5), track.surface(i)) - 0.25;
     }
+    this.lightUp();
     this.buildTrack();
     this.buildPitFills();
     this.buildStairs();
@@ -196,6 +244,42 @@ export class World {
     this.buildSigns();
     this.buildFinish();
     this.buildSky();
+  }
+
+  /** Lava always glows; lamps and windows only when the mood turns them on. The models'
+   * materials are shared by every track, so this is set afresh for each one. */
+  private lightUp() {
+    const on = !!this.biome.lights;
+    for (const m of Object.values(this.models)) {
+      m?.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        for (const mat of ([] as THREE.Material[]).concat(mesh.material)) {
+          const t = mat as THREE.MeshToonMaterial;
+          if (!t.emissive) continue;
+          if (t.name === 'lava' || t.name === 'ember') t.emissive.copy(t.color).multiplyScalar(0.8);
+          else if (t.name === 'lamp_light' || t.name === 'window_glow') t.emissive.copy(t.color).multiplyScalar(on ? 1 : 0);
+        }
+      });
+    }
+  }
+
+  private tinted = new Map<THREE.Material, THREE.Material>();
+
+  /** Blossom or autumn leaves on the park trees. */
+  private tintLeaves(o: THREE.Object3D, tint: number) {
+    o.traverse((c) => {
+      const mesh = c as THREE.Mesh;
+      if (!mesh.isMesh || Array.isArray(mesh.material) || !mesh.material.name.startsWith('leaf')) return;
+      let t = this.tinted.get(mesh.material);
+      if (!t) {
+        const m = (mesh.material as THREE.MeshToonMaterial).clone();
+        m.color.lerp(new THREE.Color(tint), 0.7);
+        this.tinted.set(mesh.material, m);
+        t = m;
+      }
+      mesh.material = t;
+    });
   }
 
   private smoothed(x: number, win: number): number {
@@ -471,7 +555,7 @@ export class World {
     const mat = (c: number) => toon(c);
     const fog = new THREE.Color(b.fog[0]);
     /** A material that ignores the fog, tinted part way towards it instead. */
-    const hazed = (c: number, amt: number) => toon(new THREE.Color(c).lerp(fog, Math.min(0.8, amt)).getHex(), { fog: false });
+    const hazed = (c: number, amt: number) => toon(new THREE.Color(c).lerp(fog, Math.min(0.85, amt + (b.haze ?? 0))).getHex(), { fog: false });
     switch (b.far) {
       case 'hills':
         for (let i = 0; i * 22 < len + 120; i++) {
@@ -535,17 +619,36 @@ export class World {
         break;
       }
       case 'volcano': {
-        const vx = len * 0.75;
+        // The volcano rides along with the sky so it's in view for the whole track.
+        const vx = 45, vy = -22;
         const cone = new THREE.Mesh(new THREE.CylinderGeometry(22, 110, 90, 12, 1, true), hazed(b.farColors[0], 0.3));
-        cone.position.set(vx, tr.minY + 35, -230);
+        cone.position.set(vx, vy, -230);
         const glow = new THREE.Mesh(new THREE.CircleGeometry(22, 16), new THREE.MeshBasicMaterial({ color: b.farColors[1], fog: false }));
         glow.rotation.x = -Math.PI / 2;
-        glow.position.set(vx, tr.minY + 79.5, -230);
-        far.add(cone, glow);
+        glow.position.set(vx, vy + 44.5, -230);
+        this.sky.add(cone, glow);
+        const smoke = hazed(b.farColors[2], 0.3);
         for (let i = 0; i < 9; i++) {
-          const puff = new THREE.Mesh(new THREE.SphereGeometry(10 + i * 2, 10, 8), hazed(b.farColors[2], 0.3));
-          puff.position.set(vx + i * 9 - 10, tr.minY + 88 + i * 9, -235 - i * 3);
-          far.add(puff);
+          const puff = new THREE.Mesh(new THREE.SphereGeometry(10 + i * 2, 10, 8), smoke);
+          puff.position.set(vx + i * 9 - 10, vy + 53 + i * 9, -235 - i * 3);
+          this.sky.add(puff);
+        }
+        if (b.eruption) {
+          // A fountain of lava over the crater, lighting the smoke from below.
+          const hot = new THREE.MeshBasicMaterial({ color: 0xffa020, fog: false });
+          const hotter = new THREE.MeshBasicMaterial({ color: 0xffe060, fog: false });
+          for (let i = 0; i < 18; i++) {
+            const h = r() * 34;
+            const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(2.5 + r() * 3.5 - h * 0.05, 0), i % 3 ? hot : hotter);
+            blob.position.set(vx + (r() - 0.5) * (8 + h), vy + 46 + h, -226);
+            this.sky.add(blob);
+          }
+          const lit = new THREE.MeshBasicMaterial({ color: 0xc8502a, fog: false });
+          for (let i = 0; i < 4; i++) {
+            const puff = new THREE.Mesh(new THREE.SphereGeometry(9 + i * 2, 10, 8), lit);
+            puff.position.set(vx - 4 + i * 5, vy + 50 + i * 4, -238);
+            this.sky.add(puff);
+          }
         }
         for (let x = -60; x < len + 100; x += 30 + r() * 30) {
           const h = 20 + r() * 25;
@@ -562,31 +665,79 @@ export class World {
     if (b.clouds !== null) {
       const cm = new THREE.MeshToonMaterial({ color: b.clouds });
       cm.userData.outlineParameters = { visible: false };
-      for (let i = 0; i < 24; i++) {
+      const n = b.cloudCount ?? 24;
+      for (let i = 0; i < n; i++) {
         const c = new THREE.Group();
         for (let j = 0; j < 4; j++) {
           const s = new THREE.Mesh(new THREE.SphereGeometry(2 + (j % 2), 10, 8), cm);
           s.position.set(j * 2.2 - 3, (j % 2) * 0.8, 0);
           c.add(s);
         }
-        c.position.set(i * 30 - 20, tr.maxY + 14 + (i * 7) % 10, -90 - (i % 4) * 10);
+        c.position.set(i * (720 / n) - 20, tr.maxY + 14 + (i * 7) % 10, -90 - (i % 4) * 10);
         this.clouds.add(c);
       }
       this.group.add(this.clouds);
     }
 
-    if (b.particles) {
-      const n = 700;
+    if (b.particles) this.buildParticles(b.particles);
+    this.buildSkyExtras();
+  }
+
+  private buildParticles(kind: Particles) {
+    const r = this.rand;
+    const p = PARTICLES[kind];
+    // Rain is drawn as short slanted streaks; everything else as points.
+    const stride = kind === 'rain' ? 2 : 1;
+    const pos = new Float32Array(p.n * stride * 3);
+    for (let i = 0; i < p.n; i++) {
+      const x = r() * 60 - 30, y = r() * 30 - 8, z = r() * 30 - 22;
+      pos.set([x, y, z], i * stride * 3);
+      if (stride === 2) pos.set([x + p.vx * 0.06, y + p.vy * 0.06, z], i * 6 + 3);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const glow = kind === 'fireflies' || kind === 'embers';
+    const common = { color: p.color, transparent: true, opacity: p.opacity ?? 0.9, depthWrite: false, blending: glow ? THREE.AdditiveBlending : THREE.NormalBlending };
+    this.particles = stride === 2
+      ? new THREE.LineSegments(g, new THREE.LineBasicMaterial(common))
+      : new THREE.Points(g, new THREE.PointsMaterial({ ...common, size: p.size }));
+    this.particleKind = p;
+    this.particleStride = stride;
+    this.group.add(this.particles);
+  }
+
+  /** Stars, northern lights and an erupting volcano, all far off behind everything else. */
+  private buildSkyExtras() {
+    const b = this.biome, r = this.rand, tr = this.track;
+    if (b.stars) {
+      const n = 500;
       const pos = new Float32Array(n * 3);
-      for (let i = 0; i < n; i++) pos.set([r() * 60 - 30, r() * 30 - 8, r() * 30 - 22], i * 3);
+      for (let i = 0; i < n; i++) pos.set([r() * 900 - 450, -15 + Math.pow(r(), 0.7) * 170, -300 - r() * 40], i * 3);
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      const snow = b.particles === 'snow';
-      const pm = new THREE.PointsMaterial({ color: snow ? 0xffffff : 0xff8a3a, size: snow ? 0.12 : 0.09, transparent: true, opacity: 0.9, depthWrite: false });
-      this.particles = new THREE.Points(g, pm);
-      this.particleVel = snow ? -1.2 : 1.5;
-      this.group.add(this.particles);
+      this.sky.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85, depthWrite: false })));
+      const moon = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshBasicMaterial({ color: 0xfff6dc, fog: false }));
+      moon.position.set(-60, 44, -320);
+      this.sky.add(moon);
     }
+    if (b.aurora) {
+      const colors = [0x5affb0, 0x40d8ff, 0xa070ff];
+      for (let k = 0; k < 3; k++) {
+        const geo = new THREE.PlaneGeometry(420, 26 + k * 6, 60, 1);
+        const p = geo.getAttribute('position') as THREE.BufferAttribute;
+        for (let i = 0; i < p.count; i++) {
+          const x = p.getX(i);
+          p.setY(i, p.getY(i) + 14 * Math.sin(x * 0.02 + k * 1.7) + 6 * Math.sin(x * 0.051 + k));
+          p.setZ(i, 20 * Math.sin(x * 0.013 + k));
+        }
+        const m = new THREE.MeshBasicMaterial({ color: colors[k], transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+        const mesh = new THREE.Mesh(geo, m);
+        mesh.position.set(0, 34 + k * 10, -280 + k * 6);
+        this.sky.add(mesh);
+      }
+    }
+    this.noOutline(this.sky);
+    this.group.add(this.sky);
   }
 
   /** Weighted pick from the biome's background props. */
@@ -630,6 +781,13 @@ export class World {
     o.position.set(x, y, z);
     o.scale.setScalar(scale);
     o.rotation.y = rot;
+    if (this.biome.leafTint !== undefined && kind === 'tree') this.tintLeaves(o, this.biome.leafTint);
+    if (this.biome.lights && kind === 'lamp') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(0, 3.9, 0.85);
+      halo.scale.setScalar(2.2);
+      o.add(halo);
+    }
     this.group.add(o);
     return o;
   }
@@ -750,18 +908,27 @@ export class World {
 
   update(dt: number, camX: number, camY: number) {
     this.clouds.position.x = camX * 0.6;
-    if (this.particles) {
+    this.sky.position.set(camX * 0.9, camY, 0);
+    const p = this.particleKind;
+    if (this.particles && p) {
       this.particles.position.set(camX, camY, 0);
       const pos = this.particles.geometry.getAttribute('position') as THREE.BufferAttribute;
       const a = pos.array as Float32Array;
       const t = performance.now() / 1000;
-      for (let i = 0; i < a.length; i += 3) {
-        a[i + 1] += this.particleVel * dt * (0.6 + ((i * 7) % 10) / 20);
-        a[i] += Math.sin(t + i) * dt * 0.3;
-        if (a[i + 1] < -8) a[i + 1] += 30;
-        if (a[i + 1] > 22) a[i + 1] -= 30;
+      const step = this.particleStride * 3;
+      for (let i = 0; i < a.length; i += step) {
+        const k = 0.6 + ((i * 7) % 10) / 20;
+        let dx = p.vx * dt * k + Math.sin(t * (p.swaySpeed ?? 1) + i) * dt * (p.sway ?? 0.3);
+        let dy = p.vy * dt * k;
+        if (p.wander) { dx += Math.sin(t * 0.7 + i * 0.37) * dt * p.wander; dy += Math.cos(t * 0.9 + i * 0.21) * dt * p.wander; }
+        if (a[i + 1] + dy < -8) dy += 30;
+        if (a[i + 1] + dy > 22) dy -= 30;
+        if (a[i] + dx < -30) dx += 60;
+        if (a[i] + dx > 30) dx -= 60;
+        for (let j = i; j < i + step; j += 3) { a[j] += dx; a[j + 1] += dy; }
       }
       pos.needsUpdate = true;
+      if (p.blink) (this.particles.material as THREE.Material).opacity = 0.6 + 0.4 * Math.sin(t * 3);
     }
   }
 }

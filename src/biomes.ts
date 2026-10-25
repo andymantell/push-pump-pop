@@ -26,7 +26,7 @@ export interface Biome {
   far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano';
   farColors: number[];
   clouds: number | null;
-  particles: 'snow' | 'embers' | null;
+  particles: Particles | null;
   /** Scenery scattered behind the track, with weights. */
   back: [string, number][];
   backZ: [number, number];
@@ -41,7 +41,25 @@ export interface Biome {
   maxSpeed: number;
   /** Colour of the swatch on the level select. */
   swatch: string;
+  // Set by a track's mood (src/moods.ts) rather than by the biome itself.
+  /** Name of the mood, e.g. 'Night'. */
+  mood?: string;
+  /** Where the sun shines from, relative to the camera. */
+  sunPos?: [number, number, number];
+  cloudCount?: number;
+  /** 0 to 1: how much the far scenery fades into the sky. */
+  haze?: number;
+  stars?: boolean;
+  aurora?: boolean;
+  /** The volcano is erupting. */
+  eruption?: boolean;
+  /** Lamps and windows light up. */
+  lights?: boolean;
+  /** Recolour the leaves of the park trees and bushes (blossom, autumn). */
+  leafTint?: number;
 }
+
+export type Particles = 'snow' | 'heavysnow' | 'embers' | 'ash' | 'rain' | 'petals' | 'leaves' | 'dust' | 'fireflies';
 
 export const BIOMES: Record<string, Biome> = {
   park: {
