@@ -198,6 +198,28 @@ const PARTICLES: Record<Particles, ParticleLook> = {
   fireflies: { n: 220, color: 0xfff27a, size: 0.22, vx: 0, vy: 0, sway: 0, wander: 0.8, blink: true },
 };
 
+let lava: THREE.CanvasTexture | null = null;
+/** Lava glowing yellow at the top and cooling to dark red further down, with a few crusts. */
+function lavaTexture(): THREE.CanvasTexture {
+  if (lava) return lava;
+  lava = canvasTexture(64, 256, (c) => {
+    const g = c.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0, '#ffd040');
+    g.addColorStop(0.12, '#ff7a1a');
+    g.addColorStop(0.5, '#d8400e');
+    g.addColorStop(1, '#5a1408');
+    c.fillStyle = g;
+    c.fillRect(0, 0, 64, 256);
+    const r = rng(9);
+    for (let i = 0; i < 14; i++) {
+      c.fillStyle = `rgba(60,16,8,${0.25 + r() * 0.3})`;
+      c.fillRect(r() * 64, 40 + r() * 200, 6 + r() * 14, 3 + r() * 4);
+    }
+  });
+  lava.wrapT = THREE.ClampToEdgeWrapping;
+  return lava;
+}
+
 let halo: THREE.SpriteMaterial | null = null;
 /** A soft glow around a lit lamp. */
 function haloMaterial(): THREE.SpriteMaterial {
@@ -493,7 +515,7 @@ export class World {
       const topY = Math.min(p.lipY, p.landY) - 1.3;
       const h = topY - p.floorY;
       const mat = b.pitFill === 'lava'
-        ? new THREE.MeshBasicMaterial({ color: b.pitFillColor ?? 0xff5a10 })
+        ? new THREE.MeshBasicMaterial({ map: lavaTexture() })
         : toon(b.pitFillColor ?? 0x2aa6d9);
       mat.userData.outlineParameters = { visible: false };
       const box = new THREE.Mesh(new THREE.BoxGeometry(p.x1 - p.x0, h, TRACK_W + 0.2), mat);
@@ -501,21 +523,21 @@ export class World {
       this.group.add(box);
       const foam = new THREE.Mesh(
         new THREE.BoxGeometry(p.x1 - p.x0, 0.08, TRACK_W + 0.22),
-        b.pitFill === 'lava' ? new THREE.MeshBasicMaterial({ color: 0xffd040 }) : this.waterTop(p.x1 - p.x0),
+        this.waterTop(p.x1 - p.x0, b.pitFill === 'lava'),
       );
       foam.position.set((p.x0 + p.x1) / 2, topY, 0);
       this.group.add(foam);
     }
   }
 
-  /** Rippled water with flecks of foam, rather than a sheet of white. */
-  private waterTop(w: number): THREE.Material {
-    const base = new THREE.Color(this.biome.pitFillColor ?? 0x2aa6d9).lerp(new THREE.Color(0xffffff), 0.35);
+  /** Rippled water with flecks of foam (or lava with glowing swirls), rather than a flat sheet. */
+  private waterTop(w: number, lava = false): THREE.Material {
+    const base = lava ? new THREE.Color(0xff8a20) : new THREE.Color(this.biome.pitFillColor ?? 0x2aa6d9).lerp(new THREE.Color(0xffffff), 0.35);
     const tex = canvasTexture(128, 128, (c) => {
       c.fillStyle = `#${base.getHexString()}`;
       c.fillRect(0, 0, 128, 128);
       const r = rng(5);
-      c.strokeStyle = 'rgba(255,255,255,0.85)';
+      c.strokeStyle = lava ? 'rgba(255,236,120,0.95)' : 'rgba(255,255,255,0.85)';
       c.lineWidth = 3;
       for (let i = 0; i < 9; i++) {
         const x = r() * 128, y = r() * 128;
