@@ -14,15 +14,15 @@ export const BEACH: TrackDef[] = [
     build: layout(3, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(10, -3).flat(6);
       b.sign('FLOW').rollers(4, 16, 1.4).flat(4);
-      b.kicker(4, 1.2).flat(4).ease(6, -1.2).flat(4);
+      b.kicker(4, 1.2).land(33).flat(4);
       b.rollers(3, 15, 1.5).flat(3);
-      b.sign('WATER GAP').kicker(4, 1.4).pit(4.5, -0.4).ease(6, -1.0).flat(5);
+      b.sign('WATER GAP').kicker(4, 1.4).pit(4.5, -0.4).land(27).flat(5);
       b.rollers(5, 14, 1.4).flat(4);
       b.flat(6).ledge(8).flat(5);
-      b.ease(8, -2).kicker(4.5, 1.7).flat(3).ease(6, -1.7).flat(4);
+      b.ease(8, -2).kicker(4.5, 1.7).land(33).flat(4);
       b.rollers(2, 16, 1.5).flat(3);
       b.flat(5).stairs(6).flat(8);
-      b.sign('BIG AIR').ease(10, -3).kicker(5, 2.0).pit(4, -1.2).ease(8, -2).flat(8);
+      b.sign('BIG AIR').ease(10, -3).kicker(5, 2.0).pit(4, -1.2).land(28).flat(8);
     }),
   },
   {
@@ -58,7 +58,7 @@ export const BEACH: TrackDef[] = [
       b.rollers(3, 15, 1.5).flat(6);
       b.sign('LONG RAIL').flat(12).rail(32, 0.5).flat(10);
       b.rollers(2, 15, 1.4).flat(4);
-      b.sign('WATER GAP').flat(6).kicker(4, 1.3).pit(3, -1.0).ease(6, -0.3).flat(8);
+      b.sign('WATER GAP').flat(6).kicker(4, 1.3).pit(3, -1.0).land(18).flat(8);
       b.rollers(3, 15, 1.5).flat(6);
       b.flat(10).rail(12, 0.6).flat(10);
       b.ease(12, -2).flat(10);
@@ -77,7 +77,7 @@ export const BEACH: TrackDef[] = [
       b.rollers(4, 14, 1.2).flat(4);
       b.sign('NO HILLS HERE').rollers(3, 14, 1.3).flat(4);
       b.rollers(3, 14, 1.3).flat(6);
-      b.sign('GAP! YOU NEED SPEED').flat(8).kicker(4, 1.2).pit(2.5, -1.2).ease(6, -0.3).flat(10);
+      b.sign('GAP! YOU NEED SPEED').flat(8).kicker(4, 1.2).pit(2.5, -1.2).land(28).flat(10);
     }),
   },
   {
@@ -91,11 +91,11 @@ export const BEACH: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(12, -4).flat(6);
       for (const [len, amp] of [[3.5, 1.4], [4, 1.5], [4.5, 1.5]]) {
         b.rollers(4, 15, amp).flat(6);
-        b.sign('WATER GAP').flat(4).kicker(4, 1.4).pit(len, -1.0).ease(8, -0.4).flat(8);
+        b.sign('WATER GAP').flat(4).kicker(4, 1.4).pit(len, -1.0).land(27).flat(8);
       }
       // Two kickers close together: one combo over both.
       b.sign('DOUBLE UP').rollers(2, 15, 1.4).flat(6);
-      b.kicker(4, 1.5).flat(2).ease(8, -1.5).flat(4).kicker(4, 1.6).flat(2).ease(8, -1.6).flat(8);
+      b.kicker(4, 1.5).land(26).flat(4).kicker(4, 1.6).land(24).flat(8);
       b.ease(12, -2).flat(10);
     }),
   },
@@ -112,9 +112,9 @@ export const BEACH: TrackDef[] = [
       b.sign('KEEP IT GOING! TRICK, MANUAL, TRICK').flat(6);
       // Each section: kicker, pad, kicker, pad, kicker, close enough to be one combo.
       for (let i = 0; i < 3; i++) {
-        b.kicker(4, 1.4).flat(2).ease(8, -1.4).flat(2).pad(7).flat(2);
-        b.kicker(4, 1.5).flat(2).ease(8, -1.5).flat(2).pad(7).flat(2);
-        b.kicker(4, 1.6).flat(2).ease(8, -1.6).flat(8);
+        b.kicker(4, 1.4).land(31).flat(2).pad(7).flat(2);
+        b.kicker(4, 1.5).land(24).flat(2).pad(7).flat(2);
+        b.kicker(4, 1.6).land(18).flat(8);
         b.ease(10, -1.5).rollers(2, 15, 1.4).flat(6);
       }
       b.ease(12, -2).flat(10);
@@ -131,13 +131,13 @@ export const BEACH: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(12, -4).flat(6);
       b.rollers(2, 15, 1.4).flat(4);
       // Launch ramps over the lifeguard towers, onto long landings.
-      b.sign('LAUNCH!').ease(10, -2).flat(3).kicker(5, 2.0).prop('lifeguard', 3, -3.5, 1.2).flat(1).ease(16, -4).flat(8);
-      b.rollers(2, 15, 1.5).flat(4).kicker(4, 1.5).flat(2).ease(8, -1.5).flat(6).kicker(4, 1.6).flat(2).ease(8, -1.6).flat(6);
-      b.sign('WATER GAP').ease(10, -2).flat(3).kicker(5, 1.8).pit(5, -1.6).ease(10, -1.0).flat(8);
-      b.rollers(2, 15, 1.5).flat(4).kicker(4, 1.5).flat(2).ease(8, -1.5).flat(6).kicker(4, 1.6).flat(2).ease(8, -1.6).flat(6);
-      b.sign('LAUNCH!').ease(10, -2).flat(3).kicker(5, 2.1).prop('lifeguard', 3, -3.5, 1.2).flat(1).ease(16, -4).flat(8);
+      b.sign('LAUNCH!').ease(10, -2).flat(3).kicker(5, 2.0).prop('lifeguard', 3, -3.5, 1.2).land(32).flat(8);
+      b.rollers(2, 15, 1.5).flat(4).kicker(4, 1.5).land(26).flat(6).kicker(4, 1.6).land(22).flat(6);
+      b.sign('WATER GAP').ease(10, -2).flat(3).kicker(5, 1.8).pit(5, -1.6).land(21).flat(8);
+      b.rollers(2, 15, 1.5).flat(4).kicker(4, 1.5).land(28).flat(6).kicker(4, 1.6).land(22).flat(6);
+      b.sign('LAUNCH!').ease(10, -2).flat(3).kicker(5, 2.1).prop('lifeguard', 3, -3.5, 1.2).land(27).flat(8);
       b.rollers(2, 15, 1.4).flat(4);
-      b.sign('WATER GAP').ease(10, -2).flat(3).kicker(5, 1.9).pit(5, -1.6).ease(10, -1.0).flat(8);
+      b.sign('WATER GAP').ease(10, -2).flat(3).kicker(5, 1.9).pit(5, -1.6).land(26).flat(8);
       b.ease(12, -2).flat(10);
     }),
   },
@@ -156,7 +156,7 @@ export const BEACH: TrackDef[] = [
         b.sign('GRIND OFF THE JETTY').ease(10, -2).flat(12).rail(10, 0.5).pit(len, -1.2).ease(8, -0.5).flat(8);
         b.rollers(3, 15, 1.5).flat(4);
       }
-      b.sign('WATER GAP').ease(8, -1.5).flat(3).kicker(5, 1.7).pit(4.5, -1.4).ease(8, -0.6).flat(8);
+      b.sign('WATER GAP').ease(8, -1.5).flat(3).kicker(5, 1.7).pit(4.5, -1.4).land(28).flat(8);
       b.rollers(2, 15, 1.4).flat(4);
       b.sign('GRIND OFF THE JETTY').ease(10, -2).flat(12).rail(12, 0.5).pit(4, -1.4).ease(8, -0.5).flat(8);
       b.ease(12, -2).flat(10);
@@ -173,8 +173,8 @@ export const BEACH: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(12, -4).flat(6);
       // Rollers that keep changing length, so the pump timing changes too.
       for (const len of [12, 16, 20]) {
-        b.sign(len === 12 ? 'SHORT ROLLERS' : len === 16 ? 'LONGER' : 'LONGEST').rollers(3, len, len / 12 * 1.1).flat(4).kicker(4, 1.4).flat(2).ease(8, -1.4).flat(6);
-        b.sign('WATER GAP').flat(4).kicker(4.5, 1.5).pit(3.5 + (len - 12) / 8, -1.2).ease(8, -0.5).flat(8);
+        b.sign(len === 12 ? 'SHORT ROLLERS' : len === 16 ? 'LONGER' : 'LONGEST').rollers(3, len, len / 12 * 1.1).flat(4).kicker(4, 1.4).land(31).flat(6);
+        b.sign('WATER GAP').flat(4).kicker(4.5, 1.5).pit(3.5 + (len - 12) / 8, -1.2).land(18).flat(8);
       }
       b.rollers(2, 16, 1.5).flat(4).rollers(2, 12, 1.1).flat(6);
       b.ease(12, -2).flat(10);
@@ -190,15 +190,15 @@ export const BEACH: TrackDef[] = [
     build: layout(16, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(12, -4).flat(6);
       b.rollers(3, 15, 1.5).flat(4);
-      b.sign('WATER GAP').flat(3).kicker(4.5, 1.5).pit(3.5, -1.2).ease(8, -0.5).flat(6);
+      b.sign('WATER GAP').flat(3).kicker(4.5, 1.5).pit(3.5, -1.2).land(28).flat(6);
       b.rollers(3, 15, 1.5).flat(6).rail(12, 0.5).flat(8);
       b.rollers(3, 16, 1.6).flat(4);
-      b.sign('WATER GAP').ease(8, -1.5).flat(3).kicker(5, 1.7).pit(4, -1.4).ease(8, -0.5).flat(6);
+      b.sign('WATER GAP').ease(8, -1.5).flat(3).kicker(5, 1.7).pit(4, -1.4).land(28).flat(6);
       b.rollers(3, 15, 1.5).flat(6).ledge(10).flat(8);
-      b.sign('WATER GAP').ease(8, -1.5).flat(3).kicker(5, 1.8).pit(4.5, -1.4).ease(8, -0.5).flat(6);
+      b.sign('WATER GAP').ease(8, -1.5).flat(3).kicker(5, 1.8).pit(4.5, -1.4).land(26).flat(6);
       b.rollers(3, 16, 1.6).flat(6);
       // The pier end: one giant launch out over the sea.
-      b.sign('PIER END: BIG AIR').ease(14, -5).flat(3).kicker(6, 2.4).spot('pierend').drop(-0.6).ease(18, -6).flat(10);
+      b.sign('PIER END: BIG AIR').ease(14, -5).flat(3).kicker(6, 2.4).spot('pierend').land(31).flat(10);
     }),
   },
   {

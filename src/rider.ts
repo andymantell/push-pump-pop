@@ -7,6 +7,9 @@ const ROLL_FRICTION = 0.18;
 const AIR_DRAG = 0.006;
 const PUMP_TIME = 0.55;
 const PUMP_ACCEL = 9;
+/** Pumping on the way down from an air pulls you down harder for a moment, to aim for a landing. */
+const AIR_PUMP_TIME = 0.35;
+const AIR_PUMP_ACCEL = 16;
 const MIN_PUSH_SPEED = 4.5;
 const MAX_SPEED = 17;
 const OLLIE_POP = 5.6;
@@ -164,6 +167,8 @@ export class Rider {
   peakY = 0;
   timeSinceGround = 0;
   pumpTimer = 0;
+  /** Time left on a pump tapped in the air, pulling you down. */
+  airPump = 0;
   pushPhase = 0;
   pushing = false;
   bailTimer = 0;
@@ -302,6 +307,8 @@ export class Rider {
     if (this.perched) { this.perched = false; this.dropT = 0; return; }
     if (this.bailing || this.dropT >= 0) return;
     this.pumpTimer = PUMP_TIME;
+    // On the way down only: a late pump at a lip shouldn't cut the air short.
+    if (!this.grounded && !this.grind && !this.loop && !this.inPipe && this.vy < 0) this.airPump = AIR_PUMP_TIME;
     if (this.grounded) {
       const s = Math.sin(Math.atan(this.track.slope(this.x))) * Math.sign(this.v || 1);
       this.ev.pump(s < -0.08);
@@ -574,6 +581,7 @@ export class Rider {
       this.vx = -Math.sign(this.vx) * 0.35;
     }
     this.tricksThisAir = 0;
+    this.airPump = 0;
     this.endManual();
     // A tilt held through take-off doesn't flip you: level out, then tilt.
     this.leanArmed = this.lean === 0;
@@ -734,6 +742,7 @@ export class Rider {
       this.airTime += dt;
       const px = this.x, py = this.y;
       this.vy -= GRAVITY * dt;
+      if (this.airPump > 0) { this.vy -= AIR_PUMP_ACCEL * dt; this.airPump -= dt; }
       this.vx -= Math.sign(this.vx) * AIR_DRAG * this.vx * this.vx * dt;
       this.x += this.vx * dt;
       this.y += this.vy * dt;
@@ -847,6 +856,7 @@ export class Rider {
     this.grounded = true;
     this.angle = th;
     this.held = null;
+    this.airPump = 0;
 
     const midTrick = this.current !== null && this.trickT < this.current.duration * 0.8;
     // Still holding the board when you touch down: you can't stand on it.

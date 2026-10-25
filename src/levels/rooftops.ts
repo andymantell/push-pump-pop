@@ -15,11 +15,11 @@ export const ROOFTOPS: TrackDef[] = [
     build: layout(10, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(10, -3).flat(6);
       b.rollers(3, 14, 1.0).flat(6);
-      b.sign('GAP! OLLIE OFF THE KICKER').flat(4).kicker(4, 1.2).pit(2.5, -1.6).ease(6, -0.4).flat(8);
+      b.sign('GAP! OLLIE OFF THE KICKER').flat(4).kicker(4, 1.2).pit(2.5, -1.6).land(25).flat(8);
       b.rollers(3, 14, 1.1).flat(6);
-      b.sign('GAP!').flat(4).kicker(4, 1.3).pit(2.8, -1.7).ease(6, -0.4).flat(8);
+      b.sign('GAP!').flat(4).kicker(4, 1.3).pit(2.8, -1.7).land(22).flat(8);
       b.rollers(3, 14, 1.1).flat(6);
-      b.sign('KICKFLIP IT!').flat(4).kicker(4.5, 1.4).pit(3, -1.8).ease(6, -0.4).flat(8);
+      b.sign('KICKFLIP IT!').flat(4).kicker(4.5, 1.4).pit(3, -1.8).land(18).flat(8);
       b.rollers(2, 14, 1.0).flat(6);
       b.ease(10, -1.5).flat(10);
     }),
@@ -38,12 +38,12 @@ export const ROOFTOPS: TrackDef[] = [
       b.sign('STAIRS! OLLIE OFF THE TOP').flat(8).stairs(5, 0.17, 0.32, false).flat(10);
       b.rollers(2, 14, 1.0).flat(4);
       b.flat(8).stairs(6, 0.17, 0.32, false).flat(10);
-      b.sign('GAP!').flat(4).kicker(4, 1.2).pit(2.5, -1.2).ease(6, -0.3).flat(8);
+      b.sign('GAP!').flat(4).kicker(4, 1.2).pit(2.5, -1.2).land(18).flat(8);
       b.rollers(3, 14, 1.1).flat(4);
       b.sign('HEELFLIP THE STAIRS').flat(8).stairs(7, 0.17, 0.32, false).flat(10);
       b.rollers(2, 14, 1.0).flat(4);
       b.flat(8).stairs(6, 0.17, 0.32, false).flat(10);
-      b.sign('GAP!').flat(4).kicker(4, 1.3).pit(2.5, -1.2).ease(6, -0.3).flat(8);
+      b.sign('GAP!').flat(4).kicker(4, 1.3).pit(2.5, -1.2).land(18).flat(8);
       b.rollers(2, 14, 1.0).flat(4);
       b.flat(8).stairs(8, 0.17, 0.32, false).flat(10);
       b.ease(10, -1.5).flat(10);
@@ -59,18 +59,18 @@ export const ROOFTOPS: TrackDef[] = [
     build: layout(6, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(8, -2).flat(6);
       b.rollers(2, 12, 0.7).flat(4);
-      b.sign('GAP!').kicker(3.5, 1.1).pit(2.5, -1.1).flat(6);
+      b.sign('GAP!').kicker(3.5, 1.1).pit(2.5, -1.1).land(18).flat(6);
       b.rollers(2, 12, 0.84).flat(3);
-      b.kicker(3.5, 1.2).pit(3.5, -1.7).flat(5);
+      b.kicker(3.5, 1.2).pit(3.5, -1.7).land(18).flat(5);
       b.drop(-1.2).ease(4, -0.5).flat(5);
-      b.kicker(4, 1.2).flat(4).ease(5, -1.2).flat(4);
+      b.kicker(4, 1.2).land(18).flat(4);
       b.flat(5).rail(9, 0.6).flat(5);
-      b.kicker(4, 1.3).pit(4, -1.8).flat(6);
+      b.kicker(4, 1.3).pit(4, -1.8).land(18).flat(6);
       b.rollers(2, 12, 0.98).flat(3);
-      b.kicker(4, 1.4).pit(4.5, -2.2).flat(5);
+      b.kicker(4, 1.4).pit(4.5, -2.2).land(18).flat(5);
       b.drop(-1).ease(6, -1.5).flat(4);
       b.flat(5).stairs(7).flat(8);
-      b.sign('BIG GAP').ease(6, -1.5).kicker(5, 1.8).pit(6, -3).ease(5, -1).flat(8);
+      b.sign('BIG GAP').ease(6, -1.5).kicker(5, 1.8).pit(6, -3).land(18).flat(8);
     }),
   },
   {
@@ -85,12 +85,12 @@ export const ROOFTOPS: TrackDef[] = [
       b.rollers(2, 14, 1.0).flat(4);
       b.sign('STAIR RAIL: OLLIE ON').flat(10).stairs(6).flat(10);
       b.rollers(2, 14, 1.0).flat(4);
-      b.sign('GAP!').flat(4).kicker(4, 1.3).pit(3, -1.4).ease(6, -0.3).flat(8);
+      b.sign('GAP!').flat(4).kicker(4, 1.3).pit(3, -1.4).land(18).flat(8);
       b.rollers(2, 14, 1.0).flat(4);
       b.flat(10).stairs(7).flat(10);
       b.rollers(2, 14, 1.0).flat(4);
       b.flat(10).stairs(6).flat(10);
-      b.sign('GAP!').flat(4).kicker(4, 1.3).pit(3, -1.4).ease(6, -0.3).flat(8);
+      b.sign('GAP!').flat(4).kicker(4, 1.3).pit(3, -1.4).land(18).flat(8);
       b.rollers(2, 14, 1.0).flat(4);
       b.sign('BIG STAIRS').flat(10).stairs(9).flat(10);
       b.rollers(2, 14, 1.0).flat(4);
@@ -110,13 +110,13 @@ export const ROOFTOPS: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(12, -4).flat(6);
       for (const len of [3, 3.3, 3.6, 4]) {
         b.rollers(3, 14, 1.2).flat(4);
-        b.sign(len === 3 ? 'LEVEL GAP: PUMP FOR SPEED' : 'GAP!').flat(4).kicker(4.5, 1.4).pit(len, 0).ease(6, -1.4).flat(8);
+        b.sign(len === 3 ? 'LEVEL GAP: PUMP FOR SPEED' : 'GAP!').flat(4).kicker(4.5, 1.4).pit(len, 0).land(28).flat(8);
       }
       // Kickers and a manual pad close together: one long combo.
       b.sign('KEEP IT GOING!').rollers(2, 14, 1.1).flat(4);
-      b.kicker(4, 1.4).flat(2).ease(8, -1.4).flat(2).pad(7).flat(2);
-      b.kicker(4, 1.5).flat(2).ease(8, -1.5).flat(2).pad(7).flat(2);
-      b.kicker(4, 1.6).flat(2).ease(8, -1.6).flat(8);
+      b.kicker(4, 1.4).land(30).flat(2).pad(7).flat(2);
+      b.kicker(4, 1.5).land(25).flat(2).pad(7).flat(2);
+      b.kicker(4, 1.6).land(18).flat(8);
       b.ease(10, -1.5).flat(10);
     }),
   },
@@ -135,7 +135,7 @@ export const ROOFTOPS: TrackDef[] = [
         b.sign('GRIND THE LEDGE OFF THE ROOF').ease(8, -1.5).flat(12).ledge(10).pit(len, -1.4).ease(8, -0.5).flat(8);
         b.rollers(3, 14, 1.1).flat(4);
       }
-      b.sign('GAP!').ease(8, -1.5).flat(3).kicker(5, 1.6).pit(4, -1.4).ease(8, -0.5).flat(8);
+      b.sign('GAP!').ease(8, -1.5).flat(3).kicker(5, 1.6).pit(4, -1.4).land(28).flat(8);
       b.rollers(2, 14, 1.1).flat(4);
       b.sign('GRIND THE LEDGE OFF THE ROOF').ease(8, -1.5).flat(12).ledge(12).pit(3.5, -1.6).ease(8, -0.5).flat(8);
       b.ease(10, -1.5).flat(10);
@@ -153,9 +153,9 @@ export const ROOFTOPS: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(12, -4).flat(6);
       for (let i = 0; i < 3; i++) {
         b.rollers(2, 14, 1.1).flat(4);
-        b.sign(i === 0 ? 'DOWN ONTO THE SCAFFOLD' : 'GAP!').flat(4).kicker(4, 1.2).pit(2.5, -1.6).ease(6, -0.5).flat(6);
+        b.sign(i === 0 ? 'DOWN ONTO THE SCAFFOLD' : 'GAP!').flat(4).kicker(4, 1.2).pit(2.5, -1.6).land(29).flat(6);
         b.rollers(2, 14, 1.1).flat(4);
-        b.sign(i === 0 ? 'UPHILL GAP: GO FAST!' : 'UP!').ease(8, -1.2).flat(3).kicker(5, 1.7).pit(3 + i * 0.3, 0.5).flat(8);
+        b.sign(i === 0 ? 'UPHILL GAP: GO FAST!' : 'UP!').ease(8, -1.2).flat(3).kicker(5, 1.7).pit(3 + i * 0.3, 0.5).land(27).flat(8);
       }
       b.rollers(2, 14, 1.0).flat(4);
       b.ease(10, -1.5).flat(10);
@@ -173,7 +173,7 @@ export const ROOFTOPS: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(12, -4).flat(6);
       b.rollers(3, 15, 1.3).flat(4);
       for (const len of [5, 5.5, 6, 6]) {
-        b.sign('BILLBOARD BLAST!').ease(14, -3.5).flat(3).kicker(6, 2.3).pit(len, -2.6).ease(10, -1.0).flat(10);
+        b.sign('BILLBOARD BLAST!').ease(14, -3.5).flat(3).kicker(6, 2.3).pit(len, -2.6).land(26).flat(10);
         b.rollers(3, 15, 1.3).flat(4);
       }
       b.ease(10, -1.5).flat(10);
@@ -193,7 +193,7 @@ export const ROOFTOPS: TrackDef[] = [
         b.rollers(3, 14, 1.1).flat(4);
         b.sign(i === 0 ? 'THREE GAPS: ONE COMBO!' : 'GAP SET').ease(6, -1).flat(3);
         for (let k = 0; k < 3; k++) {
-          b.kicker(4, 1.3).pit(2.5, -1.0).ease(5, -0.3).flat(2);
+          b.kicker(4, 1.3).pit(2.5, -1.0).land(31).flat(2);
           if (k < 2) b.rollers(1, 12, 0.6).flat(2);
         }
         b.flat(8);
@@ -213,16 +213,16 @@ export const ROOFTOPS: TrackDef[] = [
       b.flat(8).sign('PENTHOUSE').ease(12, -4).flat(6);
       b.rollers(2, 14, 1.1).flat(4);
       b.flat(10).stairs(7).flat(10);
-      b.flat(6).rail(10, 0.6).flat(4).kicker(4, 1.3).flat(2).ease(6, -1.3).flat(6);
-      b.sign('GAP!').flat(4).kicker(4.5, 1.4).pit(3.5, -1.6).ease(6, -0.4).flat(8);
+      b.flat(6).rail(10, 0.6).flat(4).kicker(4, 1.3).land(18).flat(6);
+      b.sign('GAP!').flat(4).kicker(4.5, 1.4).pit(3.5, -1.6).land(18).flat(8);
       b.rollers(2, 14, 1.1).flat(4);
       b.flat(10).stairs(8).flat(10);
       b.flat(6).ledge(10).pit(3, -1.4).ease(8, -0.5).flat(8);
       b.rollers(3, 14, 1.1).flat(4);
-      b.flat(6).rail(12, 0.6).flat(4).kicker(4, 1.4).flat(2).ease(6, -1.4).flat(6);
+      b.flat(6).rail(12, 0.6).flat(4).kicker(4, 1.4).land(18).flat(6);
       b.flat(10).stairs(9).flat(10);
       b.rollers(2, 14, 1.1).flat(4);
-      b.sign('THE PLUNGE: 6 METRE GAP!').ease(14, -4).flat(3).kicker(6, 2.0).pit(6, -3).ease(10, -1.0).flat(10);
+      b.sign('THE PLUNGE: 6 METRE GAP!').ease(14, -4).flat(3).kicker(6, 2.0).pit(6, -3).land(26).flat(10);
     }),
   },
   {

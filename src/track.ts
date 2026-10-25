@@ -269,6 +269,17 @@ export class TrackBuilder {
     return this.flat(deck);
   }
 
+  /**
+   * A landing ramp after a kicker or gap: a straight slope down that starts right at the
+   * top, so even a slow hop comes down on it, then curves out flat. Size `len` for the
+   * fastest jump (scripts/landings.ts checks it); the slope is `drop / len * 1.25`.
+   */
+  land(len: number, drop = len * 0.12): this {
+    // Straight for 60% of the way, then curving out.
+    const a = 0.6, c = 1 / (a + (1 - a) / 2);
+    return this.run(len, (t) => -drop * c * (t < a ? t : a + (t - a) - (t - a) * (t - a) / (2 * (1 - a))));
+  }
+
   /** A straight slope. */
   ramp(len: number, dy: number): this { return this.run(len, (t) => dy * t); }
 

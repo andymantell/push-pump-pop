@@ -7,7 +7,8 @@
 // reaction delay with random jitter, and it can't tap faster than a person.
 // A second bot only pumps and never ollies, like a new player, and every run is
 // checked for sudden stops: losing over half your speed in a moment for no reason
-// (not a bail or a fall) feels like hitting an invisible wall.
+// (not a bail or a fall) feels like hitting an invisible wall. Jumps must land on their
+// landings at any speed (see landings.ts).
 import { TRACKS, PIPE_TIME } from '../src/tracks';
 import { BIOMES, BIOME_ORDER } from '../src/biomes';
 import { requiredCount } from '../src/challenges';
@@ -18,6 +19,7 @@ import { ChallengeRun, Challenge, members } from '../src/challenges';
 import { Track, Rail, railY } from '../src/track';
 import * as THREE from 'three';
 import { Skater } from '../src/skater';
+import { nextLip, landingProblems } from './landings';
 
 /** Runs per track that also pose the skater and check his legs stay above the ground. */
 const LEG_RUNS = 24;
@@ -101,18 +103,6 @@ const stopNotes: string[] = [];
 function rng(seed: number) {
   let s = seed >>> 0 || 1;
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
-}
-
-/** Distance to the next lip (where the ground drops away) within `range` metres. */
-function nextLip(track: Track, x: number, range: number): number | null {
-  // A gap straight off flat ground has no ramp to spot, just the edge.
-  const gap = track.pits.find((p) => p.x0 - x > 0.1 && p.x0 - x < range && track.slope(p.x0 - 0.5) < 0.35);
-  for (let d = 0.2; d < range; d += 0.1) {
-    const k0 = track.slope(x + d - 0.2), k1 = track.slope(x + d + 0.2);
-    if (k0 > 0.35 && k1 < k0 - 0.6) return d;
-    if (gap && d >= gap.x0 - x - 0.05) return gap.x0 - x;
-  }
-  return null;
 }
 
 function checkLegs(skater: Skater, r: Rider, track: Track, trackId: string, t: number) {
@@ -384,7 +374,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         trickPlanned = false;
         if (t - railOllieAt > REACTION + JITTER + 0.1) railOllie = false;
         const slopeThen = track.slope(r.x + lead * dir) * dir;
-        if (slopeThen < -0.12 && t - lastPumpDecision > 0.45) { press('pump'); lastPumpDecision = t; }
+        // The downslope past a lip is a landing, not something to pump before you take off.
+        if (slopeThen < -0.12 && t - lastPumpDecision > 0.45 && (r.inPipe || nextLip(track, r.x, lead + 0.5) === null)) { press('pump'); lastPumpDecision = t; }
         // Pop at the lip: decide when the lip is about one reaction-time away.
         const lip = isPipe || pumpOnly ? null : nextLip(track, r.x, lead + 1.5);
         if (lip !== null && t - lipPlanned > 0.6 && Math.abs(lip - lead) < 0.6 + r.v * 0.04) {
@@ -555,6 +546,8 @@ for (const def of TRACKS) {
   track.rails.forEach((rl, i) => {
     if (!results.some((r) => r.railHits[i] > 0)) problems.push(`no run managed to grind the ${rl.kind} at ${rl.x0.toFixed(0)} m`);
   });
+  // Every jump off a ramp comes down on its landing, however fast you go.
+  if (def.kind !== 'pipe') problems.push(...landingProblems(def.id));
   const dips = [...results, ...pumpers].flatMap((r) => r.dipLaunches);
   if (dips.length) problems.push(`thrown over a dip onto its upslope at ${[...new Set(dips.map((x) => Math.round(x)))].join(', ')} m (soften the dip's top edge)`);
   // Gentle tracks: you can finish without ever ollieing, and without losing a life.

@@ -8,7 +8,7 @@ A mobile-friendly side-on skateboarding game inspired by Pumped BMX, built with 
 
 | Action | Touch | Keyboard |
 | --- | --- | --- |
-| Pump (tap on the way down a slope) | Tap | Space |
+| Pump (tap on the way down a slope; in the air, on the way down, it drops you faster onto a landing) | Tap | Space |
 | Ollie | Swipe up | Up arrow / W |
 | Kickflip | Swipe left | Left arrow / A |
 | Heelflip | Swipe right | Right arrow / D |
@@ -40,7 +40,7 @@ npm test                 # human-speed bot plays every track; fails if one is to
 npx tsx scripts/sim.ts   # quick physics stats per track, for tuning
 ```
 
-The deploy workflow runs `npm test` first, so a track that is too hard, or that brings the rider to a sudden stop (losing over half their speed in a moment without a bail or fall), or that throws the rider over a dip onto its far upslope without an ollie (so the downslope can't be pumped), blocks the deploy.
+The deploy workflow runs `npm test` first, so a track that is too hard, or that brings the rider to a sudden stop (losing over half their speed in a moment without a bail or fall), or that throws the rider over a dip onto its far upslope without an ollie (so the downslope can't be pumped), or that has a jump which comes down on a flat or an upslope instead of its landing at any speed from no pumping to pumping every slope, with or without an ollie (`scripts/landings.ts`, also runnable on its own), blocks the deploy.
 Pushing to `main` deploys to GitHub Pages via `.github/workflows/deploy.yml`.
 
 ### Release notes
@@ -67,7 +67,7 @@ installed copies update like the website does. Icons are rendered from `art/icon
 ## Tracks and biomes
 
 - `src/biomes.ts`: look and feel of each biome (sky, surfaces, scenery, friction).
-- `src/tracks.ts` and `src/levels/` (one file per world, tracks in play order): track layouts as chains of shapes (`flat`, `ease`, `kicker`, `rollers`, `valley`, `drop`, `pit`, `rail`, `ledge`, `stairs`, `loop`, `pad`, `sign`, `spot`), see `TrackBuilder` in `src/track.ts`. Rails, ledges and stair handrails are grindable: ollie on and you lock into a 50-50; the playtest bot aims for each one and fails a track if no run manages to grind one. Loops (`loop(radius)`) need about 15 m/s to get round, so put a long downhill and rollers before them and keep them for later tracks; fall off and you lose a life and pick up past the loop. The playtest needs 95% of loop attempts to make it round.
+- `src/tracks.ts` and `src/levels/` (one file per world, tracks in play order): track layouts as chains of shapes (`flat`, `ease`, `kicker`, `land`, `rollers`, `valley`, `drop`, `pit`, `rail`, `ledge`, `stairs`, `loop`, `pad`, `sign`, `spot`), see `TrackBuilder` in `src/track.ts`. Follow every kicker or gap with `land(len)`: it slopes down from the very lip, so slow hops and fast flights both come down on it; `npx tsx scripts/landings.ts <track>` says how far each jump flies, so you can size `len`. Rails, ledges and stair handrails are grindable: ollie on and you lock into a 50-50; the playtest bot aims for each one and fails a track if no run manages to grind one. Loops (`loop(radius)`) need about 15 m/s to get round, so put a long downhill and rollers before them and keep them for later tracks; fall off and you lose a life and pick up past the loop. The playtest needs 95% of loop attempts to make it round.
 
 Keep rollers long (12 m or more) so there's time to tap on each downslope.
 

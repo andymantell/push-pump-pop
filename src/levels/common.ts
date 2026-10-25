@@ -44,7 +44,7 @@ export function mega(drop: number, gap: number, qp: number): () => Track {
     b.flat(6).rollIn(drop * 1.7, drop).flat(14);
     b.sign('GAP!').kicker(7, kick, 1.8).pit(gap, -1.2);
     // Steepest where you come down, curving out flat at the bottom.
-    b.rollIn(land / 0.3, land).flat(18);
+    b.rollIn(land / 0.2, land).flat(18);
     b.sign('QUARTER PIPE').quarterpipe(qp, 8);
     return b.build(3, Infinity);
   };
