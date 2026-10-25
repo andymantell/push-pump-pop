@@ -466,6 +466,135 @@ export const LANDMARKS: Record<string, Landmark> = {
     for (let i = 0; i < 7; i++) g.add(ball(0.6 + i * 0.18, 0x9a9094, [Math.sin(i * 1.7) * (0.2 + i * 0.12), 1.9 + i * 0.8, 0], 8));
     return g;
   } },
+  // ---- Autumn Farm
+  barn: { z: -20, r: 9, build: () => {
+    // A red barn with a gambrel roof, white trim, crossed doors and a hayloft full of hay.
+    const red = 0xb8382c, white = 0xf4f0e6, roof = 0x5a4a44;
+    const W = 12, D = 9, H = 5.5;
+    const g = group(box(W, H, D, red));
+    for (const sgn of [1, -1]) {
+      g.add(box(W + 0.6, 0.25, 3.6, roof, [0, H + 1.4, sgn * 3.15], [sgn * 0.9, 0, 0]));
+      g.add(box(W + 0.6, 0.25, 3.0, roof, [0, H + 3.4, sgn * 1.15], [sgn * 0.42, 0, 0]));
+    }
+    // The gable ends, as a filled outline.
+    const shape = new THREE.Shape([[-D / 2, 0], [D / 2, 0], [D / 2, H], [D / 2 - 1.8, H + 2.6], [0, H + 3.9], [-D / 2 + 1.8, H + 2.6], [-D / 2, H]].map(([x, y]) => new THREE.Vector2(x, y)));
+    for (const sx of [-1, 1]) g.add(mesh(new THREE.ShapeGeometry(shape), red, [sx * (W / 2 + 0.01), 0, 0], [0, sx * Math.PI / 2, 0]));
+    // The long wall facing the track (+z): two big doors with white crosses.
+    const fz = D / 2 + 0.02;
+    for (const x of [-3, 3]) {
+      g.add(beam([x - 1.7, 0.1, fz + 0.05], [x + 1.7, 3.7, fz + 0.05], 0.18, white), beam([x + 1.7, 0.1, fz + 0.05], [x - 1.7, 3.7, fz + 0.05], 0.18, white));
+      g.add(box(3.7, 0.18, 0.1, white, [x, 3.8, fz + 0.04]), box(0.18, 3.8, 0.1, white, [x - 1.8, 1.9, fz + 0.04]), box(0.18, 3.8, 0.1, white, [x + 1.8, 1.9, fz + 0.04]));
+    }
+    for (const x of [-W / 2 + 0.1, W / 2 - 0.1]) g.add(box(0.2, H, 0.12, white, [x, H / 2, fz + 0.03]));
+    g.add(box(W, 0.2, 0.12, white, [0, H - 0.1, fz + 0.03]));
+    // A hayloft door in the roof with hay poking out, and a weathervane.
+    g.add(box(2.2, 1.6, 0.6, white, [0, H + 1.5, fz - 1.6]), box(1.8, 1.2, 0.62, 0x3a2a20, [0, H + 1.5, fz - 1.58]), ball(0.6, 0xe8c46c, [0, H + 1.2, fz - 1.2], 8));
+    g.add(cyl(0.06, 0.06, 1.2, 0x6a6a72, [0, H + 4.4, 0], 6), box(0.9, 0.05, 0.25, 0x6a6a72, [0.2, H + 4.9, 0]));
+    return g;
+  } },
+  silos: { z: -16, r: 5, build: () => {
+    const g = new THREE.Group();
+    for (const [x, h, r] of [[-2.2, 11, 2.0], [2.0, 8.5, 1.7]] as const) {
+      g.add(cyl(r, r, h, 0xd8dce0, [x, h / 2, 0], 18));
+      for (let y = 1.5; y < h; y += 1.5) g.add(cyl(r + 0.04, r + 0.04, 0.12, 0xa8acb2, [x, y, 0], 18));
+      g.add(mesh(new THREE.SphereGeometry(r, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0xb8382c, [x, h, 0]));
+      g.add(beam([x + r * 0.6, 0.2, r * 0.75], [x + r * 0.6, h, r * 0.75], 0.08, 0x6a6a72));
+    }
+    g.add(beam([-0.6, 9.5, 0], [1.2, 7.8, 0], 0.4, 0x8a8e94));
+    return g;
+  } },
+  tractor: { z: -8, r: 5, build: () => {
+    // A little green tractor towing a trailer of hay bales.
+    const green = 0x3a9a3a, yellow = 0xf2c040, tyre = 0x2a2828;
+    const wheel = (x: number, r: number, z: number) => group(cyl(r, r, 0.5, tyre, [x, r, z], 16, [Math.PI / 2, 0, 0]), cyl(r * 0.55, r * 0.55, 0.52, yellow, [x, r, z], 12, [Math.PI / 2, 0, 0]));
+    const g = group(
+      box(2.0, 1.0, 1.3, green, [0.6, 1.3, 0]), box(1.1, 1.5, 1.3, green, [-0.9, 2.0, 0]), box(0.9, 0.8, 1.32, 0x9ad0e8, [-0.9, 2.3, 0]),
+      box(1.4, 0.12, 1.5, green, [-0.9, 2.82, 0]), cyl(0.08, 0.08, 1.1, 0x404040, [1.0, 2.3, 0.3], 8),
+      wheel(-1.0, 0.85, 0.75), wheel(-1.0, 0.85, -0.75), wheel(1.3, 0.5, 0.7), wheel(1.3, 0.5, -0.7),
+    );
+    const trailer = group(box(3.4, 0.25, 1.8, 0x8a5a30, [0, 0.9, 0]), wheel(0, 0.45, 0.95), wheel(0, 0.45, -0.95), beam([1.7, 0.9, 0], [2.6, 0.7, 0], 0.12, 0x404040));
+    for (const [x, y] of [[-1.0, 1.4], [0, 1.4], [1.0, 1.4], [-0.5, 1.9], [0.5, 1.9]]) trailer.add(box(0.95, 0.5, 1.4, 0xe8c46c, [x, y, 0]));
+    trailer.position.x = -4.6;
+    g.add(trailer);
+    return g;
+  } },
+  combine: { z: -14, r: 6, build: () => {
+    // A big combine harvester with its reel out in front and a grain pipe.
+    const body = 0xd84a2a, dark = 0x3a3434;
+    const g = group(
+      box(4.0, 2.4, 2.6, body, [0, 2.4, 0]), box(1.6, 1.4, 1.8, body, [1.2, 4.3, 0]), box(1.3, 1.0, 1.82, 0x9ad0e8, [1.25, 4.4, 0]),
+      cyl(1.1, 1.1, 0.6, dark, [1.2, 1.1, 1.2], 16, [Math.PI / 2, 0, 0]), cyl(1.1, 1.1, 0.6, dark, [1.2, 1.1, -1.2], 16, [Math.PI / 2, 0, 0]),
+      cyl(0.6, 0.6, 0.5, dark, [-1.5, 0.6, 1.1], 12, [Math.PI / 2, 0, 0]), cyl(0.6, 0.6, 0.5, dark, [-1.5, 0.6, -1.1], 12, [Math.PI / 2, 0, 0]),
+      box(1.2, 0.8, 5.0, 0xf2c040, [3.0, 1.0, 0]), cyl(0.7, 0.7, 4.6, 0xf2c040, [3.4, 1.6, 0], 8, [Math.PI / 2, 0, 0]),
+      beam([-1.6, 3.4, -0.8], [-3.6, 4.6, 1.4], 0.35, body),
+    );
+    for (let i = 0; i < 6; i++) g.add(beam([3.4 + Math.cos(i) * 0.7, 1.6 + Math.sin(i) * 0.7, -2.3], [3.4 + Math.cos(i) * 0.7, 1.6 + Math.sin(i) * 0.7, 2.3], 0.06, 0x8a6a2a));
+    return g;
+  } },
+  maze: { z: -22, r: 10, build: (r) => {
+    // A maize maze: blocks of tall corn with paths between, and a lookout tower to see over it.
+    const g = new THREE.Group();
+    const corn = 0xa8b84a, tops = 0xd8c860;
+    for (let i = -4; i <= 4; i++) for (let j = -2; j <= 2; j++) {
+      if (r() < 0.32) continue;
+      g.add(box(1.9, 2.4, 1.9, corn, [i * 2.2, 1.2, j * 2.2]), box(1.9, 0.25, 1.9, tops, [i * 2.2, 2.5, j * 2.2]));
+    }
+    const tower = group(box(2.2, 0.15, 2.2, 0x8a5a30, [0, 4.5, 0]), box(2.2, 0.8, 0.08, 0x8a5a30, [0, 4.95, 1.05]), box(2.6, 0.15, 2.6, 0xb8382c, [0, 6.6, 0]));
+    for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) tower.add(cyl(0.08, 0.08, 6.6, 0x6a4422, [x, 3.3, z], 6));
+    tower.add(cyl(0.04, 0.04, 1.4, 0x404040, [0, 7.3, 0], 6), box(0.8, 0.5, 0.03, 0xf2c040, [0.42, 7.7, 0]));
+    tower.position.set(10.5, 0, 0);
+    g.add(tower);
+    return g;
+  } },
+  farmhouse: { z: -14, r: 6, build: () => {
+    const wall = 0xf2e8d4, roof = 0x8a4a3a;
+    const g = group(box(8, 4.2, 5, wall), box(8.6, 0.25, 3.6, roof, [0, 5.0, 1.3], [0.62, 0, 0]), box(8.6, 0.25, 3.6, roof, [0, 5.0, -1.3], [-0.62, 0, 0]));
+    const shape = new THREE.Shape([[-2.5, 0], [2.5, 0], [0, 1.9]].map(([x, y]) => new THREE.Vector2(x, y)));
+    for (const sx of [-1, 1]) g.add(mesh(new THREE.ShapeGeometry(shape), wall, [sx * 4.01, 4.2, 0], [0, sx * Math.PI / 2, 0]));
+    g.add(box(0.8, 2.2, 0.8, 0x9a6a5a, [2.5, 5.6, -0.6]));
+    for (const x of [-2.6, 2.6]) {
+      g.add(box(1.3, 1.2, 0.06, 0x5a8ab0, [x, 2.8, 2.52]), box(1.5, 0.12, 0.1, 0xffffff, [x, 2.15, 2.55]));
+      g.add(box(0.3, 1.2, 0.06, 0x3a7a4a, [x - 0.85, 2.8, 2.53]), box(0.3, 1.2, 0.06, 0x3a7a4a, [x + 0.85, 2.8, 2.53]));
+    }
+    g.add(box(1.1, 2.1, 0.06, 0x3a7a4a, [0, 1.05, 2.52]), box(3.0, 0.15, 1.4, 0x8a5a30, [0, 2.4, 3.1]));
+    for (const x of [-1.3, 1.3]) g.add(cyl(0.07, 0.07, 2.4, 0xffffff, [x, 1.2, 3.7], 6));
+    // A wisp of chimney smoke.
+    for (let i = 0; i < 4; i++) g.add(ball(0.35 + i * 0.15, 0xe8e8e8, [2.5 + i * 0.4, 7.0 + i * 0.6, -0.6], 8));
+    return g;
+  } },
+  haystack: { z: -9, r: 4, build: () => {
+    // A pyramid of square bales with a pitchfork leaning on it.
+    const g = new THREE.Group();
+    [5, 4, 3, 2].forEach((n, row) => {
+      for (let i = 0; i < n; i++) g.add(box(1.0, 0.48, 0.55, (i + row) % 2 ? 0xe8c46c : 0xdcb45a, [(i - (n - 1) / 2) * 1.04, 0.24 + row * 0.5, row * -0.2]));
+    });
+    g.add(beam([2.6, 0, 0.6], [1.9, 2.0, 0.4], 0.06, 0x8a5a30), box(0.4, 0.04, 0.04, 0x8a8a92, [1.85, 2.08, 0.4]));
+    return g;
+  } },
+  coop: { z: -8, r: 4, build: () => {
+    // A hen house on legs with a ramp, and hens pecking about.
+    const g = group(box(2.6, 1.6, 1.8, 0xd8b070, [0, 1.6, 0]), box(3.0, 0.15, 1.2, 0xb8382c, [0, 2.65, 0.45], [0.55, 0, 0]), box(3.0, 0.15, 1.2, 0xb8382c, [0, 2.65, -0.45], [-0.55, 0, 0]));
+    for (const [x, z] of [[-1.1, -0.7], [1.1, -0.7], [1.1, 0.7], [-1.1, 0.7]]) g.add(cyl(0.07, 0.07, 0.8, 0x6a4422, [x, 0.4, z], 6));
+    g.add(box(0.5, 0.6, 0.05, 0x3a2a20, [0.6, 1.4, 0.92]), beam([0.6, 0.85, 0.95], [0.6, 0, 2.0], 0.4, 0x8a5a30));
+    for (const [x, z] of [[-1.5, 1.6], [1.8, 1.9], [-0.4, 2.3], [2.4, 0.6]]) {
+      g.add(ball(0.18, 0xf4eee4, [x, 0.2, z], 8), ball(0.1, 0xf4eee4, [x + 0.16, 0.36, z], 8), box(0.05, 0.08, 0.03, 0xd83a3a, [x + 0.17, 0.48, z]));
+    }
+    return g;
+  } },
+  pumpkinpatch: { z: -7, r: 4, build: (r) => {
+    // Giant pumpkins on a vine, and a hand-painted sign.
+    const g = new THREE.Group();
+    for (let i = 0; i < 7; i++) {
+      const s = 0.4 + r() * 0.6, x = -3 + i * 1.0 + r() * 0.4, z = (r() - 0.5) * 2;
+      const p = ball(s, i % 3 ? 0xf28020 : 0xe06818, [x, s * 0.8, z], 12);
+      p.scale.y = 0.8;
+      g.add(p, cyl(0.05, 0.07, 0.25, 0x5a7a2a, [x, s * 1.55, z], 6));
+    }
+    const sign = textPanel('PUMPKINS', 2.4, 0.7, '#f4e8d0', '#c0501a', '#6a4422');
+    sign.position.set(3.4, 1.4, 0.3);
+    g.add(sign, cyl(0.06, 0.06, 1.4, 0x6a4422, [2.6, 0.7, 0.25], 6), cyl(0.06, 0.06, 1.4, 0x6a4422, [4.2, 0.7, 0.25], 6));
+    return g;
+  } },
 };
 
 /** Which landmarks each track has, spread along it in order. */
@@ -491,4 +620,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'volcano-1': ['geyser'], 'volcano-2': ['bones'], 'volcano-3': ['lavafall', 'spire'], 'volcano-4': ['basaltarch'],
   'volcano-5': ['spire', 'geyser'], 'volcano-6': ['bones', 'lavafall'], 'volcano-7': ['basaltarch', 'geyser'], 'volcano-8': ['lavafall'],
   'volcano-9': ['spire', 'bones'], 'volcano-10': ['lavafall', 'basaltarch'], 'volcano-mega': ['spire'],
+  'farm-1': ['barn'], 'farm-2': ['tractor', 'silos'], 'farm-3': ['haystack', 'windmill'], 'farm-4': ['coop', 'farmhouse'],
+  'farm-5': ['maze'], 'farm-6': ['pumpkinpatch', 'barn'], 'farm-7': ['combine', 'silos'], 'farm-8': ['balloons', 'farmhouse'],
+  'farm-pipe': ['barn'],
 };

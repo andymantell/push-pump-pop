@@ -1,6 +1,6 @@
 // A biome sets the look, scenery and feel of a track. Track layouts live in src/tracks.
 
-export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt';
+export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil';
 
 export interface Surface {
   kind: SurfaceKind;
@@ -23,7 +23,7 @@ export interface Biome {
   ground: [number, number, number];
   /** How the ground behind the track rises or falls away. */
   groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat';
-  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano';
+  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields';
   farColors: number[];
   clouds: number | null;
   particles: Particles | null;
@@ -57,6 +57,8 @@ export interface Biome {
   lights?: boolean;
   /** Recolour the leaves of the park trees and bushes (blossom, autumn). */
   leafTint?: number;
+  /** A big low moon on the horizon (harvest moon). */
+  bigMoon?: boolean;
 }
 
 export type Particles = 'snow' | 'heavysnow' | 'embers' | 'ash' | 'rain' | 'petals' | 'leaves' | 'dust' | 'fireflies';
@@ -165,6 +167,29 @@ export const BIOMES: Record<string, Biome> = {
     pitFill: 'lava', pitFillColor: 0xff5a10, fallText: 'TOO HOT!', sign: '#5a1a10',
     friction: 1, maxSpeed: 17, swatch: '#ff6a1a',
   },
+  farm: {
+    id: 'farm', name: 'Autumn Farm', blurb: 'Muddy lanes and hay bales. Pump through the mud.',
+    sky: ['#4a92d8', '#a6d2ee', '#fbe6c0'], fog: [0xf0e6cc, 60, 200],
+    hemi: [0xfff2dc, 0x7a8a4a, 1.4], sun: [0xfff0d0, 2.3],
+    top: { kind: 'dirt', base: '#b08458', seam: '#8a6440', accent: '#c89a6a' },
+    front: { kind: 'soil', base: '#7a5434', seam: '#5e3e24', accent: '#9a9488' },
+    band: 0x5aa040,
+    ground: [0x8cbf58, 0x78a84a, 0xb4c868], groundShape: 'hills',
+    far: 'fields', farColors: [0x8cc060, 0xe0c060, 0x6aa84a, 0xb08a5a], clouds: 0xffffff, particles: 'leaves',
+    back: [['appletree', 2], ['tree', 1.5], ['haybale', 2], ['strawbale', 1], ['corn', 3], ['sunflower', 2], ['scarecrow', 0.6],
+      ['chicken', 1], ['cart', 0.5], ['milkchurn', 0.6], ['trough', 0.5], ['bush', 1], ['pumpkin', 1]], backZ: [-5, -24],
+    fence: { kind: 'farmfence', z: -3.2, spacing: 2.4 },
+    posts: { kind: 'farmpost', z: -2.5, spacing: 42 },
+    edge: { kind: 'pumpkin', z: -2.1, spacing: 22 },
+    pitFill: 'water', pitFillColor: 0x7a5a32, fallText: 'SPLAT!', sign: '#8a2a20',
+    friction: 1, maxSpeed: 17, swatch: '#d88a3a', leafTint: 0xe08a2a,
+  },
 };
 
-export const BIOME_ORDER = ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'];
+/** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
+export const WORLDS: string[][] = [
+  ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
+  ['farm'],
+];
+export const BIOME_ORDER = WORLDS.flat();
+export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));

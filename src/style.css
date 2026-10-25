@@ -102,6 +102,10 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 .panel button.alt { background: #2f8fd8; box-shadow: 0 6px 0 #1e5f94; }
 .panel .buttons { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
 #r-track { font-size: 18px; font-weight: 900; margin-top: -10px; }
+#worldtabs { display: flex; gap: 10px; justify-content: center; }
+#worldtabs button { background: #5b6675; box-shadow: 0 4px 0 #353d48; }
+#worldtabs button.on { background: #ff7a1a; box-shadow: 0 4px 0 #b84a17; }
+#worldtabs button.locked { opacity: 0.75; }
 #tracklist { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 640px; }
 .biome {
   display: flex; flex-direction: column; gap: 8px; text-align: left;

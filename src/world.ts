@@ -126,6 +126,57 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
         c.fillStyle = s.seam;
         c.fillRect(0, 0, 3, 256);
         break;
+      case 'dirt': {
+        // Packed earth lane: two wheel ruts along it, pebbles and tufts of grass at the edges.
+        speckle(c, 1400, 0.07, 0.05);
+        for (const v of [0.3, 0.7]) {
+          c.fillStyle = s.seam;
+          c.globalAlpha = 0.45;
+          c.fillRect(0, v * 256 - 14, 256, 28);
+          c.globalAlpha = 0.25;
+          c.fillRect(0, v * 256 - 20, 256, 40);
+          c.globalAlpha = 1;
+        }
+        for (let i = 0; i < 40; i++) {
+          c.fillStyle = r() > 0.5 ? s.accent ?? s.base : '#8a8478';
+          c.beginPath();
+          c.ellipse(r() * 256, r() * 256, 2 + r() * 3, 1.5 + r() * 2, 0, 0, Math.PI * 2);
+          c.fill();
+        }
+        c.fillStyle = 'rgba(90,150,60,0.8)';
+        for (let i = 0; i < 70; i++) {
+          const y = r() > 0.5 ? r() * 18 : 256 - r() * 18;
+          c.fillRect(r() * 256, y, 2, 4 + r() * 6);
+        }
+        break;
+      }
+      case 'soil': {
+        // Layers of earth with stones and roots.
+        for (let y = 0; y < 256; y += 20 + Math.floor(r() * 22)) {
+          c.fillStyle = `rgba(0,0,0,${0.05 + r() * 0.12})`;
+          c.fillRect(0, y, 256, 8 + r() * 14);
+        }
+        speckle(c, 900, 0.08, 0.04);
+        for (let i = 0; i < 22; i++) {
+          c.fillStyle = s.accent ?? '#9a9488';
+          c.strokeStyle = 'rgba(0,0,0,0.35)';
+          c.lineWidth = 2;
+          c.beginPath();
+          c.ellipse(r() * 256, r() * 256, 5 + r() * 9, 4 + r() * 6, r() * 3, 0, Math.PI * 2);
+          c.fill();
+          c.stroke();
+        }
+        c.strokeStyle = s.seam;
+        c.lineWidth = 2;
+        for (let i = 0; i < 6; i++) {
+          c.beginPath();
+          let x = r() * 256, y = r() * 256;
+          c.moveTo(x, y);
+          for (let k = 0; k < 5; k++) { x += (r() - 0.5) * 30; y += 8 + r() * 12; c.lineTo(x, y); }
+          c.stroke();
+        }
+        break;
+      }
       case 'windows': {
         c.fillStyle = s.seam;
         for (let y = 0; y < 256; y += 64) c.fillRect(0, y, 256, 6);
@@ -288,6 +339,7 @@ export class World {
     }
     this.lightUp();
     this.buildTrack();
+    this.buildMud();
     this.buildPitFills();
     this.buildStairs();
     this.buildRails();
@@ -448,6 +500,110 @@ export class World {
 
   private topMat!: THREE.Material;
   private frontMat!: THREE.Material;
+
+  /** Wet mud lying on the track: wobbly edges, rounded ends, puddles that catch the light. */
+  private buildMud() {
+    const tr = this.track;
+    if (!tr.mud.length) return;
+    const tex = canvasTexture(256, 128, (c) => {
+      c.fillStyle = '#5c3d22';
+      c.fillRect(0, 0, 256, 128);
+      const r = rng(23);
+      for (let i = 0; i < 60; i++) {
+        c.fillStyle = r() > 0.5 ? 'rgba(40,24,10,0.35)' : 'rgba(140,100,60,0.3)';
+        c.beginPath();
+        c.ellipse(r() * 256, r() * 128, 6 + r() * 18, 3 + r() * 8, 0, 0, Math.PI * 2);
+        c.fill();
+      }
+      // Puddles with a bright rim on one side, like they're reflecting the sky.
+      for (let i = 0; i < 5; i++) {
+        const x = r() * 256, y = 20 + r() * 88, w = 14 + r() * 20, h = 6 + r() * 8;
+        c.fillStyle = '#7a5a3c';
+        c.beginPath(); c.ellipse(x, y, w, h, 0, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(255,240,210,0.7)';
+        c.lineWidth = 2.5;
+        c.beginPath(); c.ellipse(x, y, w * 0.8, h * 0.6, 0, Math.PI * 1.1, Math.PI * 1.7); c.stroke();
+      }
+      for (let i = 0; i < 40; i++) {
+        c.fillStyle = 'rgba(255,245,220,0.55)';
+        c.fillRect(r() * 256, r() * 128, 2, 2);
+      }
+    });
+    const mat = toon(0xffffff, { map: tex });
+    mat.userData.outlineParameters = { visible: false };
+    const half = TRACK_W / 2;
+    for (const m of tr.mud) {
+      const x0 = m.x0 - 0.4, x1 = m.x1 + 0.4;
+      const n = Math.max(2, Math.ceil((x1 - x0) / 0.1));
+      const pos = new Float32Array((n + 1) * 2 * 3), uv = new Float32Array((n + 1) * 2 * 2);
+      const seed = m.x0 * 1.7;
+      for (let i = 0; i <= n; i++) {
+        const x = x0 + (x1 - x0) * i / n;
+        // Round the ends off and let the edges wander.
+        const end = Math.min(1, (x - x0) / 1.2, (x1 - x) / 1.2);
+        const cap = Math.sqrt(Math.max(0, end * (2 - end)));
+        const wob = 0.12 * Math.sin(x * 2.3 + seed) + 0.08 * Math.sin(x * 5.1 + seed * 2);
+        const front = (half - 0.08 + wob) * cap, back = -(half - 0.25 - wob) * cap;
+        const y = tr.height(x) + 0.025;
+        pos.set([x, y, front, x, y, back], i * 6);
+        uv.set([x / 3, 0, x / 3, 1], i * 4);
+      }
+      const idx: number[] = [];
+      for (let i = 0; i < n; i++) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      g.setIndex(idx);
+      g.computeVertexNormals();
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.receiveShadow = true;
+      this.group.add(mesh);
+      // Splats of mud dripping down the front face.
+      for (let x = m.x0 + 0.5; x < m.x1; x += 1.2 + this.rand() * 1.8) {
+        const h = 0.15 + this.rand() * 0.35;
+        const drip = new THREE.Mesh(new THREE.CapsuleGeometry(0.09 + this.rand() * 0.08, h, 3, 8), mat);
+        drip.position.set(x, tr.height(x) - h / 2 - 0.05, half + 0.02);
+        drip.scale.z = 0.25;
+        this.group.add(drip);
+      }
+    }
+    // Clods thrown up by the wheels.
+    const N = 160;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3).fill(-999), 3));
+    this.splat = { pts: new THREE.Points(g, new THREE.PointsMaterial({ color: 0x5c3d22, size: 0.11 })), vel: new Float32Array(N * 3), life: new Float32Array(N), next: 0, carry: 0 };
+    this.group.add(this.splat.pts);
+  }
+  private splat: { pts: THREE.Points; vel: Float32Array; life: Float32Array; next: number; carry: number } | null = null;
+
+  /** Throw up mud behind the wheels while riding through it. */
+  mud(dt: number, x: number, y: number, v: number, grounded: boolean) {
+    const s = this.splat;
+    if (!s) return;
+    const pos = s.pts.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const a = pos.array as Float32Array;
+    if (grounded && Math.abs(v) > 1.5 && this.track.inMud(x)) {
+      s.carry += dt * Math.abs(v) * 6;
+      while (s.carry >= 1) {
+        s.carry -= 1;
+        const i = s.next;
+        s.next = (s.next + 1) % s.life.length;
+        a.set([x - Math.sign(v) * 0.4, y + 0.05, (Math.random() - 0.5) * 0.6], i * 3);
+        s.vel.set([-v * (0.15 + Math.random() * 0.25), 1.5 + Math.random() * 2.5, (Math.random() - 0.3) * 1.2], i * 3);
+        s.life[i] = 0.5 + Math.random() * 0.4;
+      }
+    }
+    for (let i = 0; i < s.life.length; i++) {
+      if (s.life[i] <= 0) continue;
+      s.life[i] -= dt;
+      if (s.life[i] <= 0) { a[i * 3 + 1] = -999; continue; }
+      s.vel[i * 3 + 1] -= 14 * dt;
+      a[i * 3] += s.vel[i * 3] * dt;
+      a[i * 3 + 1] += s.vel[i * 3 + 1] * dt;
+      a[i * 3 + 2] += s.vel[i * 3 + 2] * dt;
+    }
+    pos.needsUpdate = true;
+  }
 
   /** Steps drawn over the straight slope the rider actually rolls on. */
   private buildStairs() {
@@ -650,6 +806,39 @@ export class World {
           far.add(s);
         }
         break;
+      case 'fields': {
+        // Patchwork farmland: rolling hills striped with crop rows, hedges along the top.
+        const stripes = b.farColors.map((col, k) => {
+          const base = new THREE.Color(col);
+          const tex = canvasTexture(64, 64, (c) => {
+            c.fillStyle = `#${base.getHexString()}`;
+            c.fillRect(0, 0, 64, 64);
+            c.fillStyle = `#${base.clone().multiplyScalar(0.82).getHexString()}`;
+            for (let y = 0; y < 64; y += 8) c.fillRect(0, y + (k % 2) * 2, 64, 3);
+          });
+          tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+          tex.repeat.set(1, 6 + k * 2);
+          return toon(0xffffff, { map: tex });
+        });
+        const hedge = mat(0x3f7a3a);
+        for (let i = 0; i * 26 < len + 140; i++) {
+          const rad = 34 + (i * 37) % 26;
+          const s = new THREE.Mesh(new THREE.SphereGeometry(rad, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), stripes[(i * 3) % stripes.length]);
+          s.scale.y = 0.32 + ((i * 13) % 5) * 0.03;
+          s.rotation.y = r() * Math.PI;
+          const z = -105 - (i % 3) * 18;
+          s.position.set(i * 26 - 40, tr.minY - 3, z);
+          far.add(s);
+          // A row of hedge bushes along the crest.
+          for (let k = -2; k <= 2; k++) {
+            const bush = new THREE.Mesh(new THREE.SphereGeometry(2.2 + r(), 8, 6), hedge);
+            bush.scale.y = 0.7;
+            bush.position.set(i * 26 - 40 + k * 5, tr.minY - 3 + rad * s.scale.y - Math.abs(k) * 0.9, z + rad * 0.15);
+            far.add(bush);
+          }
+        }
+        break;
+      }
       case 'sea': {
         const sea = new THREE.Mesh(new THREE.PlaneGeometry(len + 800, 700), toon(b.farColors[0]));
         sea.rotation.x = -Math.PI / 2;
@@ -800,9 +989,24 @@ export class World {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       this.sky.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85, depthWrite: false })));
-      const moon = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshBasicMaterial({ color: 0xfff6dc, fog: false }));
-      moon.position.set(-60, 44, -320);
-      this.sky.add(moon);
+      if (!b.bigMoon) {
+        const moon = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshBasicMaterial({ color: 0xfff6dc, fog: false }));
+        moon.position.set(-60, 44, -320);
+        this.sky.add(moon);
+      }
+    }
+    if (b.bigMoon) {
+      // A huge orange harvest moon sitting low over the fields.
+      const moon = new THREE.Mesh(new THREE.CircleGeometry(26, 40), new THREE.MeshBasicMaterial({ color: 0xffc070, fog: false }));
+      moon.position.set(40, 22, -310);
+      const halo = new THREE.Mesh(new THREE.CircleGeometry(40, 40), new THREE.MeshBasicMaterial({ color: 0xffb060, fog: false, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending }));
+      halo.position.set(40, 22, -312);
+      for (const [x, y, rr] of [[34, 28, 4], [48, 18, 5.5], [44, 30, 2.5], [30, 16, 3]]) {
+        const spot = new THREE.Mesh(new THREE.CircleGeometry(rr, 20), new THREE.MeshBasicMaterial({ color: 0xe8a858, fog: false }));
+        spot.position.set(x, y, -309);
+        this.sky.add(spot);
+      }
+      this.sky.add(halo, moon);
     }
     if (b.aurora) {
       const colors = [0x5affb0, 0x40d8ff, 0xa070ff];
@@ -866,6 +1070,13 @@ export class World {
     o.scale.setScalar(scale);
     o.rotation.y = rot;
     if (this.biome.leafTint !== undefined && kind === 'tree') this.tintLeaves(o, this.biome.leafTint);
+    if (this.biome.lights && kind === 'farmpost') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(0, 1.5, 0.35);
+      halo.scale.setScalar(1.2);
+      o.add(halo);
+      this.addLamp(x, y + 1.5, z + 0.35, 0xffc070, 18, 8);
+    }
     if (this.biome.lights && kind === 'lamp') {
       const halo = new THREE.Sprite(haloMaterial());
       halo.position.set(0, 3.9, 0.85);
@@ -940,7 +1151,7 @@ export class World {
 
   /** After dark, worlds without street lamps get lamps (towns) or burning torches (the wild). */
   private buildNightLights(end: number) {
-    const wild = ['desert', 'jungle', 'volcano', 'snow'].includes(this.biome.id);
+    const wild = ['desert', 'jungle', 'volcano', 'snow', 'farm'].includes(this.biome.id);
     if (!wild) {
       for (let x = 9; x < end; x += 18) this.placeProp('lamp', x, -2.6);
       return;

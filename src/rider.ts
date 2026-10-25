@@ -32,6 +32,9 @@ const GRIND_CATCH = 0.3;
 /** Rolling friction on the loop is a bit higher: it's a tight curve. */
 const LOOP_FRICTION = 0.3;
 const LOOP_POINTS = 1000;
+/** Mud drags you back: a steady pull plus more the faster you go. */
+const MUD_DRAG = 1.2;
+const MUD_DRAG_PER_SPEED = 0.16;
 /** Half pipe start: standing on the coping, nose up over the pipe. */
 const PERCH_ANGLE = 0.3;
 /** How far over the coping the board sits while perched, and how long dropping in takes. */
@@ -679,6 +682,7 @@ export class Rider {
 
       let a = -GRAVITY * sin;
       a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v);
+      if (tr.inMud(this.x)) a -= dir * (MUD_DRAG + MUD_DRAG_PER_SPEED * Math.abs(this.v));
 
       if (this.pumpTimer > 0 && !this.bailing) {
         // Pumping pays off on the way down a transition and costs a little on the way up.

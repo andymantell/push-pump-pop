@@ -13,7 +13,7 @@ import { TRACKS, TrackDef, PIPE_TIME } from './tracks';
 import { Progress } from './progress';
 import { MegaRun, MEGA_DROPS } from './mega';
 import { ChallengeRun, icon } from './challenges';
-import { BIOMES, BIOME_ORDER } from './biomes';
+import { BIOMES, BIOME_ORDER, WORLDS, worldOf } from './biomes';
 import { biomeFor } from './moods';
 import { Track } from './track';
 import { watchForUpdates } from './version';
@@ -64,6 +64,8 @@ lampLights.use(world.lamps);
 scene.add(world.group);
 
 // Sound starts on the first tap: see audio.ts.
+/** The world the level select shows; null picks the furthest one you've reached. */
+let selWorld: number | null = null;
 const sound = new Sound();
 sound.listen();
 sound.setScene(world.biome, false);
@@ -293,6 +295,7 @@ function show(panel: string | null) {
 
 function start(d: TrackDef = def) {
   loadTrack(d);
+  selWorld = worldOf(d.biome);
   score.reset();
   time = 0;
   finishTimer = 0;
@@ -328,11 +331,26 @@ function showCard(d: TrackDef) {
   state = 'select';
 }
 
-function openSelect() {
+function openSelect(world: number | null = selWorld) {
   const list = $('tracklist');
   list.innerHTML = '';
+  // Worlds with tracks in them, and which you can get into yet.
+  const worlds = WORLDS.map((w, i) => ({ i, open: progress.biomeOpen(w[0]) })).filter((w) => TRACKS.some((t) => worldOf(t.biome) === w.i));
+  if (world === null || !worlds.some((w) => w.i === world)) world = [...worlds].reverse().find((w) => w.open)?.i ?? 0;
+  selWorld = world;
+  const tabs = $('worldtabs');
+  tabs.innerHTML = '';
+  tabs.classList.toggle('hidden', worlds.length < 2);
+  for (const w of worlds) {
+    const btn = document.createElement('button');
+    btn.className = 'small' + (w.i === world ? ' on' : '') + (w.open ? '' : ' locked');
+    btn.innerHTML = `${w.open ? '' : '&#128274; '}WORLD ${w.i + 1}`;
+    btn.addEventListener('click', () => { sound.click(); openSelect(w.i); if (!w.open) toast(`&#128274; Complete track 5 of <b>${BIOMES[WORLDS[w.i - 1].at(-1)!].name}</b> to open World ${w.i + 1}`); });
+    tabs.appendChild(btn);
+  }
   let scrollTo: HTMLElement | null = null;
   BIOME_ORDER.forEach((id, bi) => {
+    if (worldOf(id) !== world) return;
     const b = BIOMES[id];
     const tracks = TRACKS.filter((t) => t.biome === id);
     if (!tracks.length) return;
@@ -370,7 +388,8 @@ function openSelect() {
   });
   show('select');
   state = 'select';
-  (scrollTo as HTMLElement | null)?.scrollIntoView({ block: 'center', inline: 'center' });
+  if (scrollTo) (scrollTo as HTMLElement).scrollIntoView({ block: 'center', inline: 'center' });
+  else list.firstElementChild?.scrollIntoView({ block: 'start' });
 }
 
 /** What to do to open a locked track, e.g. "Do challenge 1 on Grab Bag to open this". */
@@ -435,7 +454,7 @@ function updateWatch() {
   $('watch').innerHTML = n > 1 ? `&#9654; WATCH REPLAYS (${n})` : '&#9654; WATCH REPLAY';
 }
 
-$('play').addEventListener('click', openSelect);
+$('play').addEventListener('click', () => openSelect());
 $('guidebtn').addEventListener('click', () => show('guide'));
 $('guideback').addEventListener('click', () => show('title'));
 setupMove();
@@ -446,7 +465,7 @@ soundBtn.addEventListener('click', () => { sound.enabled = !sound.enabled; drawS
 $('again').addEventListener('click', () => start(def));
 $('next').addEventListener('click', () => { const n = nextTrack(); if (n) showCard(n); });
 $('go').addEventListener('click', () => { if (cardDef) start(cardDef); });
-$('cardback').addEventListener('click', openSelect);
+$('cardback').addEventListener('click', () => openSelect());
 // Grown-ups: hold the title for two seconds to open (or close again) every track.
 let holdTimer = 0;
 const title = document.querySelector('#title h1') as HTMLElement;
@@ -457,8 +476,8 @@ title.addEventListener('pointerdown', () => {
   }, 2000);
 });
 for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) title.addEventListener(ev, () => clearTimeout(holdTimer));
-$('tracks').addEventListener('click', openSelect);
-$('menu').addEventListener('click', openSelect);
+$('tracks').addEventListener('click', () => openSelect());
+$('menu').addEventListener('click', () => openSelect());
 $('back').addEventListener('click', () => { show('title'); state = 'title'; });
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' && (state === 'playing' && chipClip || state === 'finished')) { replays.flush(); watchReplay(chipClip ?? replays.clips[0]); }
@@ -469,7 +488,7 @@ window.addEventListener('keydown', (e) => {
   else if ((e.code === 'Enter' || e.code === 'Space') && !$('card').classList.contains('hidden') && cardDef) { e.preventDefault(); start(cardDef); }
 });
 
-watchForUpdates(() => state === 'playing' || replayFrom === 'playing', openSelect);
+watchForUpdates(() => state === 'playing' || replayFrom === 'playing', () => openSelect());
 registerOffline();
 keepSaves();
 
@@ -601,6 +620,7 @@ function frame(now: number) {
   updateCamera(dt);
   // The camera itself, so scenery tied to the sky also follows a camera set by hand.
   world.update(dt, camera.position.x, camera.position.y - 1.2);
+  world.mud(state === 'playing' ? dt : 0, rider.x, rider.y, rider.v, rider.grounded);
   lampLights.update(camera.position.x + 4);
   if (state === 'playing' || state === 'finished') replays.record(dt, camPos, rider.grounded, comboSnap);
   if (chipTimer > 0) {

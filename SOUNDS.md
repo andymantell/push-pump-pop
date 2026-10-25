@@ -18,7 +18,7 @@ for this game and lives in this repository.
 | Grinds | White noise rung through tuned resonances: metal rails ring, box ledges scrape, jungle logs rasp. Boardslides sound lower than 50-50s |
 | Ollie pop, flips, spins, grabs, pumps, pushing | Short filtered noise bursts and pitched sweeps |
 | Gaps | A splash with bubbles (water), a sizzle (lava), or a cartoon whistle down |
-| Ambience | Filtered noise beds (breeze, waves, city traffic, mountain wind, volcano rumble, rain, thunder) and synthesised calls (birds, gulls, crickets, frogs, a hawk, car horns, lava pops) |
+| Ambience | Filtered noise beds (breeze, waves, city traffic, mountain wind, volcano rumble, rain, thunder) and synthesised calls (birds, gulls, crickets, frogs, a hawk, car horns, lava pops, hens, cows, a rooster and an owl on the farm). Mud squelches under the wheels |
 | Menus and scoring | Short sine and triangle wave chimes |
 
 ## Adding outside sounds

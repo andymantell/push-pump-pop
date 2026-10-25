@@ -124,6 +124,18 @@ const TRACK_MOODS: Record<string, Mood> = {
   'volcano-8': { label: 'Eruption', sky: ['#2a0808', '#8a1a10', '#ff6a20'], hemi: [0xffb090, 0x601818, 1.7], eruption: true },
   'volcano-9': { label: 'Smoky', sky: ['#3a3032', '#5a4644', '#8a6a5a'], haze: 0.4 },
   'volcano-10': { label: 'Eruption', sky: ['#2a0808', '#8a1a10', '#ff6a20'], hemi: [0xffb090, 0x601818, 1.7], eruption: true },
+  'farm-1': mood('morning', { label: 'Morning' }),
+  'farm-2': mood('golden'),
+  'farm-3': { ...mood('rain'), label: 'Rainy day' },
+  'farm-4': { ...mood('morning'), label: 'Morning mist', haze: 0.4, sky: ['#8ab0d0', '#cfdde4', '#f4ead8'] },
+  'farm-5': { ...mood('golden'), label: 'Harvest sun', sun: [0xffd090, 2.4], fogColor: 0xf6dcae },
+  'farm-6': mood('sunset'),
+  'farm-7': { ...mood('overcast'), label: 'Windy', particles: 'leaves', cloudCount: 34 },
+  'farm-8': {
+    label: 'Harvest moon', sky: ['#0c1030', '#28305a', '#7a5a5a'], hemi: [0xc8b8d8, 0x3a3048, 0.75], sun: [0xffc890, 0.8],
+    sunPos: [12, 5, 5], clouds: 0x4a4868, stars: true, lights: true, bigMoon: true, haze: 0.2, fogColor: 0x4a4058,
+  },
+  'farm-pipe': mood('dusk'),
   'volcano-mega': { label: 'Eruption', sky: ['#2a0808', '#8a1a10', '#ff6a20'], hemi: [0xffb090, 0x601818, 1.7], eruption: true },
 };
 

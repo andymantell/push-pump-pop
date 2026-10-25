@@ -34,6 +34,18 @@ const byId = (id: string) => TRACKS.find((t) => t.id === id)!;
   check('track 5 opens the next world', p.biomeOpen('beach'));
 }
 {
+  // World 2 opens from Volcano 5, like any other world, and needs its two required challenges.
+  const p = new Progress(TRACKS, BIOME_ORDER, store());
+  check('World 2 starts shut', !p.biomeOpen('farm'));
+  for (let i = 1; i <= 4; i++) { p.record(`volcano-${i}`, 100); p.markChallenge(byId(`volcano-${i}`), 0); p.markChallenge(byId(`volcano-${i}`), 1); }
+  p.record('volcano-5', 100);
+  p.markChallenge(byId('volcano-5'), 0);
+  check('Volcano 5 with one challenge keeps World 2 shut', !p.biomeOpen('farm'));
+  p.markChallenge(byId('volcano-5'), 1);
+  check('completing Volcano 5 opens Autumn Farm', p.biomeOpen('farm') && p.unlocked(byId('farm-1')) && !p.unlocked(byId('farm-2')));
+  check('Autumn Farm needs two challenges per track', p.required(byId('farm-1')) === 2);
+}
+{
   // Someone who played before the 70 tracks: the old First Pump best moves to Big Air Sunday.
   const s = store({ 'push-pump-pop-best-park-1': '15000', 'push-pump-pop-best-beach-1': '6000' });
   const p = new Progress(TRACKS, BIOME_ORDER, s);

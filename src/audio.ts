@@ -6,7 +6,7 @@ import type { Rail } from './track';
 // (see SOUNDS.md). Each surface has its own wheel roar, grit, joints and landing thud.
 // iOS only lets a page make sound after a tap, so nothing starts until the first one.
 
-export type Ground = 'concrete' | 'wood' | 'tar' | 'snow' | 'sand' | 'stone' | 'basalt';
+export type Ground = 'concrete' | 'wood' | 'tar' | 'snow' | 'sand' | 'stone' | 'basalt' | 'dirt';
 type RailSound = 'metal' | 'coping' | 'log';
 
 interface Band { type: BiquadFilterType; f: number; q: number; gain: number }
@@ -76,10 +76,17 @@ const GROUNDS: Record<Ground, GroundSound> = {
     grit: { type: 'bandpass', f: 1800, q: 0.8, gain: 0.85 },
     land: { type: 'bandpass', f: 1000, q: 0.8, gain: 1.2, decay: 0.18, thump: 1 },
   },
+  // A packed earth farm lane: a soft low roar, crunchy little stones, dull landings.
+  dirt: {
+    rumble: { type: 'lowpass', f: 380, q: 0.7, gain: 0.45, fSpeed: 10 },
+    hiss: { type: 'bandpass', f: 1300, q: 0.7, gain: 0.4, fSpeed: 30 },
+    grit: { type: 'bandpass', f: 2600, q: 0.9, gain: 0.5 },
+    land: { type: 'bandpass', f: 700, q: 0.8, gain: 1, decay: 0.16, thump: 0.9 },
+  },
 };
 
 const BIOME_GROUND: Record<string, Ground> = {
-  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt',
+  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -140,6 +147,8 @@ export class Sound {
   private cur: Trick | null = null;
   private spinning = false;
   private flipT = 0;
+  private inMud = false;
+  private squelchT = 0;
 
   constructor(ctx?: BaseAudioContext) {
     try { this.on = localStorage.getItem(PREF_KEY) !== 'off'; } catch { /* no storage */ }
@@ -315,7 +324,7 @@ export class Sound {
   /** A new track: its surface, rails and ambience. */
   setScene(b: Biome, snow: boolean) {
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
-    this.railSound = b.id === 'jungle' ? 'log' : 'metal';
+    this.railSound = b.id === 'jungle' || b.id === 'farm' ? 'log' : 'metal';
     this.snow = snow;
     // Start fresh: nothing the rider did on the last track should sound on this one.
     this.perched = false;
@@ -368,6 +377,15 @@ export class Sound {
         if (!r.manual) this.clack(t + 0.5 / speed, s.f * 0.94, s.q, g * 0.8);
       }
     }
+
+    // Mud: a splat as you hit it, then squelching under the wheels.
+    const mud = rolling && r.track.inMud(r.x);
+    if (mud && !this.inMud && speed > 2) this.splat(t, Math.min(1, speed / 10));
+    if (mud && speed > 1) {
+      this.squelchT += dt * (1.5 + speed * 0.35);
+      if (this.squelchT >= 1) { this.squelchT -= 1 + Math.random() * 0.4; this.squelch(t, Math.min(1, speed / 9)); }
+    } else this.squelchT = 0.5;
+    this.inMud = mud;
 
     // Pushing: a shoe scuffing the ground on each kick.
     if (active && r.pushing && r.grounded && !this.snow) {
@@ -526,6 +544,19 @@ export class Sound {
   }
 
   /** Two wheels and a truck hitting the ground together. */
+  /** Riding into mud: a wet slap. */
+  private splat(t: number, g: number) {
+    this.burst(t, { buf: this.brown, type: 'bandpass', f: 700, q: 1.2, gain: 0.9 * g, attack: 0.005, decay: 0.18, fEnd: 260 });
+    this.burst(t + 0.02, { buf: this.pink, type: 'bandpass', f: 2200, q: 1.5, gain: 0.25 * g, decay: 0.12, fEnd: 900 });
+  }
+
+  /** One squelch: a gloopy, falling, slightly bubbly suck. */
+  private squelch(t: number, g: number) {
+    const f = 380 + Math.random() * 220;
+    this.burst(t, { buf: this.brown, type: 'bandpass', f, q: 4, gain: 0.5 * g, attack: 0.01, decay: 0.12, fEnd: f * 0.55, pan: (Math.random() - 0.5) * 0.3 });
+    this.tone(t + 0.02, { f: f * 1.6, fEnd: f * 0.9, gain: 0.03 * g, decay: 0.07, glide: 0.06 });
+  }
+
   private wheels(t: number, g: number) {
     this.tone(t, { f: 340, fEnd: 120, gain: 0.55 * g, attack: 0.001, decay: 0.045 });
     this.burst(t, { type: 'bandpass', f: 650, q: 1.2, gain: 0.9 * g, attack: 0.001, decay: 0.05 });
@@ -827,6 +858,42 @@ export class Sound {
           for (let i = 0; i < 3; i++) this.tone(at + i * 0.07, { type: 'square', f: 170 + Math.random() * 30, gain: 0.03, decay: 0.04, lp: 700, to: out, pan: p });
         });
         if (night) every(0.4, 1.2, crickets);
+        break;
+      }
+      case 'farm': {
+        // Wind through the corn, birds, hens clucking and a cow now and then; owls at night.
+        bed(this.pink, { type: 'bandpass', f: 1500, q: 0.7 }, 0.06, 9, 0.8, 500);
+        bed(this.pink, { type: 'lowpass', f: 400, q: 0.7 }, 0.05, 13, 0.5);
+        const moo = (at: number) => {
+          const p = pan(), f0 = 120 + Math.random() * 30, len = 0.9 + Math.random() * 0.6;
+          this.tone(at, { type: 'sawtooth', f: f0, fEnd: f0 * 0.82, gain: 0.04, attack: 0.18, decay: len, glide: len, lp: 700, to: out, pan: p });
+          this.tone(at, { type: 'sawtooth', f: f0 * 2.01, fEnd: f0 * 1.6, gain: 0.012, attack: 0.2, decay: len * 0.8, glide: len, lp: 900, to: out, pan: p });
+        };
+        const cluck = (at: number) => {
+          const p = pan(), n = 3 + Math.floor(Math.random() * 4);
+          for (let i = 0; i < n; i++) {
+            const f = 520 + Math.random() * 160;
+            this.tone(at + i * 0.13 + Math.random() * 0.04, { type: 'square', f, fEnd: f * 0.8, gain: 0.012, decay: 0.05, glide: 0.04, lp: 1800, to: out, pan: p });
+          }
+        };
+        if (night) {
+          every(0.5, 1.5, crickets);
+          every(9, 20, (at) => {
+            const p = pan();
+            this.tone(at, { f: 390, fEnd: 360, gain: 0.03, attack: 0.04, decay: 0.35, glide: 0.3, to: out, pan: p });
+            this.tone(at + 0.55, { f: 380, fEnd: 330, gain: 0.025, attack: 0.04, decay: 0.6, glide: 0.5, to: out, pan: p });
+          });
+        } else {
+          every(2, 6, bird);
+          every(5, 12, cluck);
+          every(14, 32, moo);
+          if (b.mood === 'Morning' || b.mood === 'Morning mist') every(18, 35, (at) => {
+            // Cock-a-doodle-doo.
+            const p = pan();
+            [[520, 700, 0.14], [700, 760, 0.14], [760, 900, 0.18], [900, 620, 0.5]].forEach(([f0, f1, d], i) =>
+              this.tone(at + [0, 0.16, 0.32, 0.52][i], { type: 'sawtooth', f: f0, fEnd: f1, gain: 0.02, attack: 0.02, decay: d, glide: d, lp: 2200, to: out, pan: p }));
+          });
+        }
         break;
       }
       case 'volcano': {

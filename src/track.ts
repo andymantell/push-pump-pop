@@ -70,6 +70,12 @@ export interface Pad {
   x1: number;
 }
 
+/** A muddy stretch of ground, from x0 to x1: it drags you back, so pump through it. */
+export interface Mud {
+  x0: number;
+  x1: number;
+}
+
 export interface Prop {
   kind: PropKind;
   x: number;
@@ -93,8 +99,10 @@ export class Track {
   readonly loops: Loop[];
   readonly spots: Spot[];
   readonly pads: Pad[];
+  readonly mud: Mud[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = []) {
+    this.mud = mud;
     this.spots = spots;
     this.pads = pads;
     this.pits = pits;
@@ -140,6 +148,11 @@ export class Track {
     return null;
   }
 
+  inMud(x: number): boolean {
+    for (const m of this.mud) if (x >= m.x0 && x <= m.x1) return true;
+    return false;
+  }
+
   pitAt(x: number): Pit | null {
     for (const p of this.pits) if (x > p.x0 - 0.5 && x < p.x1 + 0.5) return p;
     return null;
@@ -169,6 +182,7 @@ export class TrackBuilder {
   loops: Loop[] = [];
   spots: Spot[] = [];
   pads: Pad[] = [];
+  mudPatches: Mud[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -235,6 +249,19 @@ export class TrackBuilder {
     this.ease(edge, height);
     this.pads.push({ x0: this.x, x1: this.x + len });
     return this.flat(len).ease(edge, -height);
+  }
+
+  /** A flat muddy patch `len` long. */
+  mud(len: number): this {
+    return this.muddy((b) => b.flat(len));
+  }
+
+  /** Whatever `fn` lays down is muddy, e.g. `muddy((b) => b.rollers(2, 14, 1))`. */
+  muddy(fn: (b: this) => void): this {
+    const x0 = this.x;
+    fn(this);
+    this.mudPatches.push({ x0, x1: this.x });
+    return this.spot('mud');
   }
 
   /** Near vertical drop (a lip edge). */
@@ -357,6 +384,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches);
   }
 }

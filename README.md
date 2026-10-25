@@ -76,7 +76,9 @@ it; Load backup picks it). Installed copies also ask `navigator.storage.persist(
 
 Keep rollers long (12 m or more) so there's time to tap on each downslope.
 
-The plan for all 70 tracks is `docs/level-plan.md`.
+Mud (`mud(len)`, or `muddy(fn)` around any pieces) drags you back while you roll through it, so pump the muddy dips.
+
+The plan for the first 70 tracks is `docs/level-plan.md`; World 2 (opens after Volcano 5) is planned in `docs/world-2-plan.md`. `art/props.html?names=a,b` shows a contact sheet of props from `props.glb`.
 
 ### Challenges and unlocking
 

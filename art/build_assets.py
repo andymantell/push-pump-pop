@@ -824,6 +824,7 @@ def build_props():
     build_desert(out)
     build_jungle(out)
     build_volcano(out)
+    build_farm(out)
     export(os.path.join(OUT, 'props.glb'), out)
 
 
@@ -1243,6 +1244,187 @@ def build_volcano(out):
     out.append(join('vent_rock', [
         cyl(basalt2, 0.9, 0.9, loc=(0, 0, 0.45), r2=0.4, verts=10, smooth=False),
         cyl(lava, 0.38, 0.05, loc=(0, 0, 0.9), verts=10),
+    ]))
+
+
+def build_farm(out):
+    straw = mat('straw', (232, 196, 108))
+    straw_dk = mat('straw_dark', (196, 156, 76))
+    twine = mat('twine', (160, 110, 60))
+    pumpkin_m = mat('pumpkin', (242, 128, 32))
+    pumpkin_dk = mat('pumpkin_dark', (214, 98, 22))
+    stem = mat('stem', (96, 120, 50))
+    bark = mat('bark', (122, 82, 50))
+    leaf = mat('leaf', (63, 154, 69))
+    leaf2 = mat('leaf_light', (92, 184, 84))
+    leaf3 = mat('leaf_dark', (48, 128, 62))
+    apple = mat('apple', (214, 40, 40))
+    corn_leaf = mat('corn_leaf', (110, 168, 60))
+    corn_leaf2 = mat('corn_leaf_dry', (176, 182, 80))
+    cob = mat('corn_cob', (250, 210, 70))
+    plaid = mat('plaid_shirt', (200, 60, 50))
+    denim = mat('denim', (60, 90, 150))
+    hat = mat('hat_straw', (210, 170, 90))
+    barn_red = mat('barn_red', (176, 48, 40))
+    wood = mat('fence_wood', (197, 139, 82))
+    wood_dk = mat('fence_wood_dark', (160, 108, 60))
+    white = mat('white', (245, 245, 245))
+    hen = mat('hen', (236, 230, 220))
+    comb = mat('comb', (220, 40, 40))
+    beak = mat('beak', (250, 180, 40))
+    steel = mat('churn_steel', (170, 178, 186))
+    petal = mat('sunflower', (255, 200, 30))
+    seed = mat('sunflower_seed', (90, 60, 30))
+    iron = mat('iron', (68, 68, 72))
+    water = mat('trough_water', (90, 150, 190))
+
+    # Round hay bale lying on its side, with the rolled spiral showing on the end.
+    hb = [cyl(straw, 0.75, 1.3, loc=(0, 0, 0.75), rot=(math.pi / 2, 0, 0), verts=20, bevel=0.06)]
+    for r in (0.55, 0.35, 0.15):
+        hb.append(cyl(straw_dk, r, 0.02, loc=(0, -0.66, 0.75), rot=(math.pi / 2, 0, 0), verts=20))
+        hb.append(cyl(straw, r - 0.08, 0.025, loc=(0, -0.665, 0.75), rot=(math.pi / 2, 0, 0), verts=20))
+    for y in (-0.35, 0.35):
+        hb.append(cyl(twine, 0.765, 0.04, loc=(0, y, 0.75), rot=(math.pi / 2, 0, 0), verts=20))
+    out.append(join('haybale', hb))
+
+    # Square straw bale, with two strings round it.
+    sb = [cube(straw, (1.0, 0.5, 0.45), loc=(0, 0, 0.225), bevel=0.04)]
+    for x in (-0.25, 0.25):
+        sb.append(cube(twine, (0.03, 0.52, 0.47), loc=(x, 0, 0.225)))
+    sb.append(cube(straw_dk, (0.9, 0.02, 0.35), loc=(0, -0.255, 0.225)))
+    out.append(join('strawbale', sb))
+
+    # Pumpkin: ribs as squashed spheres round a core, and a curly stem.
+    pk = []
+    for k in range(8):
+        a = k * 2 * math.pi / 8
+        pk.append(sphere(pumpkin_m if k % 2 else pumpkin_dk, 0.2, loc=(0.13 * math.cos(a), 0.13 * math.sin(a), 0.24), scale=(1, 0.75, 1.1), segs=14, rings=10))
+    pk.append(sphere(pumpkin_m, 0.24, loc=(0, 0, 0.25), scale=(1, 1, 0.95), segs=16, rings=10))
+    pk.append(cyl(stem, 0.035, 0.16, loc=(0.02, 0, 0.52), rot=(0, 0.3, 0), r2=0.025, verts=8))
+    pk.append(bend_strip(stem, 0.25, 0.12, 0.08, loc=(0.03, 0, 0.5), yaw=0.8, pitch=0.2))
+    out.append(join('pumpkin', pk))
+
+    # Scarecrow: post and crossbar, plaid shirt, straw head, floppy hat, straw at the cuffs.
+    sc = [
+        cyl(wood_dk, 0.05, 2.2, loc=(0, 0, 1.1), verts=8),
+        cyl(wood_dk, 0.04, 1.6, loc=(0, 0, 1.6), rot=(0, math.pi / 2, 0), verts=8),
+        cube(plaid, (0.5, 0.28, 0.6), loc=(0, 0, 1.35), bevel=0.06),
+        cube(plaid, (1.3, 0.2, 0.18), loc=(0, 0, 1.6), bevel=0.05),
+        cube(denim, (0.48, 0.27, 0.35), loc=(0, 0, 0.95), bevel=0.05),
+        sphere(straw, 0.2, loc=(0, 0, 1.92), scale=(1, 0.9, 1.1), segs=14, rings=10),
+        cyl(hat, 0.36, 0.03, loc=(0, 0, 2.08), verts=18),
+        cyl(hat, 0.17, 0.2, loc=(0, 0, 2.17), r2=0.13, verts=14),
+        cube(iron, (0.05, 0.02, 0.05), loc=(-0.07, -0.18, 1.95)),
+        cube(iron, (0.05, 0.02, 0.05), loc=(0.07, -0.18, 1.95)),
+        cube(iron, (0.14, 0.02, 0.03), loc=(0, -0.18, 1.85)),
+    ]
+    for x in (-0.72, 0.72):
+        for k in range(3):
+            sc.append(cyl(straw, 0.02, 0.22, loc=(x + (0.06 if x > 0 else -0.06), 0, 1.6 + (k - 1) * 0.05), rot=(0, (1 if x > 0 else -1) * (1.2 + k * 0.2), 0), verts=5))
+    out.append(join('scarecrow', sc))
+
+    # Maize: a clump of tall stalks with long drooping leaves and a cob or two.
+    cn = []
+    for i, (x, y, h) in enumerate([(0, 0, 2.3), (0.35, 0.15, 2.0), (-0.3, 0.2, 2.15), (0.1, -0.3, 1.9), (-0.15, -0.15, 2.4)]):
+        cn.append(cyl(corn_leaf, 0.07, h, loc=(x, y, h / 2), r2=0.035, verts=6))
+        for k in range(4):
+            z = h * (0.35 + k * 0.17)
+            cn.append(bend_strip(corn_leaf if (i + k) % 3 else corn_leaf2, 0.85, 0.3, 0.4, loc=(x, y, z), yaw=k * 2.3 + i, pitch=-0.4))
+        cn.append(capsule(mat('corn_tassel', (214, 170, 90)), 0.04, 0.02, 0.3, loc=(x, y, h + 0.25), segs=6))
+        if i % 2 == 0:
+            cn.append(capsule(cob, 0.045, 0.04, 0.22, loc=(x + 0.06, y, h * 0.62), segs=8))
+    out.append(join('corn', cn))
+
+    # Apple tree: short trunk, round crown dotted with apples.
+    at = [cyl(bark, 0.2, 1.6, loc=(0, 0, 0.8), r2=0.14, verts=10)]
+    at += [
+        cyl(bark, 0.08, 0.8, loc=(0.25, 0, 1.6), rot=(0, math.radians(45), 0), r2=0.04, verts=8),
+        cyl(bark, 0.07, 0.7, loc=(-0.22, 0.05, 1.7), rot=(0, math.radians(-40), 0), r2=0.035, verts=8),
+    ]
+    for i, (x, y, z, r, m) in enumerate([(0, 0, 2.3, 1.15, leaf), (0.75, -0.2, 2.1, 0.8, leaf2), (-0.75, 0.1, 2.15, 0.85, leaf3), (0.1, -0.3, 2.85, 0.75, leaf2)]):
+        at.append(ico(m, r, loc=(x, y, z), sub=2, jitter=0.22, seed=90 + i, smooth=True))
+    # Apples sit on the outside of the crown, mostly on the side facing the track.
+    import random
+    rnd = random.Random(7)
+    crowns = [(0, 0, 2.3, 1.15), (0.75, -0.2, 2.1, 0.8), (-0.75, 0.1, 2.15, 0.85), (0.1, -0.3, 2.85, 0.75)]
+    for k in range(18):
+        cx, cy, cz, cr = crowns[k % 4]
+        a = rnd.uniform(-math.pi * 0.95, -math.pi * 0.05)
+        e = rnd.uniform(-0.5, 0.7)
+        d = Vector((math.cos(a) * math.cos(e), math.sin(a) * math.cos(e), math.sin(e)))
+        at.append(sphere(apple, 0.11, loc=(cx + d.x * cr * 0.97, cy + d.y * cr * 0.97, cz + d.z * cr * 0.97), segs=10, rings=8))
+    out.append(join('appletree', at))
+
+    # Hen.
+    out.append(join('chicken', [
+        sphere(hen, 0.16, loc=(0, 0, 0.24), scale=(1.3, 0.9, 1), segs=12, rings=8),
+        sphere(hen, 0.09, loc=(0.17, 0, 0.4), segs=10, rings=8),
+        cyl(hen, 0.1, 0.18, loc=(-0.2, 0, 0.33), rot=(0, math.radians(-30), 0), r2=0.02, verts=8),
+        cube(comb, (0.06, 0.02, 0.07), loc=(0.18, 0, 0.5)),
+        cyl(beak, 0.03, 0.07, loc=(0.27, 0, 0.4), rot=(0, math.pi / 2, 0), r2=0.0, verts=6),
+        cube(comb, (0.03, 0.02, 0.05), loc=(0.24, 0, 0.34)),
+        cyl(beak, 0.012, 0.14, loc=(0.03, 0.05, 0.07), verts=5),
+        cyl(beak, 0.012, 0.14, loc=(0.03, -0.05, 0.07), verts=5),
+    ]))
+
+    # Milk churn.
+    out.append(join('milkchurn', [
+        cyl(steel, 0.2, 0.5, loc=(0, 0, 0.25), verts=16),
+        cyl(steel, 0.2, 0.15, loc=(0, 0, 0.57), r2=0.09, verts=16),
+        cyl(steel, 0.09, 0.12, loc=(0, 0, 0.7), verts=14),
+        cyl(steel, 0.12, 0.04, loc=(0, 0, 0.77), verts=14),
+        cyl(iron, 0.205, 0.03, loc=(0, 0, 0.12), verts=16),
+        cyl(iron, 0.205, 0.03, loc=(0, 0, 0.42), verts=16),
+    ]))
+
+    # Sunflower: tall stem, two leaves, a big face looking towards the track.
+    sf = [cyl(stem, 0.03, 1.9, loc=(0, 0, 0.95), verts=6)]
+    sf.append(bend_strip(leaf, 0.35, 0.18, 0.1, loc=(0, 0, 0.8), yaw=0.3, pitch=-0.3))
+    sf.append(bend_strip(leaf2, 0.35, 0.18, 0.1, loc=(0, 0, 1.2), yaw=3.4, pitch=-0.3))
+    # The face looks out towards the track (-Y).
+    sf.append(cyl(seed, 0.17, 0.08, loc=(0, -0.05, 1.98), rot=(math.pi / 2, 0, 0), verts=18))
+    for k in range(14):
+        a = k * 2 * math.pi / 14
+        sf.append(cube(petal, (0.1, 0.03, 0.2), loc=(0.27 * math.cos(a), -0.03, 1.98 + 0.27 * math.sin(a)), rot=(0, math.pi / 2 - a, 0)))
+    out.append(join('sunflower', sf))
+
+    # Farm fence: one 2.4 m bay, a post on the left, three rails.
+    ff = [cube(wood_dk, (0.14, 0.14, 1.15), loc=(-1.2, 0, 0.57), bevel=0.015)]
+    for z in (0.3, 0.62, 0.94):
+        ff.append(cube(wood, (2.4, 0.05, 0.12), loc=(0, 0.05, z), bevel=0.012))
+    out.append(join('farmfence', ff))
+
+    # Hay cart: a wooden bed on two big wheels, piled with hay.
+    ct = [
+        cube(wood, (2.2, 1.1, 0.12), loc=(0, 0, 0.8), bevel=0.02),
+        cube(wood_dk, (2.2, 0.06, 0.35), loc=(0, -0.55, 1.0), bevel=0.01),
+        cube(wood_dk, (2.2, 0.06, 0.35), loc=(0, 0.55, 1.0), bevel=0.01),
+        cube(wood_dk, (0.06, 1.1, 0.35), loc=(-1.1, 0, 1.0), bevel=0.01),
+        cube(wood_dk, (1.4, 0.07, 0.07), loc=(1.75, 0, 0.6), rot=(0, math.radians(18), 0)),
+        ico(straw, 0.75, loc=(0, 0, 1.15), scale=(1.4, 0.7, 0.55), sub=2, jitter=0.25, seed=95, smooth=True),
+    ]
+    for y in (-0.62, 0.62):
+        ct.append(cyl(wood_dk, 0.55, 0.08, loc=(0.1, y, 0.55), rot=(math.pi / 2, 0, 0), verts=18))
+        ct.append(cyl(wood, 0.45, 0.09, loc=(0.1, y, 0.55), rot=(math.pi / 2, 0, 0), verts=18))
+        for k in range(4):
+            ct.append(cube(wood_dk, (0.9, 0.1, 0.05), loc=(0.1, y, 0.55), rot=(0, k * math.pi / 4, 0)))
+    out.append(join('cart', ct))
+
+    # Water trough.
+    out.append(join('trough', [
+        cube(steel, (1.6, 0.6, 0.5), loc=(0, 0, 0.35), bevel=0.04),
+        cube(water, (1.5, 0.5, 0.02), loc=(0, 0, 0.6)),
+        cube(wood_dk, (0.1, 0.5, 0.1), loc=(-0.6, 0, 0.05)),
+        cube(wood_dk, (0.1, 0.5, 0.1), loc=(0.6, 0, 0.05)),
+    ]))
+
+    # Barn-red gate post with a little lantern, every so often along the track.
+    out.append(join('farmpost', [
+        cube(wood_dk, (0.18, 0.18, 1.8), loc=(0, 0, 0.9), bevel=0.02),
+        cube(barn_red, (0.24, 0.24, 0.06), loc=(0, 0, 1.83), bevel=0.01),
+        cube(iron, (0.03, 0.35, 0.03), loc=(0, -0.17, 1.65)),
+        cube(iron, (0.16, 0.16, 0.22), loc=(0, -0.35, 1.5), bevel=0.02),
+        cube(mat('lamp_light', (255, 243, 176)), (0.11, 0.11, 0.15), loc=(0, -0.35, 1.5)),
     ]))
 
 
