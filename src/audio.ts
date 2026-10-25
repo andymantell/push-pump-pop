@@ -134,6 +134,8 @@ export class Sound {
   private grindRail: Rail | null = null;
   private grindStyle = '';
   private pushT = 0;
+  /** Rolling ducks for a moment after a landing so the wheels hitting the ground punch through. */
+  private duckUntil = 0;
   private snow = false;
   private cur: Trick | null = null;
   private spinning = false;
@@ -185,8 +187,8 @@ export class Sound {
     this.ctx = ctx;
     const comp = ctx.createDynamicsCompressor();
     // Gentle on the mix, firm on the peaks, so a big crash never clips.
-    comp.threshold.value = -12;
-    comp.knee.value = 6;
+    comp.threshold.value = -8;
+    comp.knee.value = 4;
     comp.ratio.value = 12;
     comp.attack.value = 0.003;
     comp.connect(ctx.destination);
@@ -346,9 +348,10 @@ export class Sound {
 
     // Rolling: on the ground (or round a loop), louder and brighter the faster you go.
     const rolling = active && (r.grounded || !!r.loop) && !r.grind && !r.bailing && !r.perched && r.dropT < 0 && !r.falling;
-    const lvl = rolling ? Math.pow(Math.min(1, speed / 9), 0.8) * (r.manual ? 0.6 : 1) * 0.55 : 0;
+    const duck = t < this.duckUntil ? 0.3 : 1;
+    const lvl = rolling ? Math.pow(Math.min(1, speed / 9), 0.8) * (r.manual ? 0.6 : 1) * 0.22 * duck : 0;
     const roll = this.roll!;
-    roll.gain.gain.setTargetAtTime(lvl, t, lvl > 0 ? 0.03 : 0.015);
+    roll.gain.gain.setTargetAtTime(lvl, t, lvl > 0 ? (duck < 1 ? 0.01 : 0.07) : 0.015);
     roll.rumble.frequency.setTargetAtTime(p.rumble.f + p.rumble.fSpeed * speed, t, 0.1);
     roll.hiss.frequency.setTargetAtTime(p.hiss.f + p.hiss.fSpeed * speed, t, 0.1);
     roll.gritSrc.playbackRate.setTargetAtTime(0.3 + speed / 10, t, 0.1);
@@ -359,7 +362,7 @@ export class Sound {
       if (this.dist >= this.nextSeam) {
         const s = p.seam;
         this.nextSeam = this.dist + s.every * (1 + (Math.random() * 2 - 1) * s.jitter);
-        const g = s.gain * Math.min(1, speed / 8) * (r.manual ? 0.5 : 1);
+        const g = s.gain * 0.6 * Math.min(1, speed / 8) * (r.manual ? 0.5 : 1);
         this.clack(t, s.f, s.q, g);
         if (!r.manual) this.clack(t + 0.5 / speed, s.f * 0.94, s.q, g * 0.8);
       }
@@ -510,13 +513,23 @@ export class Sound {
     const t = this.ctx!.currentTime;
     const p = GROUNDS[this.ground];
     const s = Math.min(1, 0.3 + airTime * 0.6);
+    this.duckUntil = t + 0.1 + s * 0.08;
     this.burst(t, { type: p.land.type, f: p.land.f, q: p.land.q, gain: p.land.gain * s * 0.8, decay: p.land.decay * (0.7 + s * 0.5) });
     this.tone(t, { f: 95, fEnd: 40, gain: p.land.thump * s * 0.7, decay: 0.15 + s * 0.1 });
     if (!this.snow) {
-      // Front and back wheels.
-      this.clack(t, 1300, 1.5, 0.4 * s);
-      this.clack(t + 0.025, 1200, 1.5, 0.3 * s);
+      // Back wheels, then front: each a punchy smack of urethane and a ring from the trucks.
+      for (const [dt, g] of [[0, 1], [0.035, 0.8]]) this.wheels(t + dt, g * s);
+      // A big landing rattles the trucks.
+      if (s > 0.6) for (let i = 0; i < 3; i++) this.clack(t + 0.07 + i * 0.03 + Math.random() * 0.02, 2200 + Math.random() * 1200, 4, 0.12 * s / (1 + i));
     } else this.burst(t, { buf: this.crackle, type: 'bandpass', f: 4500, q: 0.8, gain: 0.8 * s, decay: 0.2 });
+  }
+
+  /** Two wheels and a truck hitting the ground together. */
+  private wheels(t: number, g: number) {
+    this.tone(t, { f: 340, fEnd: 120, gain: 0.55 * g, attack: 0.001, decay: 0.045 });
+    this.burst(t, { type: 'bandpass', f: 650, q: 1.2, gain: 0.9 * g, attack: 0.001, decay: 0.05 });
+    this.burst(t, { type: 'bandpass', f: 1600, q: 2, gain: 0.45 * g, attack: 0.001, decay: 0.02 });
+    for (const f of [1950, 2780, 3640]) this.tone(t, { f: f * (0.97 + Math.random() * 0.06), gain: 0.05 * g, attack: 0.001, decay: 0.08 });
   }
 
   private lockOn(t: number, rail: Rail) {
