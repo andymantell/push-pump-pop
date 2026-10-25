@@ -6,7 +6,7 @@ import { TrackDef, layout, pipe } from './common';
 
 /** A small jump: kicker, then a landing long enough to come down on at any speed. */
 function hop(b: TrackBuilder, h: number, len = 4) {
-  return b.kicker(len, h).land(25);
+  return b.kicker(len, h).flat(2.5).land(25);
 }
 
 export const PARK: TrackDef[] = [
@@ -75,10 +75,10 @@ export const PARK: TrackDef[] = [
       b.sign('SWIPE AND HOLD ON THE LEFT: GRAB').flat(6);
       // Big kickers onto long downhill landings: long airs, so holding a grab is easy.
       for (const h of [1.6, 1.7, 1.8, 1.8, 1.9]) {
-        b.kicker(5, h).land(24).flat(6).rollers(1, 14, 0.9).flat(5);
+        b.kicker(5, h).flat(2).land(24).flat(6).rollers(1, 14, 0.9).flat(5);
       }
       b.sign('LET GO BEFORE YOU LAND!').flat(4);
-      b.kicker(5, 1.9).land(24, 3.3).flat(8);
+      b.kicker(5, 1.9).flat(4).land(24, 3.3).flat(8);
       b.ease(10, -1.5).flat(10);
     }),
   },
@@ -94,15 +94,15 @@ export const PARK: TrackDef[] = [
       b.sign('SWIPE ALONG THE BOTTOM: SPIN').flat(6);
       // Each kicker comes off a little drop-in, for a big air to spin in.
       for (const h of [1.5, 1.6, 1.7, 1.7, 1.8, 1.8]) {
-        b.ease(8, -1.5).flat(3).kicker(5, h).land(33).flat(6).rollers(1, 14, 0.9).flat(4);
+        b.ease(8, -1.5).flat(3).kicker(5, h).flat(4).land(33).flat(6).rollers(1, 14, 0.9).flat(4);
       }
       b.sign('BIG AIR: SWIPE FURTHER FOR 360').ease(12, -3).flat(3);
-      b.kicker(5.5, 2.1).spot('bigair').land(32, 4.5).flat(8);
+      b.kicker(5.5, 2.1).spot('bigair').flat(4).land(32, 4.5).flat(8);
       b.ease(10, -1.5).flat(10);
     }),
   },
   {
-    id: 'park-6', biome: 'park', name: 'Wheelie Way', difficulty: 3, par: 13000,
+    id: 'park-6', biome: 'park', name: 'Wheelie Way', difficulty: 3, par: 7500,
     challenges: [
       { text: 'Manual for 1 second', kind: 'manual', seconds: 1 },
       { text: 'Nose manual for 1 second', kind: 'manual', seconds: 1, name: 'Nose Manual' },
@@ -121,7 +121,7 @@ export const PARK: TrackDef[] = [
     }),
   },
   {
-    id: 'park-7', biome: 'park', name: 'Mind the Gap', difficulty: 3, par: 15000,
+    id: 'park-7', biome: 'park', name: 'Mind the Gap', difficulty: 3, par: 14500,
     challenges: [
       { text: 'Clear a gap', kind: 'gaps', count: 1 },
       { text: 'Clear every gap', kind: 'gaps' },
@@ -139,7 +139,7 @@ export const PARK: TrackDef[] = [
     }),
   },
   {
-    id: 'park-8', biome: 'park', name: 'Rail Ride', difficulty: 3, par: 25000,
+    id: 'park-8', biome: 'park', name: 'Rail Ride', difficulty: 3, par: 20500,
     challenges: [
       { text: 'Grind a rail', kind: 'grind' },
       { text: 'Grind both flat rails', kind: 'grind', rails: [0, 1] },
@@ -160,7 +160,7 @@ export const PARK: TrackDef[] = [
     }),
   },
   {
-    id: 'park-9', biome: 'park', name: 'Combo Park', difficulty: 4, par: 29500,
+    id: 'park-9', biome: 'park', name: 'Combo Park', difficulty: 4, par: 27000,
     challenges: [
       { text: 'Land a 2-trick combo', kind: 'combo', tricks: 2 },
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
@@ -174,7 +174,7 @@ export const PARK: TrackDef[] = [
         hop(b, h).flat(3).pad(7).flat(3);
         hop(b, h + 0.1).flat(8).rollers(2, 14, 1.0).flat(6);
       }
-      b.ease(8, -1.5).flat(3).kicker(5, 1.8).land(28, 3.4).flat(8);
+      b.ease(8, -1.5).flat(3).kicker(5, 1.8).flat(4).land(28, 3.4).flat(8);
       b.ease(10, -1.5).flat(10);
     }),
   },
@@ -189,19 +189,19 @@ export const PARK: TrackDef[] = [
     build: layout(4, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(10, -4).flat(8);
       b.rollers(3, 13, 0.98).flat(5);
-      b.kicker(4, 1.3).land(31).flat(6);
+      b.kicker(4, 1.3).flat(4).land(31).flat(6);
       b.rollers(2, 12, 1.26).flat(4);
-      b.sign('GAP!').flat(6).kicker(4, 1.4).pit(3, -1.4).land(22).flat(6);
+      b.sign('GAP!').flat(6).kicker(4, 1.4).pit(4.5, -1.4).land(22).flat(6);
       b.rollers(2, 12, 0.84).ease(10, -2).rollers(2, 14, 1.12).flat(4);
-      b.sign('GAP!').flat(6).kicker(4.5, 1.6).pit(3.5, -1.6).land(27).flat(6);
-      b.rollers(2, 12, 0.98).kicker(4, 1.8).land(28).flat(6).rollers(2, 12, 0.7).flat(3);
+      b.sign('GAP!').flat(6).kicker(4.5, 1.6).pit(4.1, -1.6).land(27).flat(6);
+      b.rollers(2, 12, 0.98).kicker(4, 1.8).flat(4).land(28).flat(6).rollers(2, 12, 0.7).flat(3);
       b.sign('DROP').drop(-0.3).ease(7, -2.3).flat(6);
-      b.kicker(3.5, 1.2).land(33).flat(3);
+      b.kicker(3.5, 1.2).flat(4).land(33).flat(3);
       b.sign('OLLIE ON: GRIND').flat(6).rail(8, 0.5).flat(6);
-      b.sign('BIG GAP!').flat(3).ease(10, -2.5).flat(4).kicker(5, 1.7).pit(4, -1.7).land(26).flat(6);
+      b.sign('BIG GAP!').flat(3).ease(10, -0.5).flat(4).kicker(5, 1.7).pit(7, -1.7).land(26).flat(6);
       b.rollers(3, 12, 1.05).flat(5);
       b.sign('STAIRS').flat(5).stairs(5).flat(8);
-      b.sign('BIG AIR').ease(14, -5).flat(3).kicker(5, 1.9, 2.3).spot('bigair').land(36, 5).flat(8);
+      b.sign('BIG AIR').ease(14, -5).flat(3).kicker(5, 1.9, 2.3).spot('bigair').flat(4).land(36, 5).flat(8);
     }),
   },
   {

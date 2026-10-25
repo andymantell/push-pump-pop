@@ -209,8 +209,10 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       else if (airTime > 0.7) score.addBonus('Air', Math.round(airTime * 120));
       if (smooth) score.addBonus('Smooth', 75);
       const up = track.slope(r.x) * (Math.sign(r.v) || 1);
-      // Only airs that left from a crest or an edge, not up a kicker or ramp.
-      if (!isPipe && !r.ollied && takeoffSlope < 0.15 && airTime > 0.3 && up > DIP_LAUNCH_SLOPE) res.dipLaunches.push(+r.x.toFixed(1));
+      // Only airs that left from a crest or an edge, not up a kicker or ramp. Just clearing
+      // a gap lands on the top of its far wall, which isn't a dip.
+      const onWall = track.pits.some((p) => Math.abs(r.x - p.x1) < 0.5);
+      if (!isPipe && !r.ollied && !onWall && takeoffSlope < 0.15 && airTime > 0.3 && up > DIP_LAUNCH_SLOPE) res.dipLaunches.push(+r.x.toFixed(1));
     },
     bail() { if (TRACE) console.log(`  t=${t.toFixed(1)} x=${r.x.toFixed(1)} BAIL was: ${prevState}`); if (alive()) chal.bail(); score.lose(); res.bails++; res.livesLost++; },
     // On a mega ramp a fall ends the drop, with no life to lose.

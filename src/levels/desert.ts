@@ -16,16 +16,16 @@ export const DESERT: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(10, -4).flat(6);
       b.sign('PUMP OUT').valley(24, 3).flat(4);
       b.rollers(2, 13, 1.26).flat(3);
-      b.kicker(4, 1.3).land(27).flat(4);
+      b.kicker(4, 1.3).flat(4).land(27).flat(4);
       b.valley(27, 4).flat(3);
       b.rollers(3, 12, 1.12).flat(3);
       b.flat(5).ledge(8).flat(5);
-      b.kicker(4, 1.5).land(22).flat(4);
+      b.kicker(4, 1.5).flat(3).land(22).flat(4);
       b.sign('DEEP GULLY').valley(30, 5).flat(4);
       b.flat(5).stairs(6).flat(8);
       b.rollers(2, 13, 1.4).flat(4);
       b.valley(24, 3).flat(4);
-      b.sign('BIG AIR').ease(8, -2).kicker(5, 2.0).land(32).flat(6);
+      b.sign('BIG AIR').ease(8, -2).kicker(5, 2.0).flat(4).land(32).flat(6);
     }),
   },
   {
@@ -49,11 +49,11 @@ export const DESERT: TrackDef[] = [
     }),
   },
   {
-    id: 'desert-3', biome: 'desert', name: 'Cactus Coulee', difficulty: 5, par: 36000,
+    id: 'desert-3', biome: 'desert', name: 'Cactus Coulee', difficulty: 5, par: 33500,
     challenges: [
       { text: 'Ollie off a gully kicker', kind: 'trick', match: 'Ollie', from: 'kicker' },
       { text: 'Flip + grab combo', kind: 'combo', include: ['flip', 'grab'] },
-      { text: 'Score 36,000', kind: 'score', points: 36000 },
+      { text: 'Score 33,500', kind: 'score', points: 33500 },
     ],
     // Pump out of each gully straight into a kicker.
     build: layout(6, 5, (b) => {
@@ -62,8 +62,8 @@ export const DESERT: TrackDef[] = [
         if (i === 0) b.sign('PUMP OUT, THEN OLLIE');
         if (i === 2) b.sign('FLIP, THEN GRAB');
         b.valley(27, 4).flat(3);
-        b.kicker(4, 1.4).land(18).flat(4);
-        b.kicker(4, 1.4).land(18).flat(6);
+        b.kicker(4, 1.4).flat(3).land(18).flat(4);
+        b.kicker(4, 1.4).flat(4).land(18).flat(6);
       }
       b.ease(10, -2).flat(10);
     }),
@@ -102,7 +102,7 @@ export const DESERT: TrackDef[] = [
       for (let i = 0; i < 4; i++) {
         if (i === 0) b.sign('OLLIE ONTO THE RAIL');
         b.flat(10).bridge(24 + i * 2, 3 + (i % 2)).flat(6);
-        b.kicker(4, 1.3).land(18).flat(4);
+        b.kicker(4, 1.3).flat(3).land(18).flat(4);
         b.rollers(2, 13, 1.26).flat(4);
       }
       b.ease(10, -2).flat(10);
@@ -124,7 +124,7 @@ export const DESERT: TrackDef[] = [
       b.valley(34, 6).flat(6);
       b.rollers(2, 13, 1.26).flat(4);
       b.sign('POP OFF THE TOP').valley(34, 6).spot('lastlip').flat(8);
-      b.kicker(4.5, 1.6).land(18).flat(6);
+      b.kicker(4.5, 1.6).flat(1.5).land(18).flat(6);
       b.ease(10, -2).flat(10);
     }),
   },
@@ -140,12 +140,12 @@ export const DESERT: TrackDef[] = [
       b.flat(8).sign('DROP IN').ease(10, -4).flat(6);
       b.valley(24, 3).flat(2).rollers(2, 12, 1.0).flat(2).valley(30, 5).flat(4);
       b.rollers(3, 15, 1.4).flat(4);
-      b.sign('GAP!').kicker(4.5, 1.4).pit(3.5, -1.0).land(18).flat(6);
-      b.sign('KEEP IT GOING!').kicker(4, 1.3).land(18).flat(2).kicker(4, 1.4).land(18).flat(2).kicker(4, 1.5).land(18).flat(6);
+      b.sign('GAP!').kicker(4.5, 1.4).pit(4.1, -1.0).land(18).flat(6);
+      b.sign('KEEP IT GOING!').kicker(4, 1.3).flat(4).land(18).flat(2).kicker(4, 1.4).flat(4).land(18).flat(2).kicker(4, 1.5).flat(4).land(18).flat(6);
       b.valley(27, 4).flat(2).rollers(2, 14, 1.2).flat(2).valley(24, 3).flat(4);
       b.rollers(2, 13, 1.26).flat(4);
       b.sign('GAP!').kicker(4.5, 1.5).pit(4, -1.0).land(22).flat(6);
-      b.kicker(4, 1.3).land(22).flat(2).kicker(4, 1.4).land(18).flat(6);
+      b.kicker(4, 1.3).flat(4).land(22).flat(2).kicker(4, 1.4).flat(4).land(18).flat(6);
       b.ease(10, -2).flat(10);
     }),
   },
@@ -163,7 +163,7 @@ export const DESERT: TrackDef[] = [
       b.valley(27, 4).flat(4);
       b.sign('PUMP FOR SPEED').valley(30, 5).flat(4);
       b.sign('LOOP!').ease(14, -4).flat(4).loop(2.4).flat(4);
-      b.sign('FLIP OFF THE KICKER').kicker(4, 1.4).land(26).flat(6);
+      b.sign('FLIP OFF THE KICKER').kicker(4, 1.4).flat(4).land(26).flat(6);
       b.rollers(3, 13, 1.26).flat(4);
       b.valley(27, 4).flat(4);
       b.ease(10, -2).flat(10);
@@ -180,26 +180,26 @@ export const DESERT: TrackDef[] = [
     build: layout(16, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(10, -4).flat(6);
       b.valley(27, 4).flat(4);
-      b.sign('GAP!').kicker(4.5, 1.4).pit(3.5, -1.0).land(18).flat(6);
+      b.sign('GAP!').kicker(4.5, 1.4).pit(3.8, -1.0).land(18).flat(6);
       b.rollers(2, 13, 1.26).flat(4);
       b.sign('LOOP!').ease(14, -4).flat(4).loop(2.4).flat(4);
-      b.flat(4).kicker(4, 1.4).land(25).flat(6).kicker(4, 1.4).land(18).flat(8);
+      b.flat(4).kicker(4, 1.4).flat(1.5).land(25).flat(3).kicker(4, 1.4).flat(4).land(18).flat(8);
       b.valley(30, 5).flat(4);
       b.sign('GAP!').kicker(4.5, 1.5).pit(4, -1.0).land(18).flat(6);
       b.rollers(2, 13, 1.26).flat(4);
       b.sign('LOOP!').ease(14, -4).flat(4).loop(2.4).flat(4);
-      b.flat(4).kicker(4, 1.4).land(25).flat(6).kicker(4, 1.4).land(18).flat(8);
+      b.flat(4).kicker(4, 1.4).flat(1.5).land(25).flat(3).kicker(4, 1.4).flat(4).land(18).flat(8);
       b.valley(27, 4).flat(4);
       b.sign('GAP!').ease(8, -1.5).kicker(4.5, 1.6).pit(4.5, -1.2).land(22).flat(6);
       b.ease(10, -2).flat(10);
     }),
   },
   {
-    id: 'desert-10', biome: 'desert', name: 'Grand Gully', difficulty: 8, par: 45000,
+    id: 'desert-10', biome: 'desert', name: 'Grand Gully', difficulty: 8, par: 30000,
     challenges: [
       { text: 'Clear the final gap', kind: 'gaps', which: [-1] },
       { text: 'Loop + 2 tricks combo', kind: 'combo', include: ['loop'], tricks: 3 },
-      { text: 'Score 45,000', kind: 'score', points: 45000 },
+      { text: 'Score 30,000', kind: 'score', points: 30000 },
     ],
     // The deepest gully of all, a loop straight out of it, and a big last gap.
     build: layout(18, 5, (b) => {
@@ -212,18 +212,18 @@ export const DESERT: TrackDef[] = [
       b.ease(12, -2).flat(4);
       b.sign('GRAND GULLY: 7 METRES!').valley(40, 7).flat(4);
       b.sign('LOOP!').ease(16, -5).flat(4).loop(2.4).flat(4);
-      b.flat(4).kicker(4, 1.4).land(25).flat(6).kicker(4, 1.4).land(18).flat(8);
+      b.flat(4).kicker(4, 1.4).flat(1.5).land(25).flat(3).kicker(4, 1.4).flat(4).land(18).flat(8);
       b.valley(30, 5).flat(4);
       b.rollers(2, 13, 1.26).flat(4);
-      b.sign('FINAL GAP').ease(10, -3).kicker(5, 2.0).pit(6, -2).land(26).flat(10);
+      b.sign('FINAL GAP').ease(10, -1).kicker(5, 2.0).pit(7, -2).land(26).flat(10);
     }),
   },
   {
-    id: 'desert-mega', biome: 'desert', name: 'Canyon Mega Ramp', kind: 'mega', par: 16000,
+    id: 'desert-mega', biome: 'desert', name: 'Canyon Mega Ramp', kind: 'mega', par: 15500,
     challenges: [
       { text: 'Clear the gap on all 3 drops', kind: 'drops', count: 3 },
       { text: 'A trick on both airs of one drop', kind: 'bothAirs' },
-      { text: 'Score 16,000', kind: 'score', points: 16000 },
+      { text: 'Score 15,500', kind: 'score', points: 15500 },
     ],
     build: mega(18, 12, 6),
   },

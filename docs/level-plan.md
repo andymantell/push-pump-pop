@@ -262,7 +262,7 @@ optional challenge at least once in 24 runs. Park 1 to 6 required challenges: at
 | 5 | Lava Tube | ★ Ride the lava tube loop | ★ Loop + spin combo | Score 32,000 |
 | 6 | Caldera Rim | ★ Climb out of every crater first time | ★ Flip over lava from a crater lip | Finish without losing a life |
 | 7 | Fire Rhythm | ★ Clear every gap | ★ A trick over every lava gap | Score 40,000 |
-| 8 | Eruption Run | ★ Clear every uphill gap | ★ 360 over the 6 m gap | Combo worth 20,000 |
+| 8 | Eruption Run | ★ Clear every uphill gap | ★ 360 over the 7 m gap | Combo worth 20,000 |
 | 9 | Pyroclastic Dash | ★ Ride both loops | ★ Land an 8-trick combo | Finish without losing a life |
 | 10 | Into the Crater | ★ Clear the crater gap | ★ Backflip and grab in the same air over the crater gap | Score 60,000 with no lives lost |
 
@@ -363,7 +363,7 @@ and rails.
 | 7 | rooftops-7 | Scaffold Scramble | 480 | 5 | uphill landings (+0.5 m) | gaps | Drops down onto scaffolding then gaps up onto the next roof. | 25,000 |
 | 8 | rooftops-8 | Billboard Blast | 520 | 6 | long gaps (5-6 m) | big airs | Big kickers built on billboards over wide streets. | 27,000 |
 | 9 | rooftops-9 | Skyline Sprint | 560 | 6 | gaps in a row | rhythm | Gap, one roller, gap, one roller, gap: four of these sets. | 29,000 |
-| 10 | rooftops-10 | Penthouse Plunge | 640 | 7 | - | everything | Start at the top of a tower, drop down stairs and rails, finish with a 6 m gap to a lower roof. | 34,000 |
+| 10 | rooftops-10 | Penthouse Plunge | 640 | 7 | - | everything | Start at the top of a tower, drop down stairs and rails, finish with a 7 m gap to a lower roof. | 34,000 |
 
 Bonus: **Skyscraper Mega Ramp** (`rooftops-mega`, replaces Rooftop Halfpipe).
 
