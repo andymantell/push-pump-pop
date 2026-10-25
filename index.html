@@ -44,7 +44,7 @@
     <button id="play">TAP TO PLAY</button>
     <button id="guidebtn" class="small">TRICK GUIDE</button>
     <button id="soundbtn" class="small alt">SOUND: ON</button>
-    <button id="movebtn" class="small alt">MOVE MY STARS</button>
+    <button id="movebtn" class="small alt">MY STARS</button>
   </div>
   <div id="guide" class="panel hidden">
     <h2>TRICK GUIDE</h2>
@@ -70,14 +70,21 @@
     <button id="guideback" class="small">BACK</button>
   </div>
   <div id="move" class="panel hidden">
-    <h2>MOVE MY STARS</h2>
+    <h2>MY STARS</h2>
     <div class="howto">
-      <p>Played in <b>Safari</b> and the <b>home screen app</b>? They keep their stars apart.</p>
-      <p>1. Where your stars are, tap <b>COPY</b>.<br />2. In the other one, tap <b>PASTE</b>.</p>
+      <p><b>Keep them safe:</b> save a backup to Files, iCloud Drive or Google Drive. Load it to get them back.</p>
     </div>
     <div class="buttons">
-      <button id="movecopy">COPY MY STARS</button>
-      <button id="movepaste">PASTE MY STARS</button>
+      <button id="movesave">SAVE BACKUP</button>
+      <button id="moveload">LOAD BACKUP</button>
+    </div>
+    <input id="movefile" type="file" accept=".txt,text/plain" hidden />
+    <div class="howto">
+      <p>Played in <b>Safari</b> and the <b>home screen app</b>? They keep their stars apart. Tap <b>COPY</b> where your stars are, then <b>PASTE</b> in the other one.</p>
+    </div>
+    <div class="buttons">
+      <button id="movecopy" class="alt">COPY MY STARS</button>
+      <button id="movepaste" class="alt">PASTE MY STARS</button>
     </div>
     <textarea id="movecode" class="hidden" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
     <p id="movemsg"></p>

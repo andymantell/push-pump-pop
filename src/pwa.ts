@@ -9,3 +9,14 @@ export function registerOffline() {
   if (document.readyState === 'complete') go();
   else addEventListener('load', go);
 }
+
+/**
+ * Asks the browser not to clear saved progress on its own. Safari and Chrome
+ * mostly grant this to installed home screen apps, so only ask there (other
+ * browsers may pop up a question).
+ */
+export function keepSaves() {
+  const installed = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches
+    || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  if (installed) navigator.storage?.persist?.().catch(() => { /* best effort */ });
+}

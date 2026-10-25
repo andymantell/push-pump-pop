@@ -17,7 +17,7 @@ import { BIOMES, BIOME_ORDER } from './biomes';
 import { biomeFor } from './moods';
 import { Track } from './track';
 import { watchForUpdates } from './version';
-import { registerOffline } from './pwa';
+import { registerOffline, keepSaves } from './pwa';
 import { exportCode, importCode, hasProgress } from './transfer';
 import { Replays, Player, Clip, HudSnap, MAX_CLIPS } from './replay';
 import { Sound } from './audio';
@@ -471,6 +471,7 @@ window.addEventListener('keydown', (e) => {
 
 watchForUpdates(() => state === 'playing' || replayFrom === 'playing', openSelect);
 registerOffline();
+keepSaves();
 
 // Camera follows from the side, pulling back and looking ahead with speed.
 const camPos = new THREE.Vector3(track.startX + 3, track.height(track.startX) + 2, 12);
@@ -648,9 +649,10 @@ requestAnimationFrame(frame);
 };
 
 /**
- * Move my stars: Safari and the iPad home screen app keep separate storage, so
- * progress travels as a code on the clipboard (or typed into the box if the
- * clipboard won't play).
+ * My stars: backups to a file (Files, iCloud Drive, Google Drive), and moving
+ * progress between Safari and the iPad home screen app, which keep separate
+ * storage, as a code on the clipboard (or typed into the box if the clipboard
+ * won't play).
  */
 function setupMove() {
   let store: Storage | null = null;
@@ -674,6 +676,35 @@ function setupMove() {
     setTimeout(() => location.reload(), 1500);
     return true;
   };
+  $('movesave').addEventListener('click', async () => {
+    if (!store) { say('This browser can\u2019t save stars.'); return; }
+    const day = new Date().toISOString().slice(0, 10);
+    const file = new File([`Push Pump Pop stars backup, ${day}. Load it with LOAD BACKUP on the MY STARS screen.\n${exportCode(store)}\n`],
+      `push-pump-pop-stars-${day}.txt`, { type: 'text/plain' });
+    // The share sheet has Save to Files on the iPad and Drive on Android; elsewhere, download it.
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        say('Saved! Keep that file safe.');
+      } catch (e) {
+        if ((e as Error).name !== 'AbortError') say('Couldn\u2019t save the backup. Try again?');
+      }
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    say('Saved to your downloads! Keep that file safe.');
+  });
+  const picker = $('movefile') as HTMLInputElement;
+  $('moveload').addEventListener('click', () => { picker.value = ''; picker.click(); });
+  picker.addEventListener('change', async () => {
+    const f = picker.files?.[0];
+    if (!f) return;
+    if (!take(await f.text())) say('Hmm, that file isn\u2019t a stars backup.');
+  });
   $('movecopy').addEventListener('click', async () => {
     if (!store) { say('This browser can\u2019t save stars.'); return; }
     const code = exportCode(store);

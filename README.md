@@ -64,8 +64,10 @@ landscape; iPadOS ignores the orientation, so use the iPad's rotation lock. The 
 worker fetches the page and models fresh and only falls back to its cache offline, so
 installed copies update like the website does. Icons are a screenshot of the game (`art/icon/shoot.cjs`), cropped to `art/icon/icon.png` and `icon-maskable.png`.
 On the iPad the home screen app doesn't share storage with Safari, so the title screen's
-Move My Stars panel (`src/transfer.ts`) copies progress as a code and merges it in the
-other copy, keeping the better of each score and challenge.
+My Stars panel (`src/transfer.ts`) copies progress as a code and merges it in the
+other copy, keeping the better of each score and challenge. The same code goes into a
+backup file (Save backup shares it to Files / iCloud Drive / Google Drive, or downloads
+it; Load backup picks it). Installed copies also ask `navigator.storage.persist()`.
 
 ## Tracks and biomes
 
