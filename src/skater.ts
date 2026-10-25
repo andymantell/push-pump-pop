@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Rider, GrabName, GRAVITY } from './rider';
+import { Rider, BoardGrab, GRAVITY } from './rider';
 import { toon } from './toon';
 import { railY } from './track';
 
@@ -58,7 +58,7 @@ const OLLIE_SLOW = 1.3;
 // Where each grab takes hold of the deck (deck space: +x nose, +z toe edge),
 // which hand does it, how the board tilts (nose up is +), which way the elbow
 // bows, and how far the knees splay apart to leave room for the arm.
-const GRABS: Record<GrabName, { hand: 'L' | 'R'; at: THREE.Vector3; tilt: number; elbow: THREE.Vector3; splay: number }> = {
+const GRABS: Record<BoardGrab, { hand: 'L' | 'R'; at: THREE.Vector3; tilt: number; elbow: THREE.Vector3; splay: number }> = {
   Indy: { hand: 'R', at: v3(0.0, 0.1, 0.11), tilt: 0.1, elbow: v3(-0.3, 0, 1), splay: 0.9 },
   Melon: { hand: 'L', at: v3(0.32, 0.1, -0.1), tilt: -0.05, elbow: v3(1, 0, -0.6), splay: 0.4 },
   Nosegrab: { hand: 'L', at: v3(0.4, 0.13, 0.04), tilt: 0.45, elbow: v3(1, 0.3, -0.4), splay: 0 },
@@ -215,7 +215,7 @@ export class Skater {
   private grabW = 0;
   private manualPitch = 0;
   private slideW = 0;
-  private lastGrab: GrabName = 'Indy';
+  private lastGrab: BoardGrab = 'Indy';
   private snowParts: Record<SnowPartName, THREE.Object3D>;
   private mtbParts: Record<MtbPartName, THREE.Object3D>;
   private board: BoardKind = 'skate';
@@ -358,7 +358,7 @@ export class Skater {
     const tuck = r.current?.axis === 'tuck' ? Math.sin(r.trickProgress * Math.PI) : 0;
     crouchT += (0.85 - crouchT) * tuck;
     liftT += (0.45 - liftT) * tuck;
-    if (r.grab) this.lastGrab = r.grab;
+    if (r.grab && r.grab in GRABS) this.lastGrab = r.grab as BoardGrab;
     this.grabW += ((r.grab ? 1 : 0) - this.grabW) * (1 - Math.exp(-dt * 18));
     const gw = this.grabW;
     const grab = GRABS[this.lastGrab];
@@ -647,7 +647,7 @@ export class Skater {
   }
 
   /** Reach the grabbing hand to the deck with two-bone IK, blended by w. */
-  private grabArm(g: (typeof GRABS)[GrabName], w: number) {
+  private grabArm(g: (typeof GRABS)[BoardGrab], w: number) {
     const p = this.p;
     const upper = g.hand === 'L' ? p.upperArm_L : p.upperArm_R;
     const fore = g.hand === 'L' ? p.forearm_L : p.forearm_R;

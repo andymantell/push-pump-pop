@@ -8,6 +8,9 @@ import { Lives, LIVES } from './lives';
 import { World } from './world';
 import { LampLights } from './lighting';
 import { Skater } from './skater';
+import { ScooterRig } from './scooter';
+import { RIDES, RideId, rideGoes, savedRide, saveRide, signFor } from './ride';
+import { challengesOf, parOf } from './progress';
 import { loadAssets } from './assets';
 import { TRACKS, TrackDef, PIPE_TIME } from './tracks';
 import { Progress } from './progress';
@@ -25,6 +28,9 @@ import { Sound } from './audio';
 const $ = (id: string) => document.getElementById(id)!;
 const progress = new Progress(TRACKS, BIOME_ORDER, (() => { try { return localStorage; } catch { return null; } })());
 progress.migrate();
+/** Skateboard or scooter: each has its own stars, see ride.ts. */
+let ride: RideId = savedRide();
+progress.ride = ride;
 const starsHtml = (n: number) => '<span class="stars">' + [1, 2, 3].map((i) => (i <= n ? '&#9733;' : '&#9734;')).join('') + '</span>';
 const fmt = (n: number) => Math.round(n).toLocaleString('en-GB');
 
@@ -57,7 +63,14 @@ const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 500);
 
 const assets = await loadAssets();
 let def: TrackDef = TRACKS[0];
-let track: Track = def.build();
+let track: Track = buildTrack(def);
+/** A track as the current ride sees it: its signs name that ride's tricks. */
+function buildTrack(d: TrackDef) {
+  const t = d.build();
+  for (const s of t.signs) s.text = signFor(s.text, ride);
+  return t;
+}
+let builtRide = ride;
 let world = new World(track, biomeFor(BIOMES[def.biome], def.id), assets.props, def.id);
 world.applyEnvironment(scene, hemi, sun);
 lampLights.use(world.lamps);
@@ -139,7 +152,7 @@ let mega = new MegaRun();
 // This run's challenges: saved the moment each one is done, even if you then run out of lives.
 let chal = new ChallengeRun([], track);
 function newChallenges() {
-  chal = new ChallengeRun(def.challenges ?? [], track, progress.challenges(def), def.kind === 'pipe');
+  chal = new ChallengeRun(challengesOf(def, ride), track, progress.challenges(def), def.kind === 'pipe');
   chal.onDone = (i) => {
     progress.markChallenge(def, i);
     popup('CHALLENGE!', 'challenge');
@@ -162,7 +175,7 @@ function drawChallenges(popped = -1) {
 /** The challenge list for the card and results: icon, text, tick, and needed / NEW! badges. */
 function challengeList(d: TrackDef, done: boolean[], fresh: boolean[] = []) {
   const need = progress.required(d);
-  return (d.challenges ?? []).map((c, i) =>
+  return challengesOf(d, ride).map((c, i) =>
     `<li class="${done[i] ? 'got' : ''}"><span class="ic">${icon(c)}</span><span class="tx">${c.text}</span>`
     + `${fresh[i] ? '<span class="new">NEW!</span>' : i < need && !done[i] ? '<span class="need">NEEDED</span>' : ''}`
     + `<span class="tick">${done[i] ? '&#10004;' : '&#9675;'}</span></li>`).join('');
@@ -194,10 +207,11 @@ function loseLife() {
 }
 
 function loadTrack(d: TrackDef) {
-  if (d !== def) {
+  if (d !== def || ride !== builtRide) {
     def = d;
+    builtRide = ride;
     scene.remove(world.group);
-    track = d.build();
+    track = buildTrack(d);
     world = new World(track, biomeFor(BIOMES[d.biome], d.id), assets.props, d.id);
     world.applyEnvironment(scene, hemi, sun);
     lampLights.use(world.lamps);
@@ -207,12 +221,16 @@ function loadTrack(d: TrackDef) {
   rider.track = track;
   const isPipe = d.kind === 'pipe', isMega = d.kind === 'mega';
   const snow = d.biome === 'snow';
+  const scoot = ride === 'scooter';
   // Bound in on a mountain board down the farm's dirt tracks: grabs instead of flips.
-  const mountain = d.biome === 'farm';
+  const mountain = d.biome === 'farm' && !scoot;
   // Mega ramps are smooth and fast.
-  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow, mountain };
+  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow, mountain, scooter: scoot };
   skater.setBoard(snow ? 'snow' : mountain ? 'mountain' : 'skate');
-  sound.setScene(world.biome, snow, snow || mountain);
+  scooter.setKind(snow ? 'snow' : 'scooter');
+  skater.root.visible = !scoot;
+  scooter.root.visible = scoot;
+  sound.setScene(world.biome, snow, !scoot && (snow || mountain), scoot);
   rider.reset();
   // Half pipes start up on the coping: the first tap drops you in.
   if (isPipe || isMega) rider.perch();
@@ -220,11 +238,14 @@ function loadTrack(d: TrackDef) {
 }
 
 const skater = new Skater(assets.parts);
-scene.add(skater.root, skater.shadowMesh);
-skater.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+const scooter = new ScooterRig(assets.parts, skater.shadowMesh);
+scene.add(skater.root, scooter.root, skater.shadowMesh);
+for (const f of [skater, scooter]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+/** Whoever's riding. */
+const figure = () => (ride === 'scooter' ? scooter : skater);
 
 // Big combos are recorded for slow-motion replays: see replay.ts.
-const replays: Replays = new Replays(skater.joints, camera, skater.shadowMesh);
+const replays: Replays = new Replays([...skater.joints, ...scooter.joints], camera, skater.shadowMesh);
 const player = new Player(replays, () => replays.clips);
 const chip = $('replaychip');
 let chipClip: Clip | null = null;
@@ -277,7 +298,7 @@ let finishTimer = 0;
 const input = new Input(canvas);
 // Gameplay input only reaches the rider while you're riding with lives left.
 const canRide = () => state === 'playing' && resumeTimer <= 0 && lives.controllable && !(def.kind === 'mega' && mega.ending);
-input.onPump = () => { if (canRide()) { rider.pump(); skater.pumpKick(); } };
+input.onPump = () => { if (canRide()) { rider.pump(); figure().pumpKick(); } };
 input.onSwipe = (d) => { if (canRide()) rider.swipe(d); };
 input.onGrab = (d) => { if (canRide()) rider.grabSwipe(d); };
 input.onRelease = () => { if (canRide()) rider.release(); };
@@ -314,6 +335,8 @@ function start(d: TrackDef = def) {
   // However the device is being held right now counts as level.
   tilt.calibrate();
   $('trackname').textContent = d.name;
+  $('grabzone').textContent = ride === 'scooter' ? 'HOLD' : 'GRAB';
+  $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : 'FLIP';
   show(null);
   state = 'playing';
 }
@@ -321,7 +344,7 @@ function start(d: TrackDef = def) {
 /** Before a run: the track's challenges, then GO. Tracks without challenges go straight in. */
 let cardDef: TrackDef | null = null;
 function showCard(d: TrackDef) {
-  if (!d.challenges?.length) { start(d); return; }
+  if (!challengesOf(d, ride).length) { start(d); return; }
   cardDef = d;
   const b = BIOMES[d.biome];
   const runs = TRACKS.filter((t) => t.biome === d.biome && (t.kind ?? 'run') === 'run');
@@ -334,11 +357,34 @@ function showCard(d: TrackDef) {
   state = 'select';
 }
 
+/** Pick what to ride: its own stars, and the worlds it can go to. */
+function setRide(id: RideId) {
+  ride = id;
+  progress.ride = id;
+  saveRide(id);
+  document.body.dataset.ride = id;
+}
+document.body.dataset.ride = ride;
+
+function drawRides() {
+  const tabs = $('ridetabs');
+  tabs.innerHTML = '';
+  for (const r of RIDES) {
+    const btn = document.createElement('button');
+    btn.className = 'small' + (r.id === ride ? ' on' : '');
+    const got = TRACKS.reduce((n, t) => n + progress.stars(t, r.id), 0);
+    btn.innerHTML = `${r.label}<em>${got} &#9733;</em>`;
+    btn.addEventListener('click', () => { if (r.id === ride) return; setRide(r.id); openSelect(selWorld); });
+    tabs.appendChild(btn);
+  }
+}
+
 function openSelect(world: number | null = selWorld) {
   const list = $('tracklist');
   list.innerHTML = '';
-  // Worlds with tracks in them, and which you can get into yet.
-  const worlds = WORLDS.map((w, i) => ({ i, open: progress.biomeOpen(w[0]) })).filter((w) => TRACKS.some((t) => worldOf(t.biome) === w.i));
+  drawRides();
+  // Worlds with tracks in them that this ride can go to, and which you can get into yet.
+  const worlds = WORLDS.map((w, i) => ({ i, open: progress.biomeOpen(w[0]) })).filter((w) => rideGoes(ride, w.i) && TRACKS.some((t) => worldOf(t.biome) === w.i));
   if (world === null || !worlds.some((w) => w.i === world)) world = [...worlds].reverse().find((w) => w.open)?.i ?? 0;
   selWorld = world;
   const tabs = $('worldtabs');
@@ -435,11 +481,12 @@ function finish(out = false) {
   $('r-combo').textContent = fmt(score.bestCombo);
   $('r-chal').innerHTML = challengeList(def, chal.done, chal.fresh);
   const m = progress.missing(def);
-  const todo = !out && (def.kind ?? 'run') === 'run' && m.challenges.length
+  // (Done on the other ride already, the next track is open anyway.)
+  const todo = !out && (def.kind ?? 'run') === 'run' && m.challenges.length && !progress.complete(def)
     ? `<br><span class="todo">Do challenge ${m.challenges.map((i) => i + 1).join(' and ')} to open the next track</span>` : '';
   const kept = chal.fresh.some(Boolean) ? 'Your new challenges are saved!<br>' : '';
   $('r-best').innerHTML = out ? `${kept}Start the level again to finish it`
-    : `${starsHtml(progress.starsFor(def, total))}<br>${total > best ? 'NEW BEST!' : `Best: ${fmt(best)}`}${def.par ? ` &middot; Par ${fmt(def.par)}` : ''}${opened > 0 ? '<br><b class="unlocked">NEXT TRACK UNLOCKED!</b>' : todo}`;
+    : `${starsHtml(progress.starsFor(def, total))}<br>${total > best ? 'NEW BEST!' : `Best: ${fmt(best)}`}${parOf(def, ride) ? ` &middot; Par ${fmt(parOf(def, ride)!)}` : ''}${opened > 0 ? '<br><b class="unlocked">NEXT TRACK UNLOCKED!</b>' : todo}`;
   if (next) $('next').textContent = `NEXT: ${next.name.toUpperCase()}`;
   hideChip();
   watchCount = -1;
@@ -458,7 +505,13 @@ function updateWatch() {
 }
 
 $('play').addEventListener('click', () => openSelect());
-$('guidebtn').addEventListener('click', () => show('guide'));
+/** The trick guide opens on the ride you're on, and can show the other one. */
+function showGuide(id: RideId) {
+  document.querySelectorAll<HTMLElement>('#guide .guide').forEach((g) => g.classList.toggle('hidden', g.dataset.ride !== id));
+  document.querySelectorAll<HTMLElement>('#guidetabs button').forEach((b) => b.classList.toggle('on', b.dataset.ride === id));
+}
+document.querySelectorAll<HTMLElement>('#guidetabs button').forEach((b) => b.addEventListener('click', () => showGuide(b.dataset.ride as RideId)));
+$('guidebtn').addEventListener('click', () => { showGuide(ride); show('guide'); });
 $('guideback').addEventListener('click', () => show('title'));
 setupMove();
 const soundBtn = $('soundbtn');
@@ -619,7 +672,7 @@ function frame(now: number) {
   }
   sound.update(dt, rider, moved || (state === 'playing' && rider.perched), state === 'playing' || state === 'finished' ? 1 : 0.5);
 
-  skater.update(dt, rider, (x) => track.height(x), (x) => track.slope(x));
+  figure().update(dt, rider, (x) => track.height(x), (x) => track.slope(x));
   updateCamera(dt);
   // The camera itself, so scenery tied to the sky also follows a camera set by hand.
   world.update(dt, camera.position.x, camera.position.y - 1.2);
@@ -668,7 +721,7 @@ requestAnimationFrame(frame);
 
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
-  rider, score, skater, replays, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
+  rider, score, skater, scooter, replays, get ride() { return ride; }, setRide, progress, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };
 

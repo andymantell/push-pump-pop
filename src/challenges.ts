@@ -6,7 +6,7 @@ import type { Track, Rail } from './track';
 // playtest alike, and says as soon as each challenge is done.
 
 /** A family of tricks a challenge can ask for instead of one name. 'any' is any air trick but an ollie. */
-export type Group = 'flip' | 'grab' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'any';
+export type Group = 'flip' | 'grab' | 'whip' | 'double' | 'hold' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'any';
 export type Match = TrickName | Group;
 
 /** Which gaps an air has to clear: any one, every gap on the track, or these (by index). */
@@ -46,16 +46,20 @@ export type Challenge = { text: string } & (
 const GROUPS: Record<Group, TrickName[]> = {
   flip: ['Kickflip', 'Heelflip', 'Pop Shove-it', 'BS Shifty', 'FS Shifty', 'Tuck Knee'],
   grab: ['Indy', 'Melon', 'Nosegrab', 'Tailgrab'],
+  // Scooter: whips and barspins on the right, body tricks held on the left.
+  whip: ['Tailwhip', 'Heelwhip', 'Barspin', 'Double Whip', 'Double Heelwhip', 'Double Barspin', 'Tailwhip Barspin', 'Heelwhip Barspin'],
+  double: ['Double Whip', 'Double Heelwhip', 'Double Barspin', 'Tailwhip Barspin', 'Heelwhip Barspin'],
+  hold: ['Superman', 'No Footer', 'Can Can', 'X-Up'],
   spin: ['FS 180', 'BS 180', 'FS 360', 'BS 360'],
   '180': ['FS 180', 'BS 180'],
   '360': ['FS 360', 'BS 360'],
   bodyflip: ['Backflip', 'Frontflip'],
-  grind: ['50-50', 'Boardslide', '5-0', 'Nosegrind'],
+  grind: ['50-50', 'Boardslide', '5-0', 'Nosegrind', 'Feeble', 'Smith'],
   manual: ['Manual', 'Nose Manual', 'Tail Press', 'Nose Press'],
   loop: ['Loop'],
   any: [],
 };
-GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.spin, ...GROUPS.bodyflip];
+GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.whip, ...GROUPS.hold, ...GROUPS.spin, ...GROUPS.bodyflip];
 
 export function matches(m: Match, name: TrickName): boolean {
   return m in GROUPS ? GROUPS[m as Group].includes(name) : m === name;
@@ -76,6 +80,9 @@ export function icon(c: Challenge): string {
   const m = c.kind === 'trick' ? c.match : c.kind === 'sameAir' ? c.match[0] : null;
   if (m) {
     if (matches(m, 'Indy') || m === 'grab' || members(m).every((n) => GROUPS.grab.includes(n))) return '&#9995;';
+    if (members(m).every((n) => GROUPS.hold.includes(n))) return '&#129464;';
+    if (members(m).every((n) => GROUPS.whip.includes(n))) return '&#128260;';
+    if (m === 'Bunny Hop') return '&#128756;';
     if (members(m).every((n) => GROUPS.spin.includes(n))) return '&#127744;';
     if (members(m).every((n) => GROUPS.bodyflip.includes(n))) return '&#129528;';
     if (members(m).every((n) => GROUPS.grind.includes(n))) return '&#128740;';
@@ -369,7 +376,7 @@ export class ChallengeRun {
       if ((c.from && !a.spots.has(c.from)) || (c.fromRail && !a.fromRail) || !this.gapOk(c.overGap, gaps)) return;
       return airTime >= (c.seconds ?? 0) && a.peak >= (c.metres ?? 0);
     });
-    if (names.some((n) => n !== 'Ollie')) for (const tag of a.spots) this.dropAirs.add(tag);
+    if (names.some((n) => n !== 'Ollie' && n !== 'Bunny Hop')) for (const tag of a.spots) this.dropAirs.add(tag);
     this.each('bothAirs', () => this.dropAirs.has('kicker') && this.dropAirs.has('qp'));
     if (a.kicker >= 0) this.each('everyKicker', (c, i) => {
       if (c.match ? names.some((n) => matches(c.match, n)) : names.length > 0) this.sets[i].add(a.kicker);

@@ -29,7 +29,7 @@ function saved(store: KeyStore): Map<string, string> {
 
 /** True once any track has been finished. */
 export function hasProgress(store: KeyStore): boolean {
-  return [...saved(store).keys()].some((k) => k.startsWith('done-') || k.startsWith('best-'));
+  return [...saved(store).keys()].some((k) => /^(\w+-)?(done|best)-/.test(k));
 }
 
 export function exportCode(store: KeyStore): string {
@@ -43,18 +43,19 @@ export function importCode(store: KeyStore, text: string): number {
   let data: Record<string, unknown>;
   try { data = JSON.parse(atob(text.slice(at + TAG.length).trim().split(/\s/)[0])); } catch { return -1; }
   if (!data || typeof data !== 'object') return -1;
-  let tracks = 0;
+  const tracks = new Set<string>();
   for (const [name, v] of Object.entries(data)) {
     if (typeof v !== 'string' || LOCAL.includes(name)) continue;
     const k = PREFIX + name;
     const have = store.getItem(k);
     let next = v;
-    if (name.startsWith('best-')) { tracks++; next = String(Math.max(Number(have) || 0, Number(v) || 0)); }
-    else if (name.startsWith('ch-') && have) {
+    // Skateboard keys are best-<track>, other rides' are <ride>-best-<track>.
+    if (/^(\w+-)?best-/.test(name)) { tracks.add(name.replace(/^.*?best-/, '')); next = String(Math.max(Number(have) || 0, Number(v) || 0)); }
+    else if (/^(\w+-)?ch-/.test(name) && have) {
       // Challenges done in either copy stay done.
       next = Array.from({ length: Math.max(have.length, v.length) }, (_, i) => (have[i] === '1' || v[i] === '1' ? '1' : '0')).join('');
     } else if (have !== null && v !== '1') next = have; // flags only switch on; settings keep this copy's
     store.setItem(k, next);
   }
-  return tracks;
+  return tracks.size;
 }

@@ -1,11 +1,14 @@
 // Filmstrip of a trick from the real physics, for judging animation: `npm run dev`, then
-// open /art/ollie.html. ?swipe=up|left|right|down picks the flip-side swipe, ?grab=up etc.
+// open /art/ollie.html. ?swipe=up|left|right|down|none picks the flip-side swipe, ?grab=up etc.
 // a held grab, ?spin=right a body spin, ?snow=1 the snowboard; ?at=0,0.03,... the frame times
 // in seconds after the pop, ?rail=1 a hop onto a rail, and ?views=side,three-quarter,back the camera angles.
+// ?ride=scooter rides the scooter instead; ?then=left a second swipe 0.12 s after the first
+// (a double whip, or a grind style once on the rail).
 import * as THREE from 'three';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { loadAssets } from '../src/assets';
 import { Skater } from '../src/skater';
+import { ScooterRig } from '../src/scooter';
 import { Rider, Swipe } from '../src/rider';
 import { TrackBuilder } from '../src/track';
 
@@ -34,8 +37,10 @@ ground.position.set(100, -0.05, 0);
 scene.add(ground);
 
 const assets = await loadAssets();
-const skater = new Skater(assets.parts);
-skater.setSnow(snow);
+const scoot = q.get('ride') === 'scooter';
+const skater = scoot ? new ScooterRig(assets.parts) : new Skater(assets.parts);
+if (skater instanceof ScooterRig) skater.setKind(snow ? 'snow' : 'scooter');
+else skater.setSnow(snow);
 scene.add(skater.root);
 
 const rail = q.get('rail') === '1';
@@ -45,7 +50,7 @@ b.flat(200);
 const track = b.build(5, 190);
 const noop = () => {};
 const r = new Rider(track, { trick: noop, land: noop, bail: noop, pump: noop, fall: noop } as never);
-r.opts = { friction: 1, maxSpeed: 17, snow };
+r.opts = { friction: 1, maxSpeed: 17, snow, scooter: scoot };
 r.v = 8;
 const dt = 1 / 120;
 const step = () => { r.update(dt); skater.update(dt, r, (x) => track.height(x), (x) => track.slope(x)); };
@@ -54,8 +59,15 @@ while (rail && r.x < track.rails[0].x0 - r.v * 0.45) step();
 const swipe = q.get('swipe'), grab = q.get('grab'), spin = q.get('spin');
 if (grab) r.grabSwipe(grab as Swipe);
 else if (spin) r.spinSwipe(spin as 'left' | 'right');
-else { r.swipe((swipe ?? 'up') as Swipe); r.release(); }
+else if (swipe !== 'none') { r.swipe((swipe ?? 'up') as Swipe); r.release(); }
 let t = 0;
+const then = q.get('then');
+if (then) {
+  const wait = rail ? 0.6 : 0.12;
+  while (t < wait) { step(); t += dt; }
+  r.swipe(then as Swipe); r.release();
+  t = 0;
+}
 const cam = new THREE.PerspectiveCamera(30, CW / CH, 0.05, 50);
 times.forEach((at, col) => {
   while (t < at - 1e-6) { step(); t += dt; }

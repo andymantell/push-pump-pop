@@ -112,6 +112,8 @@ const RAILS: Record<RailSound, { bands: [number, number, number][]; grit: number
 /** Grind styles: how the pitch and brightness change (a boardslide is the deck on the rail). */
 const GRIND_STYLE: Record<string, { pitch: number; q: number }> = {
   '50-50': { pitch: 1, q: 1 }, '5-0': { pitch: 0.94, q: 1 }, 'Nosegrind': { pitch: 1.08, q: 1 }, 'Boardslide': { pitch: 0.6, q: 0.45 },
+  // A scooter's deck end on the rail: a feeble rings higher, a smith a little lower.
+  'Feeble': { pitch: 1.12, q: 0.8 }, 'Smith': { pitch: 0.9, q: 0.8 },
 };
 
 const PREF_KEY = 'ppp-sound';
@@ -156,6 +158,8 @@ export class Sound {
   private snow = false;
   /** Feet strapped in (snowboard, mountain board): no pushing. */
   private bound = false;
+  /** On a scooter: an aluminium deck and bars that rattle, and whips instead of flips. */
+  private scooter = false;
   private cur: Trick | null = null;
   private spinning = false;
   private flipT = 0;
@@ -335,7 +339,8 @@ export class Sound {
   }
 
   /** A new track: its surface, rails and ambience. */
-  setScene(b: Biome, snow: boolean, bound = snow) {
+  setScene(b: Biome, snow: boolean, bound = snow, scooter = false) {
+    this.scooter = scooter;
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
     this.railSound = b.id === 'jungle' || b.id === 'farm' ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
     this.snow = snow;
@@ -365,7 +370,7 @@ export class Sound {
   update(dt: number, r: Rider, active: boolean, ambLevel: number) {
     const ctx = this.ctx!;
     if (!this.ready()) return;
-    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow, this.bound); }
+    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow, this.bound, this.scooter); }
     const t = ctx.currentTime;
     const p = GROUNDS[this.ground];
     const speed = active ? r.speed : 0;
@@ -420,7 +425,14 @@ export class Sound {
     }
     // Flips and spins starting, and each new turn of a backflip or frontflip.
     if (active) {
-      if (r.current && r.current !== this.cur) this.whoosh(r.current.axis === 'flip' ? 'flip' : 'spin');
+      if (r.current && r.current !== this.cur) {
+        const c = r.current, was = this.cur?.axis === 'whip' ? this.cur : null;
+        // A whip turning the deck, a barspin ticking round the headset (a second swipe adds one).
+        if (c.axis === 'whip') {
+          if ((c.whip ?? 0) !== (was?.whip ?? 0)) this.whoosh('flip');
+          if ((c.bars ?? 0) !== (was?.bars ?? 0)) this.barspin(t);
+        } else this.whoosh(c.axis === 'flip' ? 'flip' : 'spin');
+      }
       if (r.spin && !this.spinning) this.whoosh('spin');
       if (r.flipping && (this.flipT === 0 || r.flipT < this.flipT)) this.whoosh('big');
     }
@@ -534,8 +546,22 @@ export class Sound {
     this.burst(t, { type: 'bandpass', f: 2600, q: 0.8, gain: 0.12, attack: 0.04, decay: 0.12, fEnd: 1800 });
   }
 
+  /** Bars spinning: the headset ticking round, and a swish of air. */
+  private barspin(t: number) {
+    for (let i = 0; i < 6; i++) this.clack(t + i * 0.05, 3200 + i * 120, 6, 0.08);
+    this.burst(t, { buf: this.pink, type: 'bandpass', f: 1400, q: 2, gain: 0.2, attack: 0.05, decay: 0.25, fEnd: 2600 });
+  }
+
   /** Tail snap: the board's tail hitting the ground, then the wheels leaving it. */
   private pop(t: number) {
+    if (this.scooter && !this.snow) {
+      // A bunny hop: no tail to snap, just the wheels leaving the ground and the deck rattling.
+      const p = GROUNDS[this.ground];
+      this.burst(t, { type: p.land.type, f: p.land.f * 1.4, q: p.land.q, gain: p.land.gain * 0.3, decay: p.land.decay * 0.4 });
+      this.clack(t + 0.02, 2600, 5, 0.18);
+      this.tone(t, { f: 140, fEnd: 70, gain: 0.2, decay: 0.05 });
+      return;
+    }
     if (this.snow) {
       this.burst(t, { type: 'lowpass', f: 900, q: 0.6, gain: 0.5, decay: 0.08 });
       return;
@@ -624,6 +650,15 @@ export class Sound {
       case 'loop':
         this.chime(t, [784, 1175, 1568], 0.07, 0.18);
         break;
+      case 'whip':
+        // Feet stamping back on the deck as it comes round, and a hollow ring from the aluminium.
+        if (tr.whip) {
+          this.burst(t, { type: 'bandpass', f: this.snow ? 900 : 1300, q: 2.5, gain: 0.32, decay: 0.03 });
+          if (!this.snow) for (const f of [1850, 2900]) this.tone(t, { f, gain: 0.04, decay: 0.12 });
+        }
+        // Hands slapping back onto the grips.
+        if (tr.bars) this.burst(t + 0.01, { type: 'bandpass', f: 700, q: 1.5, gain: 0.25, decay: 0.025 });
+        break;
     }
   }
 
@@ -644,6 +679,12 @@ export class Sound {
   grab() {
     if (!this.ready()) return;
     const t = this.ctx!.currentTime;
+    if (this.scooter) {
+      // Body tricks: no board to grab, just a swish of legs and clothes, and the deck clinking free.
+      this.burst(t, { buf: this.pink, type: 'bandpass', f: 600, q: 1.2, gain: 0.3, attack: 0.04, decay: 0.2, fEnd: 1300 });
+      this.clack(t + 0.02, 2400, 5, 0.1);
+      return;
+    }
     // A hand slapping the board, and the grip tape under the fingers.
     this.burst(t, { type: 'bandpass', f: 900, q: 2, gain: 0.35, decay: 0.03 });
     this.burst(t + 0.01, { type: 'highpass', f: 3500, q: 0.7, gain: 0.12, attack: 0.01, decay: 0.08 });

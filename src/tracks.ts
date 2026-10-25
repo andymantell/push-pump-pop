@@ -10,8 +10,14 @@ import { VOLCANO } from './levels/volcano';
 import { FARM } from './levels/farm';
 import { CANDY, CANDY_PIPE } from './levels/candy';
 import { DOCKS } from './levels/docks';
+import { SCOOTER, scooterFallback } from './levels/scooter';
 
 export { PIPE_TIME } from './levels/common';
 export type { TrackDef } from './levels/common';
 
 export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS];
+
+// Every track's scooter challenges. New tracks get their skateboard ones with scooter tricks
+// swapped in until they have their own (the scooter playtest lists them).
+for (const t of TRACKS) t.scooter = SCOOTER[t.id] ?? scooterFallback(t);
+export const SCOOTER_TODO = TRACKS.filter((t) => !SCOOTER[t.id]).map((t) => t.id);

@@ -49,15 +49,20 @@ const RAIL_REACH = 0.7;
 /** ...as long as there's this much rail left to land on. */
 const RAIL_ROOM = 1.2;
 
-export type GrabName = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
+/** Held tricks from the left-hand swipes: board grabs on a skateboard, body tricks on a scooter. */
+export type GrabName = BoardGrab | ScooterHold;
+export type BoardGrab = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
+export type ScooterHold = 'Superman' | 'No Footer' | 'Can Can' | 'X-Up';
 export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
 export type FlipName = 'Backflip' | 'Frontflip';
 /** Manuals on a skateboard, presses on a snowboard: nose up first. */
 export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press';
-export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind';
+export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind' | 'Feeble' | 'Smith';
 export type LoopName = 'Loop';
-type BoardTrick = 'Ollie' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee';
-export type TrickName = BoardTrick | GrabName | SpinName | FlipName | ManualName | GrindName | LoopName;
+type BoardTrick = 'Ollie' | 'Bunny Hop' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee';
+/** Scooter tricks: the deck whipped round the bars, the bars spun round, or both at once. */
+export type WhipName = 'Tailwhip' | 'Double Whip' | 'Heelwhip' | 'Double Heelwhip' | 'Barspin' | 'Double Barspin' | 'Tailwhip Barspin' | 'Heelwhip Barspin';
+export type TrickName = BoardTrick | WhipName | GrabName | SpinName | FlipName | ManualName | GrindName | LoopName;
 /** Tilt of the device: +1 nose up (manual, backflip), -1 nose down (nose manual, frontflip). */
 export type Lean = -1 | 0 | 1;
 export type Swipe = 'up' | 'down' | 'left' | 'right';
@@ -67,12 +72,17 @@ export interface Trick {
   duration: number;
   points: number;
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
-  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop';
+  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop' | 'whip';
   dir: 1 | -1;
+  /** Scooter whips: turns of the deck round the bars (+ tailwhip, - heelwhip), and of the bars. */
+  whip?: number;
+  bars?: number;
 }
 
 export const TRICKS: Record<BoardTrick, Trick> = {
   'Ollie': { name: 'Ollie', duration: 0, points: 100, axis: 'none', dir: 1 },
+  // A scooter's ollie: jump and pull the scooter up with the bars.
+  'Bunny Hop': { name: 'Bunny Hop', duration: 0, points: 100, axis: 'none', dir: 1 },
   'Kickflip': { name: 'Kickflip', duration: 0.42, points: 500, axis: 'flip', dir: 1 },
   'Heelflip': { name: 'Heelflip', duration: 0.42, points: 500, axis: 'flip', dir: -1 },
   'Pop Shove-it': { name: 'Pop Shove-it', duration: 0.4, points: 400, axis: 'spin', dir: 1 },
@@ -88,8 +98,40 @@ const SWIPE_GRIND: Record<Exclude<Swipe, 'up'>, GrindName> = {
   right: 'Nosegrind',
   down: '5-0',
 };
+/** On a scooter: the deck across the rail, or the back of the deck on it with the front wheel over the far side (feeble) or the near side (smith). */
+const SWIPE_GRIND_SCOOTER: Record<Exclude<Swipe, 'up'>, GrindName> = {
+  left: 'Boardslide',
+  right: 'Feeble',
+  down: 'Smith',
+};
 /** The fancier grinds are worth more than a plain 50-50. */
-const GRIND_STYLE_POINTS: Record<GrindName, number> = { '50-50': 1, 'Boardslide': 1.2, '5-0': 1.3, 'Nosegrind': 1.4 };
+const GRIND_STYLE_POINTS: Record<GrindName, number> = { '50-50': 1, 'Boardslide': 1.2, '5-0': 1.3, 'Nosegrind': 1.4, 'Smith': 1.3, 'Feeble': 1.4 };
+
+/** Scooter: one turn of a whip, or of a barspin, takes this long. */
+const WHIP_TIME = 0.45;
+const BARS_TIME = 0.4;
+/** A second swipe adds a turn only while there's this much of a turn still to go. */
+const WHIP_ROOM = 0.25;
+/** Whips by turns of the deck (+ tailwhip, - heelwhip) and of the bars. */
+const WHIPS: Record<string, WhipName> = {
+  '1,0': 'Tailwhip', '2,0': 'Double Whip', '-1,0': 'Heelwhip', '-2,0': 'Double Heelwhip',
+  '0,1': 'Barspin', '0,2': 'Double Barspin', '1,1': 'Tailwhip Barspin', '-1,1': 'Heelwhip Barspin',
+};
+const WHIP_POINTS = 500, HEELWHIP_POINTS = 550, BARSPIN_POINTS = 450;
+/** Two turns in one trick (a double, or a whip and a barspin together) score this much extra. */
+const WHIP_DOUBLE = 1.3;
+
+/** The trick a scooter does with these turns, or null if there isn't one. */
+export function whipTrick(whip: number, bars: number): Trick | null {
+  const name = WHIPS[`${whip},${bars}`];
+  if (!name) return null;
+  const pts = Math.abs(whip) * (whip < 0 ? HEELWHIP_POINTS : WHIP_POINTS) + bars * BARSPIN_POINTS;
+  return {
+    name, axis: 'whip', dir: whip < 0 ? -1 : 1, whip, bars,
+    duration: Math.max(Math.abs(whip) * WHIP_TIME, bars * BARS_TIME),
+    points: Math.round(pts * (Math.abs(whip) + bars > 1 ? WHIP_DOUBLE : 1) / 50) * 50,
+  };
+}
 
 /** Flip-side swipes on a snowboard or mountain board, where flipping the board out from under you can't happen. */
 const SWIPE_TRICK_SNOW: Record<Swipe, BoardTrick> = {
@@ -105,6 +147,13 @@ const SWIPE_GRAB: Record<Swipe, GrabName> = {
   down: 'Melon',
   left: 'Nosegrab',
   right: 'Tailgrab',
+};
+/** On a scooter: legs out behind you, both feet off, one leg kicked over the deck, or arms crossed. */
+const SWIPE_HOLD: Record<Swipe, GrabName> = {
+  up: 'Superman',
+  down: 'No Footer',
+  left: 'Can Can',
+  right: 'X-Up',
 };
 /** Hold this long after a grab swipe before the grab starts, so a quick flick is just an ollie. */
 const GRAB_HOLD = 0.08;
@@ -157,6 +206,8 @@ export interface RiderOptions {
   mountain?: boolean;
   /** Mega ramp: no pushing, and its quarter pipe rides like a half pipe wall. */
   mega?: boolean;
+  /** Scooter: whips and barspins on the right, body tricks on the left, scooter grinds. */
+  scooter?: boolean;
 }
 
 export class Rider {
@@ -189,6 +240,9 @@ export class Rider {
   /** Trick in progress: the board is spinning. */
   current: Trick | null = null;
   trickT = 0;
+  /** Scooter whip in progress: turns of the deck and of the bars done so far. */
+  whipT = 0;
+  barsT = 0;
   /** Finger still down after a swipe, and for how long. */
   held: Swipe | null = null;
   heldT = 0;
@@ -329,25 +383,64 @@ export class Rider {
     if (this.bailing || this.grab) return;
     // On a rail the flip-side swipes change how you grind it (up still ollies off).
     if (this.grind && dir !== 'up') {
-      const style = SWIPE_GRIND[dir];
+      const style = (this.opts.scooter ? SWIPE_GRIND_SCOOTER : SWIPE_GRIND)[dir];
       if (style === this.grind.style) return;
       const rail = this.grind.rail;
       this.endGrind();
       this.grind = { rail, t: 0, style };
       return;
     }
-    const name = (this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir];
+    if (this.opts.scooter && dir !== 'up') { this.whipSwipe(dir); return; }
+    const name = this.opts.scooter ? 'Bunny Hop' : (this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir];
     if (!name) return;
+    const hop = TRICKS[name].axis === 'none';
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) {
       // An ollie with a rail coming up hops you straight onto it.
-      if (!(name === 'Ollie' && this.railHop())) this.pop();
-      if (name === 'Ollie') { this.ev.trick(TRICKS.Ollie); return; }
+      if (!(hop && this.railHop())) this.pop();
+      if (hop) { this.ev.trick(TRICKS[name]); return; }
     }
-    if (name === 'Ollie') return;
+    if (hop) return;
     if (this.grounded || this.current) return;
     this.current = TRICKS[name];
     this.trickT = 0;
+  }
+
+  /**
+   * Scooter, right-hand swipes: left whips the deck round (tailwhip), down the other way
+   * (heelwhip), right spins the bars. Swiping again while it's still turning adds a turn:
+   * a double, or a whip and a barspin at once.
+   */
+  private whipSwipe(dir: Exclude<Swipe, 'up'>) {
+    const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
+    if (canPop) this.pop();
+    if (this.grounded) return;
+    const c = this.current;
+    if (c && c.axis !== 'whip') return;
+    const w = c?.whip ?? 0, b = c?.bars ?? 0;
+    const dw = dir === 'right' ? 0 : dir === 'left' ? 1 : -1, db = dir === 'right' ? 1 : 0;
+    if (dw && w && (Math.sign(w) !== dw || this.whipT > Math.abs(w) - WHIP_ROOM)) return;
+    if (db && b && this.barsT > b - WHIP_ROOM) return;
+    const t = whipTrick(w + dw, b + db);
+    if (!t) return;
+    if (!c) { this.trickT = 0; this.whipT = 0; this.barsT = 0; }
+    this.current = t;
+  }
+
+  /** The trick in progress turns on; once it's all the way round it scores. */
+  private advanceTrick(dt: number) {
+    const c = this.current;
+    if (!c) return;
+    this.trickT += dt;
+    if (c.axis === 'whip') {
+      this.whipT = Math.min(Math.abs(c.whip ?? 0), this.whipT + dt / WHIP_TIME);
+      this.barsT = Math.min(c.bars ?? 0, this.barsT + dt / BARS_TIME);
+    }
+    if (this.trickProgress < 1) return;
+    if (c.axis === 'spin') this.boardYaw += Math.PI;
+    this.current = null;
+    this.tricksThisAir++;
+    this.ev.trick(c);
   }
 
   private clearBody() {
@@ -478,7 +571,7 @@ export class Rider {
 
   /** Come down onto a rail: lock into a grind, finishing any trick that's nearly done. */
   private catchRail(rail: Rail) {
-    const almost = (!this.current || this.trickT >= this.current.duration * 0.8)
+    const almost = (!this.current || this.trickProgress >= 0.8)
       && (!this.spin || this.spinProgress >= 0.8) && !this.grab && !this.flipping;
     // Mid-trick you can't stand on it: you pass by the rail instead.
     if (!almost) return;
@@ -640,16 +733,7 @@ export class Rider {
       this.x += this.v * Math.cos(th) * dt;
       this.grind.t += dt;
       this.angle = th;
-      if (this.current) {
-        this.trickT += dt;
-        if (this.trickT >= this.current.duration) {
-          const done = this.current;
-          if (done.axis === 'spin') this.boardYaw += Math.PI;
-          this.current = null;
-          this.tricksThisAir++;
-          this.ev.trick(done);
-        }
-      }
+      this.advanceTrick(dt);
       if (this.spin) {
         this.spin.t += dt;
         if (this.spin.t >= this.spinDuration) this.finishSpin();
@@ -778,7 +862,7 @@ export class Rider {
         this.heldT += dt;
         // Grab once the board is free of any flip and the finger has stayed down.
         if (!this.grab && !this.current && this.heldT >= GRAB_HOLD) {
-          this.grab = SWIPE_GRAB[this.held];
+          this.grab = (this.opts.scooter ? SWIPE_HOLD : SWIPE_GRAB)[this.held];
           this.grabT = 0;
           this.ev.grab?.(this.grab);
         }
@@ -806,16 +890,7 @@ export class Rider {
         }
       }
 
-      if (this.current) {
-        this.trickT += dt;
-        if (this.trickT >= this.current.duration) {
-          const done = this.current;
-          if (done.axis === 'spin') this.boardYaw += Math.PI;
-          this.current = null;
-          this.tricksThisAir++;
-          this.ev.trick(done);
-        }
-      }
+      this.advanceTrick(dt);
 
       // Coming down onto a rail: grind it.
       // Only with some rail left ahead: catching the very end would just flick you on and off.
@@ -880,7 +955,7 @@ export class Rider {
     this.held = null;
     this.airPump = 0;
 
-    const midTrick = this.current !== null && this.trickT < this.current.duration * 0.8;
+    const midTrick = this.current !== null && this.trickProgress < 0.8;
     // Still holding the board when you touch down: you can't stand on it.
     const grabbing = this.grab !== null;
     this.grab = null;
@@ -946,6 +1021,9 @@ export class Rider {
 
   /** 0..1 progress of the current trick, for animation. */
   get trickProgress() {
-    return this.current ? Math.min(1, this.trickT / this.current.duration) : 0;
+    const c = this.current;
+    if (!c) return 0;
+    if (c.axis === 'whip') return Math.min(c.whip ? this.whipT / Math.abs(c.whip) : 1, c.bars ? this.barsT / c.bars : 1);
+    return Math.min(1, this.trickT / c.duration);
   }
 }

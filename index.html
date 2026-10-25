@@ -48,7 +48,8 @@
   </div>
   <div id="guide" class="panel hidden">
     <h2>TRICK GUIDE</h2>
-    <div class="guide">
+    <div id="guidetabs"><button class="small" data-ride="skate">SKATE</button><button class="small" data-ride="scooter">SCOOTER</button></div>
+    <div class="guide" data-ride="skate">
       <section><h3>PUMP</h3><p>Tap anywhere on the way <b>down</b> a slope to build speed. Going too far in the air? Tap on the way down to drop faster onto the landing.</p></section>
       <section><h3>FLIP <small>swipe on the right half</small></h3>
         <p><b>&uarr;</b> Ollie &nbsp; <b>&larr;</b> Kickflip &nbsp; <b>&rarr;</b> Heelflip &nbsp; <b>&darr;</b> Pop Shove-it</p>
@@ -68,6 +69,25 @@
       <section><h3>MOUNTAIN BOARD <small>on the farm</small></h3>
         <p>Big tyres for the mud, and your feet are strapped in like on a snowboard, so the right-side swipes are the same: <b>&larr;</b> BS Shifty &nbsp; <b>&rarr;</b> FS Shifty &nbsp; <b>&darr;</b> Tuck Knee.</p></section>
       <p class="keys">Keyboard: Space pump, arrows flip, hold I J K L to grab, Z X spin, hold Q E to tilt</p>
+    </div>
+    <div class="guide hidden" data-ride="scooter">
+      <section><h3>PUMP</h3><p>Tap anywhere on the way <b>down</b> a slope to build speed. Going too far in the air? Tap on the way down to drop faster onto the landing.</p></section>
+      <section><h3>WHIP <small>swipe on the right half</small></h3>
+        <p><b>&uarr;</b> Bunny Hop &nbsp; <b>&larr;</b> Tailwhip &nbsp; <b>&rarr;</b> Barspin &nbsp; <b>&darr;</b> Heelwhip</p>
+        <p>Swipe again while it's still turning for a <b>Double Whip</b>, a <b>Double Barspin</b>, or a whip and a barspin together. Land before it's round or you bail!</p></section>
+      <section><h3>HOLD <small>swipe and hold on the left half</small></h3>
+        <p><b>&uarr;</b> Superman &nbsp; <b>&darr;</b> No Footer &nbsp; <b>&larr;</b> Can Can &nbsp; <b>&rarr;</b> X-Up</p>
+        <p>The longer you hold, the more it scores. Let go before you land!</p></section>
+      <section><h3>SPIN <small>swipe sideways along the bottom</small></h3>
+        <p><b>&rarr;</b> Frontside &nbsp; <b>&larr;</b> Backside. Swipe further for a 360.</p></section>
+      <section><h3>TILT <small>tip the iPad like a steering wheel</small></h3>
+        <p>On the ground: right side up for a <b>Manual</b>, down for a <b>Nose Manual</b>. Manuals keep your combo going.</p>
+        <p>In the air: the same tilt does a <b>Backflip</b> or <b>Frontflip</b>.</p></section>
+      <section><h3>GRIND <small>land on a rail, then swipe on the right</small></h3>
+        <p><b>&larr;</b> Boardslide &nbsp; <b>&rarr;</b> Feeble &nbsp; <b>&darr;</b> Smith &nbsp; <b>&uarr;</b> hop off. Fancier grinds score more.</p></section>
+      <section><h3>SNOW SCOOTER <small>on the snow level</small></h3>
+        <p>Skis instead of wheels. All the same tricks, and tilting on the ground does a Tail Press or Nose Press.</p></section>
+      <p class="keys">Keyboard: Space pump, arrows whip, hold I J K L to hold, Z X spin, hold Q E to tilt</p>
     </div>
     <button id="guideback" class="small">BACK</button>
   </div>
@@ -94,6 +114,7 @@
   </div>
   <div id="select" class="panel hidden">
     <h2>PICK A TRACK</h2>
+    <div id="ridetabs"></div>
     <div id="worldtabs"></div>
     <div id="tracklist"></div>
     <button id="back" class="small">BACK</button>

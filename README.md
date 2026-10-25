@@ -28,6 +28,19 @@ Land a combo worth 1,500 points or more and a **REPLAY** button pops up for a fe
 
 Sound starts on your first tap (iPhone and iPad need one). Every surface sounds different, and each world has its own ambience. Turn sound off with the SOUND button on the title screen, or M on a keyboard. On iPhone and iPad the ring/silent switch or the mute setting silences it too. All sound is synthesised in `src/audio.ts`; credits and the rules for adding recorded sounds are in `SOUNDS.md`.
 
+### Scooter career
+
+Pick **SKATE** or **SCOOTER** above the world tabs on the level select. The scooter is a second career with its own challenges on every track, its own stars and best scores (`src/levels/scooter.ts`, `src/ride.ts`), but tracks open for both: completing a track on either ride opens the next one for both. Pumping, spins and tilt work the same; the swipes are scooter tricks:
+
+| Action | Touch | Keyboard |
+| --- | --- | --- |
+| Bunny hop | Swipe up | Up arrow / W |
+| Tailwhip / Barspin / Heelwhip | Swipe left / right / down; swipe again in the air for a Double Whip, Double Barspin, Double Heelwhip, Tailwhip Barspin or Heelwhip Barspin | Arrows / WASD |
+| Superman, No Footer, Can Can, X-Up | On the left half, swipe up, down, left or right and keep holding | Hold I / K / J / L |
+| Grinds | 50-50 by default; on a rail swipe left for a Boardslide, right for a Feeble, down for a Smith | Arrows |
+
+On the Snowy Mountain tracks the scooter is a snow scooter, on skis. A future ride (a downhill MTB) can add worlds only it reaches through `skipWorlds` in `src/ride.ts`.
+
 You get three lives per track. Each bail or fall into a gap costs one, and losing the third means starting the track again: the game freezes behind the Out of Lives screen and ignores taps, swipes and tilt until you do. Half-pipe bonus levels are timed and have no lives.
 
 ## Development
@@ -36,7 +49,8 @@ You get three lives per track. Each bail or fall into a gap costs one, and losin
 npm install
 npm run dev      # local dev server
 npm run build    # type check and build to dist/
-npm test                 # human-speed bot plays every track; fails if one is too hard
+npm test                 # human-speed bot plays every track on both rides; fails if one is too hard
+npx tsx scripts/playtest.ts --ride=scooter [track]   # just the scooter career
 npx tsx scripts/sim.ts   # quick physics stats per track, for tuning
 ```
 
@@ -103,10 +117,13 @@ The skater, board and scenery are modelled in Blender from code. To rebuild them
 ```sh
 python3 -m venv .venv && .venv/bin/pip install bpy
 .venv/bin/python art/build_assets.py   # writes public/models/*.glb
-.venv/bin/python art/build_assets.py skater   # just the skater (or `props`)
+.venv/bin/python art/build_assets.py skater   # just the skater (or `scooter`, `props`)
 ```
 
 To check the skater from all sides, run `npm run dev` and open `/art/preview.html`
 (`?pose=crouch`, `?pose=air`, `?close=1` for the head, or `?t=<height>&d=<distance>`).
+`/art/ollie.html` films a trick frame by frame from the real physics; add `?ride=scooter`
+for the scooter (`?swipe=left&then=right` for a Tailwhip Barspin, `?grab=up` for a Superman,
+`?rail=1&then=down` for a Smith grind, `?snow=1` for the snow scooter).
 To judge trick animation frame by frame, open `/art/ollie.html`: a filmstrip of a real ollie from the physics
 (`?swipe=left` for a kickflip, `?grab=up`, `?spin=right`, `?snow=1`, `?rail=1`, `?at=0,0.05,...` for the frame times).

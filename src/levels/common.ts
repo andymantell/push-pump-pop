@@ -19,6 +19,8 @@ export interface TrackDef {
   par?: number;
   /** Three challenges; the first one (two from the third world on) must be done to open the next track. */
   challenges?: Challenge[];
+  /** The scooter career's par and challenges (src/levels/scooter.ts, joined on in tracks.ts). */
+  scooter?: { par: number; challenges: Challenge[] };
   build: () => Track;
 }
 

@@ -102,6 +102,13 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 .panel button.alt { background: #2f8fd8; box-shadow: 0 6px 0 #1e5f94; }
 .panel .buttons { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
 #r-track { font-size: 18px; font-weight: 900; margin-top: -10px; }
+#guidetabs { display: flex; gap: 10px; justify-content: center; }
+#guidetabs button { background: #5b6675; box-shadow: 0 4px 0 #353d48; }
+#guidetabs button.on { background: #2fb36b; box-shadow: 0 4px 0 #1d7a47; }
+#ridetabs { display: flex; gap: 10px; justify-content: center; }
+#ridetabs button { background: #5b6675; box-shadow: 0 4px 0 #353d48; display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+#ridetabs button em { font-style: normal; font-size: 12px; opacity: 0.9; }
+#ridetabs button.on { background: #2fb36b; box-shadow: 0 4px 0 #1d7a47; }
 #worldtabs { display: flex; gap: 10px; justify-content: center; }
 #worldtabs button { background: #5b6675; box-shadow: 0 4px 0 #353d48; }
 #worldtabs button.on { background: #ff7a1a; box-shadow: 0 4px 0 #b84a17; }
@@ -289,3 +296,4 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 #movecode { width: min(520px, 100%); font: 12px/1.3 ui-monospace, monospace; border-radius: 10px; border: none; padding: 10px; color: #1d2b3a; user-select: text; -webkit-user-select: text; }
 #movecode.hidden { display: none; }
 #movemsg { min-height: 1.3em; font-weight: 900; color: #ffe066; }
+.guide.hidden { display: none; }

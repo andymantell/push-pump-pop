@@ -842,6 +842,171 @@ def build_mountainboard():
     return join('mountainboard', bits)
 
 
+# ---------------------------------------------------------------- scooter
+
+def scooter_wheel(tyre_m, core_m, bolt_m, R=0.06, W=0.026):
+    """A stunt scooter wheel at the origin, axle along Y: urethane tyre on a metal core with spokes."""
+    bits = [cyl(tyre_m, R, W, rot=(math.pi / 2, 0, 0), verts=28, bevel=0.009)]
+    bits.append(cyl(core_m, R * 0.7, W + 0.004, rot=(math.pi / 2, 0, 0), verts=24, bevel=0.003))
+    # Cut-outs between the spokes read as dark windows in the core.
+    for k in range(6):
+        a = k * math.pi / 3 + math.pi / 6
+        for side in (1, -1):
+            bits.append(cyl(tyre_m, R * 0.16, 0.003, loc=(R * 0.42 * math.cos(a), side * (W / 2 + 0.002), R * 0.42 * math.sin(a)), rot=(math.pi / 2, 0, 0), verts=10))
+    bits.append(cyl(bolt_m, R * 0.18, W + 0.012, rot=(math.pi / 2, 0, 0), verts=12, bevel=0.002))
+    return bits
+
+
+def scooter_bars(frame_m, bar_m, grip_m, clamp_m, bolt_m, top):
+    """Fork crown, clamp, T-bars with gussets and grips; `top` is the grip height. Steering axis up Z at x = 0."""
+    bits = []
+    bits.append(cyl(clamp_m, 0.031, 0.07, loc=(0, 0, 0.345), verts=20, bevel=0.006))
+    for z in (0.325, 0.365):
+        bits.append(cube(bolt_m, (0.016, 0.03, 0.012), loc=(-0.034, 0, z), bevel=0.003))
+    bits.append(cyl(bar_m, 0.017, top - 0.38, loc=(0, 0, (top + 0.38) / 2), verts=16))
+    bits.append(cyl(bar_m, 0.015, 0.56, loc=(0, 0, top), rot=(math.pi / 2, 0, 0), verts=16))
+    # Gussets bracing the crossbar to the downtube.
+    for s in (1, -1):
+        bits.append(cyl(bar_m, 0.008, 0.13, loc=(0, s * 0.05, top - 0.045), rot=(s * 0.85, 0, 0), verts=10))
+        # Grips with a flange on the inside and a bar-end plug.
+        bits.append(cyl(grip_m, 0.021, 0.12, loc=(0, s * (GRIP_Z_M), top), rot=(math.pi / 2, 0, 0), verts=18, bevel=0.006))
+        bits.append(cyl(grip_m, 0.027, 0.012, loc=(0, s * (GRIP_Z_M - 0.066), top), rot=(math.pi / 2, 0, 0), verts=18, bevel=0.003))
+        bits.append(cyl(frame_m, 0.018, 0.008, loc=(0, s * (GRIP_Z_M + 0.062), top), rot=(math.pi / 2, 0, 0), verts=14))
+    return bits
+
+
+GRIP_Z_M = 0.22
+SCOOTER_GRIP = 0.88
+
+
+def build_scooter():
+    """Stunt scooter and snow scooter, two parts each, origin on the ground under the front axle.
+
+    The steering axis is straight up through the front axle. `*_deck` (deck, back wheel or rear
+    ski, head tube) whips round it; `*_bars` (bars, fork, front wheel or front ski) spins round it.
+    The deck runs back along -X; its top is at 0.105 (0.135 on the snow scooter), grips at 0.88.
+    """
+    reset()
+    frame_m = mat('scooter_frame', (122, 79, 216))
+    frame_dk = mat('scooter_frame_dark', (88, 52, 170))
+    grip_tape = mat('scooter_grip', (34, 34, 38))
+    graphic = mat('scooter_graphic', (255, 214, 64))
+    bar_m = mat('scooter_bar', (196, 202, 212))
+    grip_m = mat('scooter_handgrip', (40, 38, 42))
+    tyre_m = mat('scooter_tyre', (255, 210, 63))
+    core_m = mat('scooter_core', (190, 196, 204))
+    bolt_m = mat('scooter_bolt', (70, 72, 78))
+    ski_m = mat('snowscoot_ski', (232, 64, 42))
+    ski_base = mat('snowscoot_base', (244, 244, 244))
+    R = 0.06
+    xb = -0.60  # back axle
+
+    def deck_plate(z0, lift):
+        """Deck from the neck back to the dropouts: rounded box, grip tape on top, a stripe of graphic, deck end at the back."""
+        bits = []
+        bits.append(cube(frame_m, (0.47, 0.118, 0.03), loc=(-0.31, 0, z0 + 0.015), bevel=0.012, segs=3))
+        bits.append(cube(grip_tape, (0.43, 0.1, 0.003), loc=(-0.31, 0, z0 + 0.031)))
+        bits.append(cube(graphic, (0.36, 0.122, 0.008), loc=(-0.31, 0, z0 + 0.012)))
+        # Neck rising forward to the head tube.
+        bits.append(cube(frame_m, (0.12, 0.07, 0.035), loc=(-0.06, 0, z0 + 0.05 + lift * 0.3), rot=(0, -0.55, 0), bevel=0.01))
+        bits.append(cyl(frame_m, 0.028, 0.17, loc=(0, 0, 0.225 + lift), verts=20, bevel=0.004))
+        bits.append(cyl(frame_dk, 0.031, 0.012, loc=(0, 0, 0.145 + lift), verts=20))
+        bits.append(cyl(frame_dk, 0.031, 0.012, loc=(0, 0, 0.305 + lift), verts=20))
+        return bits
+
+    # --- wheeled scooter
+    d = deck_plate(0.075, 0.0)
+    for s in (1, -1):
+        # Dropouts round the back wheel, and a flex fender over it to brake with.
+        d.append(cube(frame_m, (0.11, 0.009, 0.05), loc=(xb + 0.03, s * 0.022, 0.075), bevel=0.003))
+    d.append(cube(bar_m, (0.12, 0.05, 0.006), loc=(xb + 0.0, 0, R * 2 + 0.012), rot=(0, 0.12, 0), bevel=0.002))
+    for b in scooter_wheel(tyre_m, core_m, bolt_m, R):
+        b.location.x += xb
+        b.location.z += R
+        d.append(b)
+    parts = [join('scooter_deck', d)]
+    bars = scooter_bars(frame_m, bar_m, grip_m, frame_dk, bolt_m, SCOOTER_GRIP)
+    # Fork: crown under the head tube, legs down to the axle.
+    bars.append(cube(frame_m, (0.05, 0.07, 0.025), loc=(0, 0, 0.13), bevel=0.008))
+    for s in (1, -1):
+        bars.append(cube(frame_m, (0.022, 0.012, 0.085), loc=(0.004, s * 0.024, 0.088), bevel=0.004))
+    for b in scooter_wheel(tyre_m, core_m, bolt_m, R):
+        b.location.z += R
+        bars.append(b)
+    parts.append(join('scooter_bars', bars))
+
+    # --- snow scooter: the deck stands on a short board, the fork on a front ski.
+    lift = 0.03
+
+    def board(name_m, x0, x1, w, nose):
+        """A short ski board along X from x0 to x1, turned up at the front (and the back if `nose` is 2)."""
+        nx, ny, T = 40, 6, 0.018
+        bm = bmesh.new()
+        top, bot = [], []
+        for i in range(nx + 1):
+            u = i / nx
+            x = x0 + (x1 - x0) * u
+            tip = max(0.0, (u - 0.8) / 0.2)
+            tail = max(0.0, (0.2 - u) / 0.2) if nose == 2 else 0.0
+            rise = 0.07 * tip ** 1.6 + 0.04 * tail ** 1.6
+            end = max(tip, tail)
+            half = max(w / 2 * math.sqrt(max(0.0, 1 - (max(0.0, end - 0.5) / 0.5) ** 2)), 0.004)
+            rt, rb = [], []
+            for j in range(ny + 1):
+                y = (j / ny * 2 - 1) * half
+                rt.append(bm.verts.new((x, y, 0.01 + rise + T / 2)))
+                rb.append(bm.verts.new((x, y, 0.01 + rise - T / 2)))
+            top.append(rt)
+            bot.append(rb)
+        for i in range(nx):
+            for j in range(ny):
+                bm.faces.new((top[i][j], top[i + 1][j], top[i + 1][j + 1], top[i][j + 1]))
+                bm.faces.new((bot[i][j], bot[i][j + 1], bot[i + 1][j + 1], bot[i + 1][j]))
+        for i in range(nx):
+            bm.faces.new((top[i][0], bot[i][0], bot[i + 1][0], top[i + 1][0]))
+            bm.faces.new((top[i][ny], top[i + 1][ny], bot[i + 1][ny], bot[i][ny]))
+        for i in (0, nx):
+            for j in range(ny):
+                f = (top[i][j], top[i][j + 1], bot[i][j + 1], bot[i][j])
+                bm.faces.new(f if i == nx else f[::-1])
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        for f in bm.faces:
+            f.material_index = 0 if f.normal.z > 0.3 else 1
+        me = bpy.data.meshes.new('ski')
+        bm.to_mesh(me)
+        bm.free()
+        o = bpy.data.objects.new('ski', me)
+        bpy.context.collection.objects.link(o)
+        o.data.materials.append(name_m)
+        o.data.materials.append(ski_base)
+        for p in o.data.polygons:
+            p.use_smooth = True
+        return o
+
+    d = deck_plate(0.075 + lift, lift)
+    d.append(board(ski_m, -0.78, -0.12, 0.2, 2))
+    # Risers lifting the deck off the board.
+    for x in (-0.48, -0.16):
+        d.append(cube(frame_dk, (0.05, 0.09, 0.07), loc=(x, 0, 0.065), bevel=0.008))
+    parts.append(join('snowscoot_deck', d))
+    bars = scooter_bars(frame_m, bar_m, grip_m, frame_dk, bolt_m, SCOOTER_GRIP + lift)
+    bars.append(cube(frame_m, (0.05, 0.07, 0.025), loc=(0, 0, 0.13 + lift), bevel=0.008))
+    for s in (1, -1):
+        bars.append(cube(frame_m, (0.022, 0.012, 0.12), loc=(0.004, s * 0.024, 0.08 + lift), bevel=0.004))
+    bars.append(cube(frame_dk, (0.08, 0.07, 0.04), loc=(0.0, 0, 0.045), bevel=0.01))
+    bars.append(board(ski_m, -0.16, 0.26, 0.17, 1))
+    parts.append(join('snowscoot_bars', bars))
+    # Every part turns about the front axle, so put its origin there rather than at its first piece.
+    bpy.context.scene.cursor.location = (0, 0, 0)
+    for o in parts:
+        bpy.ops.object.select_all(action='DESELECT')
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+    export(os.path.join(OUT, 'scooter.glb'), parts)
+
+
 # ---------------------------------------------------------------- props
 
 def build_props():
@@ -1926,8 +2091,10 @@ def build_pirate(out):
 
 if __name__ == '__main__':
     import sys
-    which = sys.argv[1:] or ['skater', 'props']
+    which = sys.argv[1:] or ['skater', 'scooter', 'props']
     if 'skater' in which:
         build_skater()
+    if 'scooter' in which:
+        build_scooter()
     if 'props' in which:
         build_props()
