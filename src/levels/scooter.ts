@@ -150,6 +150,19 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   'candy-7': set(30000, gaps('Clear every chocolate river'), combo('One combo across the bounce chain', { across: ['chain', 'chainend'] }), noLives()),
   'candy-8': set(36000, gaps('Clear every chocolate river'), tricks(5), variety(8)),
   'candy-pipe': scored(22500, trick('Land a barspin', 'Barspin'), variety(5)),
+
+  // Harbour Docks
+  'docks-1': set(8000, finish(), { text: 'Manual along the containers', kind: 'manual', seconds: 1.5, pad: true }, combo('Manual and grind in one combo', { include: ['manual', 'grind'] })),
+  'docks-2': set(11500, gaps('Clear every gap'), trick('Tailwhip a gap', 'Tailwhip', { overGap: true }), tricks(4)),
+  'docks-3': scored(15000, grind('Grind a handrail', { railKind: 'handrail' }), combo('Grind a handrail, then manual, in one combo', { include: ['grind', 'manual'] })),
+  'docks-4': set(64000, grind('Grind 3 different rails', { count: 3 }), trick('A whip off a rail', 'whip', { fromRail: true }), tricks(5)),
+  'docks-5': set(14000, gaps('Clear every gap'), trick('Barspin over a gap', 'Barspin', { overGap: true }), noLives()),
+  'docks-6': scored(12000, air('Air for 1.5 seconds', { seconds: 1.5 }), trick('A body trick over every gap', 'hold', { overGap: 'every' })),
+  'docks-7': set(15500, combo('Ride three stacks in one combo', { across: ['stacks', 'stacksend'] }), variety(6), noLives()),
+  'docks-8': scored(50500, combo('Manual, grind and whip in one combo', { include: ['manual', 'grind', 'whip'] }), tricks(5)),
+  'docks-9': set(38500, combo('Clear a set of three gaps in one combo', { gaps: 3 }), tricks(6), noLives()),
+  'docks-10': scored(57000, gaps('Clear the final gap', { which: [-1] }), combo('Grind, manual and body trick in one combo', { include: ['grind', 'manual', 'hold'] })),
+  'docks-mega': scored(23500, drops(), bothAirs()),
 };
 
 /** Skateboard words and tricks, the scooter way. */
