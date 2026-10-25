@@ -27,12 +27,12 @@ const MOODS: Record<string, Mood> = {
   },
   dusk: {
     label: 'Dusk',
-    sky: ['#1a1f4a', '#5a4a8a', '#e08a7a'], hemi: [0xb8b0e0, 0x403850, 1.25], sun: [0xffb0a0, 1.4],
+    sky: ['#1a1f4a', '#5a4a8a', '#e08a7a'], hemi: [0xb8b0e0, 0x403850, 1.0], sun: [0xffb0a0, 1.1],
     sunPos: [12, 3, 8], clouds: 0x8a7aa8, lights: true,
   },
   night: {
     label: 'Night',
-    sky: ['#070b22', '#16224a', '#2c3a6a'], hemi: [0x9fb0e0, 0x30304a, 1.2], sun: [0xc8d8ff, 1.3],
+    sky: ['#070b22', '#16224a', '#2c3a6a'], hemi: [0x9fb0e0, 0x30304a, 0.6], sun: [0xc8d8ff, 0.7],
     sunPos: [-8, 14, 10], clouds: 0x3a4468, stars: true, lights: true, haze: 0.25,
   },
   overcast: {
@@ -79,7 +79,7 @@ const TRACK_MOODS: Record<string, Mood> = {
   'rooftops-2': mood('golden'),
   'rooftops-4': mood('dusk'),
   'rooftops-5': mood('night'),
-  'rooftops-6': { ...mood('rain'), label: 'Rainy night', sky: ['#0a0e24', '#1e2648', '#3a3a5a'], hemi: [0xa0b0d8, 0x30304a, 1.2], sun: [0xc8d8ff, 1.2], lights: true },
+  'rooftops-6': { ...mood('rain'), label: 'Rainy night', sky: ['#0a0e24', '#1e2648', '#3a3a5a'], hemi: [0xa0b0d8, 0x30304a, 0.6], sun: [0xc8d8ff, 0.65], lights: true },
   'rooftops-7': mood('dusk'),
   'rooftops-8': { ...mood('morning'), label: 'Dawn', sky: ['#3a4a8a', '#d890a8', '#ffd0a0'] },
   'rooftops-9': mood('night'),
@@ -119,7 +119,7 @@ const TRACK_MOODS: Record<string, Mood> = {
 
   'volcano-2': { label: 'Ash fall', sky: ['#2a2426', '#4a3e3c', '#7a6058'], particles: 'ash', haze: 0.15 },
   'volcano-4': { label: 'Eruption', sky: ['#2a0808', '#8a1a10', '#ff6a20'], hemi: [0xffb090, 0x601818, 1.7], eruption: true },
-  'volcano-5': { label: 'Night', sky: ['#05040a', '#1a0c14', '#4a1a14'], hemi: [0xe0a090, 0x301018, 1.4], stars: true },
+  'volcano-5': { label: 'Night', sky: ['#05040a', '#1a0c14', '#4a1a14'], hemi: [0xe0a090, 0x301018, 0.9], sun: [0xff9060, 1.2], stars: true },
   'volcano-6': { label: 'Ash fall', sky: ['#2a2426', '#4a3e3c', '#7a6058'], particles: 'ash', haze: 0.15 },
   'volcano-8': { label: 'Eruption', sky: ['#2a0808', '#8a1a10', '#ff6a20'], hemi: [0xffb090, 0x601818, 1.7], eruption: true },
   'volcano-9': { label: 'Smoky', sky: ['#3a3032', '#5a4644', '#8a6a5a'], haze: 0.4 },

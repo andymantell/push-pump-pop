@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addLighting, Lamp, setLamps, setRim } from './lighting';
 import { Track, DX, LOOP_SHIFT } from './track';
 import { Biome, Particles, Surface } from './biomes';
 import { toon } from './toon';
@@ -238,8 +239,28 @@ function haloMaterial(): THREE.SpriteMaterial {
   return halo;
 }
 
+let blob: THREE.MeshBasicMaterial | null = null;
+/** A soft round shadow, darkest in the middle. */
+function blobMaterial(): THREE.MeshBasicMaterial {
+  if (blob) return blob;
+  const tex = canvasTexture(64, 64, (c) => {
+    const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(20,16,30,0.42)');
+    g.addColorStop(0.55, 'rgba(20,16,30,0.22)');
+    g.addColorStop(1, 'rgba(20,16,30,0)');
+    c.fillStyle = g;
+    c.fillRect(0, 0, 64, 64);
+  });
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  blob = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  blob.userData.outlineParameters = { visible: false };
+  return blob;
+}
+
 export class World {
   readonly group = new THREE.Group();
+  /** Lights that pool on the ground: lamps at night, and lava. */
+  readonly lamps: Lamp[] = [];
   private groundCache: Float32Array;
   private particles: THREE.Points | THREE.LineSegments | null = null;
   private particleKind: ParticleLook | null = null;
@@ -297,7 +318,7 @@ export class World {
       if (!mesh.isMesh || Array.isArray(mesh.material) || !mesh.material.name.startsWith('leaf')) return;
       let t = this.tinted.get(mesh.material);
       if (!t) {
-        const m = (mesh.material as THREE.MeshToonMaterial).clone();
+        const m = addLighting((mesh.material as THREE.MeshToonMaterial).clone());
         m.color.lerp(new THREE.Color(tint), 0.7);
         this.tinted.set(mesh.material, m);
         t = m;
@@ -330,9 +351,14 @@ export class World {
     scene.fog = new THREE.Fog(b.fog[0], b.fog[1], b.fog[2]);
     hemi.color.setHex(b.hemi[0]);
     hemi.groundColor.setHex(b.hemi[1]);
-    hemi.intensity = b.hemi[2];
+    // Less flat fill and a bit more sun, so the toon bands show which way things face.
+    hemi.intensity = b.hemi[2] * 0.8;
     sun.color.setHex(b.sun[0]);
-    sun.intensity = b.sun[1];
+    sun.intensity = b.sun[1] * 1.1;
+    // Rim light takes the colour of the sky at the horizon (moonlight blue at night).
+    const rim = new THREE.Color(b.sky[2]).lerp(new THREE.Color(b.sun[0]), 0.5);
+    setRim(rim, b.stars ? 0.5 : 0.32);
+    setLamps(this.lamps, 0);
     document.body.style.background = b.sky[1];
   }
 
@@ -527,6 +553,7 @@ export class World {
       );
       foam.position.set((p.x0 + p.x1) / 2, topY, 0);
       this.group.add(foam);
+      if (b.pitFill === 'lava') this.lamps.push({ x: (p.x0 + p.x1) / 2, y: topY, z: 0, radius: 5 + (p.x1 - p.x0) * 0.6, color: new THREE.Color(0xff6a20).multiplyScalar(1.4) });
     }
   }
 
@@ -833,12 +860,22 @@ export class World {
       halo.position.set(0, 3.9, 0.85);
       halo.scale.setScalar(2.2);
       o.add(halo);
+      this.addLamp(x, y + 3.9 * scale, z + 0.85 * scale, 0xffd080);
     }
+    if (kind !== this.biome.fence?.kind) this.blobs.push({ x, z, r: Math.min(2.4, Math.max(0.35, this.footprint(kind, model) * scale * 0.9)) });
     this.group.add(o);
     return o;
   }
 
   private clearings: { x: number; z: number; r: number }[] = [];
+  /** Soft dark patches where things meet the ground. */
+  private blobs: { x: number; z: number; r: number }[] = [];
+
+  /** A pool of light on the ground, brighter on darker nights. */
+  private addLamp(x: number, y: number, z: number, color: number, radius = 6.5) {
+    const night = this.biome.stars ? 1.6 : 1.1;
+    this.lamps.push({ x, y, z, radius, color: new THREE.Color(color).multiplyScalar(night) });
+  }
 
   /** This track's landmarks, spread along it. */
   private placeLandmarks(id: string) {
@@ -861,6 +898,7 @@ export class World {
       o.position.set(x, y, lm.z);
       this.group.add(o);
       if (lm.r) this.clearings.push({ x, z: lm.z, r: lm.r });
+      if (lm.r && lm.on !== 'sea') this.blobs.push({ x, z: lm.z, r: lm.r * 0.9 });
     });
   }
 
@@ -883,8 +921,72 @@ export class World {
       }
       if (b.posts.kind === 'liftpylon') this.buildLift(tops);
     }
+    if (b.lights && b.posts?.kind !== 'lamp') this.buildNightLights(end);
     if (b.edge) for (let x = 6; x < end; x += b.edge.spacing * (0.7 + r() * 0.6)) this.placeProp(b.edge.kind, x, b.edge.z, 1, r() * Math.PI);
     for (const p of this.track.props) this.placeProp(p.kind, p.x, p.z, p.scale, p.rot);
+    this.buildBlobs();
+  }
+
+  /** After dark, worlds without street lamps get lamps (towns) or burning torches (the wild). */
+  private buildNightLights(end: number) {
+    const wild = ['desert', 'jungle', 'volcano', 'snow'].includes(this.biome.id);
+    if (!wild) {
+      for (let x = 9; x < end; x += 18) this.placeProp('lamp', x, -2.6);
+      return;
+    }
+    const wood = toon(0x6a4628), flame = new THREE.MeshBasicMaterial({ color: 0xffb030 }), core = new THREE.MeshBasicMaterial({ color: 0xfff0a0 });
+    flame.userData.outlineParameters = { visible: false };
+    core.userData.outlineParameters = { visible: false };
+    const torch = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 2.2, 6), wood);
+    pole.position.y = 1.1;
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.1, 0.22, 8), toon(0x3a3034));
+    bowl.position.y = 2.25;
+    const f1 = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.5, 7), flame);
+    f1.position.y = 2.55;
+    const f2 = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.3, 6), core);
+    f2.position.y = 2.48;
+    torch.add(pole, bowl, f1, f2);
+    for (let x = 9; x < end; x += 16) {
+      const z = -2.4, y = this.groundY(x, z);
+      const t = torch.clone();
+      t.position.set(x, y, z);
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.y = 2.55;
+      halo.scale.setScalar(1.8);
+      t.add(halo);
+      this.group.add(t);
+      this.addLamp(x, y + 2.5, z, 0xff9a40, 5.5);
+      this.blobs.push({ x, z, r: 0.4 });
+    }
+  }
+
+  /** All the contact shadows in one mesh: a soft dark disc laid over the ground under each prop. */
+  private buildBlobs() {
+    if (!this.blobs.length) return;
+    const N = 3, per = (N + 1) * (N + 1);
+    const pos = new Float32Array(this.blobs.length * per * 3), uv = new Float32Array(this.blobs.length * per * 2);
+    const idx: number[] = [];
+    this.blobs.forEach((b, k) => {
+      const v0 = k * per;
+      for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
+        const u = i / N, w = j / N, x = b.x + (u - 0.5) * 2 * b.r, z = b.z + (w - 0.5) * 2 * b.r;
+        const v = v0 + i * (N + 1) + j;
+        pos.set([x, this.groundY(x, Math.min(z, -TRACK_W / 2 - 0.05)) + 0.04, z], v * 3);
+        uv.set([u, w], v * 2);
+      }
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+        const a = v0 + i * (N + 1) + j, c = a + N + 1;
+        idx.push(a, a + 1, c, c, a + 1, c + 1);
+      }
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    const m = new THREE.Mesh(g, blobMaterial());
+    m.renderOrder = -1;
+    this.group.add(m);
   }
 
   /** Chairlift cables slung between the pylons, with a chair every so often. */
@@ -982,6 +1084,7 @@ export class World {
   private buildSky() { /* sky is the scene background, set in applyEnvironment */ }
 
   update(dt: number, camX: number, camY: number) {
+    setLamps(this.lamps, camX + 4);
     this.clouds.position.x = camX * 0.6;
     this.sky.position.set(camX * 0.9, camY, 0);
     const p = this.particleKind;

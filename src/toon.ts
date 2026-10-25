@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addLighting } from './lighting';
 
 let gradient: THREE.DataTexture | null = null;
 
@@ -18,7 +19,7 @@ const cache = new Map<string, THREE.MeshToonMaterial>();
 export function toon(color: THREE.ColorRepresentation, opts: THREE.MeshToonMaterialParameters = {}): THREE.MeshToonMaterial {
   const key = new THREE.Color(color).getHexString() + JSON.stringify(Object.keys(opts));
   if (!Object.keys(opts).length && cache.has(key)) return cache.get(key)!;
-  const m = new THREE.MeshToonMaterial({ color, gradientMap: toonGradient(), ...opts });
+  const m = addLighting(new THREE.MeshToonMaterial({ color, gradientMap: toonGradient(), ...opts }));
   if (!Object.keys(opts).length) cache.set(key, m);
   return m;
 }
@@ -30,12 +31,12 @@ export function toonify(root: THREE.Object3D) {
     if (!mesh.isMesh) return;
     const conv = (m: THREE.Material) => {
       const s = m as THREE.MeshStandardMaterial;
-      const t = new THREE.MeshToonMaterial({
+      const t = addLighting(new THREE.MeshToonMaterial({
         color: s.color ?? 0xffffff,
         map: s.map ?? null,
         gradientMap: toonGradient(),
         vertexColors: s.vertexColors,
-      });
+      }));
       t.name = s.name;
       return t;
     };
