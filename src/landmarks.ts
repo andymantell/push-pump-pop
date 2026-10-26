@@ -1406,6 +1406,63 @@ export const LANDMARKS: Record<string, Landmark> = {
     g.rotation.set(0.3, 0, 0.2);
     return group(g);
   } },
+  // ---- Sky Islands
+  floatisle: { z: -30, r: 0, on: 'air', build: () => {
+    // A little island floating above the track, a tree and a cottage on top, a waterfall
+    // pouring off its edge and rocks hanging underneath.
+    const g = new THREE.Group();
+    g.add(cyl(7, 6.4, 1.6, 0x6ab85a, [0, 0, 0], 16));
+    const under = mesh(new THREE.ConeGeometry(6.4, 12, 12), 0x9a7a5a, [0, -6.8, 0], [Math.PI, 0, 0]);
+    g.add(under, mesh(new THREE.ConeGeometry(2, 5, 8), 0x8a6a4a, [4, -4, 2], [Math.PI, 0, 0.2]));
+    g.add(cyl(0.3, 0.4, 3, 0x8a6a4a, [-3, 2.3, -1], 8), ball(2, 0x5aa84a, [-3, 4.6, -1], 10));
+    g.add(box(3, 2.2, 2.4, 0xf4ecd8, [2, 1.9, -1]), mesh(new THREE.ConeGeometry(2.4, 1.8, 4), 0xd85a3a, [2, 3.9, -1], [0, Math.PI / 4, 0]));
+    g.add(box(0.6, 0.6, 0.05, glow(0xffe8a0), [1.4, 2, 0.22]));
+    g.add(box(1.6, 14, 0.2, new THREE.MeshBasicMaterial({ color: 0xdff4ff, transparent: true, opacity: 0.8 }), [5.5, -6.5, 3.5]));
+    return group(g.translateY(14));
+  } },
+  skycastle: { z: -32, r: 0, on: 'air', build: () => {
+    // A castle on the clouds: white towers with blue pointy roofs and flags.
+    const wall = 0xf4f0e8, roof = 0x4a7ad8;
+    const g = group(box(16, 8, 6, wall, [0, 4, 0]));
+    for (let i = 0; i < 8; i++) g.add(box(1.2, 1, 6.2, wall, [-7.4 + i * 2.1, 8.5, 0]));
+    for (const [x, h, r] of [[-9, 14, 2.4], [9, 14, 2.4], [-3, 18, 2], [3.5, 22, 2.2]] as const) {
+      g.add(cyl(r, r, h, wall, [x, h / 2, 1], 14), mesh(new THREE.ConeGeometry(r * 1.25, r * 2.2, 14), roof, [x, h + r * 1.1, 1]));
+      g.add(cyl(0.06, 0.06, 2, 0x5a5a64, [x, h + r * 2.2 + 1, 1], 6), box(1.2, 0.7, 0.05, 0xf2c040, [x + 0.6, h + r * 2.2 + 1.6, 1]));
+    }
+    g.add(box(3, 4.5, 0.2, 0x8a5a30, [0, 2.25, 3.05]));
+    for (let i = 0; i < 5; i++) g.add(box(0.8, 1.2, 0.05, glow(0xffe8a0), [-6 + i * 3, 6, 3.05]));
+    for (let k = 0; k < 9; k++) g.add(ball(3 + (k % 3), 0xffffff, [-12 + k * 3, 0, 2 + (k % 2) * 2], 10));
+    return g;
+  } },
+  rainbow: { z: -45, r: 0, build: () => {
+    // A rainbow arching right over the track, its ends in puffy clouds.
+    const cols = [0xe84a3a, 0xf29a3a, 0xf2d84a, 0x6ac84a, 0x4a9ad8, 0x8a5ac8];
+    const g = new THREE.Group();
+    cols.forEach((c, i) => {
+      const m = new THREE.Mesh(new THREE.TorusGeometry(30 - i * 1.2, 0.6, 6, 40, Math.PI), new THREE.MeshBasicMaterial({ color: c }));
+      m.material.userData.outlineParameters = { visible: false };
+      g.add(m);
+    });
+    for (const x of [-27, 27]) for (let k = 0; k < 4; k++) g.add(ball(3.5 + (k % 2), 0xffffff, [x + (k - 1.5) * 3, 1 + (k % 2), 1], 10));
+    return g;
+  } },
+  bigwindmill: { z: -20, r: 0, on: 'air', build: () => {
+    // A tall windmill with big white sails, on its own little hill.
+    const g = group(mesh(new THREE.ConeGeometry(4.2, 12, 8), 0xe8dcc0, [0, 6, 0]), mesh(new THREE.ConeGeometry(2.4, 3, 8), 0x8a5a3a, [0, 13.2, 0]));
+    const hub = new THREE.Group();
+    for (let k = 0; k < 4; k++) {
+      const sail = box(1.6, 8, 0.15, 0xffffff, [0, 4.4, 0]);
+      const arm = new THREE.Group();
+      arm.add(sail, box(0.3, 9, 0.2, 0x8a5a3a, [0, 4.2, -0.1]));
+      arm.rotation.z = (k / 4) * Math.PI * 2 + 0.4;
+      hub.add(arm);
+    }
+    hub.position.set(0, 11, 2.6);
+    g.add(hub, ball(0.6, 0x5a5a64, [0, 11, 2.6], 8), box(1.6, 2.6, 0.2, 0x8a5a3a, [0, 1.3, 3.7]));
+    // Its own little floating island.
+    g.add(cyl(6, 5.4, 1.4, 0x6ab85a, [0, -0.7, 0], 14), mesh(new THREE.ConeGeometry(5.4, 9, 10), 0x9a7a5a, [0, -5.9, 0], [Math.PI, 0, 0]));
+    return g;
+  } },
 };
 
 /** Which landmarks each track has, spread along it in order. */
@@ -1461,4 +1518,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'moon-1': ['domebase', 'station'], 'moon-2': ['biglander'], 'moon-3': ['rocket', 'bigdish'], 'moon-4': ['domebase', 'biglander'],
   'moon-5': ['bigdish', 'station'], 'moon-6': ['rocket', 'domebase'], 'moon-7': ['biglander', 'bigdish'], 'moon-8': ['station', 'rocket'],
   'moon-9': ['domebase', 'bigdish'], 'moon-10': ['biglander', 'rocket'], 'moon-pipe': ['domebase'],
+  'sky-1': ['floatisle', 'bigwindmill'], 'sky-2': ['balloons', 'skycastle'], 'sky-3': ['bigwindmill', 'floatisle'], 'sky-4': ['rainbow'],
+  'sky-5': ['bigwindmill', 'balloons'], 'sky-6': ['skycastle', 'floatisle'], 'sky-7': ['rainbow', 'blimp'], 'sky-8': ['floatisle', 'bigwindmill'],
+  'sky-9': ['blimp', 'skycastle'], 'sky-10': ['floatisle', 'skycastle'], 'sky-mega': ['rainbow'],
 };

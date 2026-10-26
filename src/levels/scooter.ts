@@ -250,6 +250,19 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   'moon-9': set(17000, gaps('Clear every gap'), variety(7), noLives()),
   'moon-10': scored(23500, gaps('Clear the final gap', { which: [-1] }), air('Air for 2.5 seconds', { seconds: 2.5 })),
   'moon-pipe': scored(22000, air('Air for 2 seconds', { seconds: 2 }), variety(6)),
+
+  // Sky Islands: uphill gaps.
+  'sky-1': set(9000, gaps('Clear every gap'), pumps(12), trick('A body trick over the clouds', 'hold', { overGap: true })),
+  'sky-2': set(12500, gaps('Clear every gap'), trick('A whip over the clouds', 'whip', { overGap: true }), variety(5)),
+  'sky-3': set(18500, grind('Grind 3 rope rails', { count: 3 }), gaps('Clear every gap'), trick('A body trick off a rail', 'hold', { fromRail: true })),
+  'sky-4': set(11000, gaps('Clear every gap'), trick('A whip over the clouds', 'whip', { overGap: true }), air('Air for 1.2 seconds', { seconds: 1.2 })),
+  'sky-5': set(12500, gaps('Clear every gap'), everyKicker('A trick off every kicker'), noLives()),
+  'sky-6': set(18500, grind('Grind 3 rails', { count: 3 }), gaps('Clear every gap'), variety(6)),
+  'sky-7': set(12500, loop(), gaps('Clear every gap'), air('Air for 1.2 seconds', { seconds: 1.2 })),
+  'sky-8': set(15000, gaps('Clear every gap'), pumps(18), noLives()),
+  'sky-9': set(19000, gaps('Clear every gap'), grind('Grind both rails', { count: 2 }), variety(6)),
+  'sky-10': scored(20000, gaps('Clear the final gap', { which: [-1] }), variety(7)),
+  'sky-mega': scored(22500, drops(), bothAirs()),
 };
 
 /** Skateboard words and tricks, the scooter way. */

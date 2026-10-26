@@ -94,7 +94,7 @@ const GROUNDS: Record<Ground, GroundSound> = {
 };
 
 const BIOME_GROUND: Record<string, Ground> = {
-  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'sand', haunted: 'stone', funfair: 'wood', toxic: 'concrete', mine: 'stone', dino: 'dirt', moon: 'sand',
+  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'sand', haunted: 'stone', funfair: 'wood', toxic: 'concrete', mine: 'stone', dino: 'dirt', moon: 'sand', sky: 'stone',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -342,7 +342,7 @@ export class Sound {
   setScene(b: Biome, snow: boolean, bound = snow, scooter = false) {
     this.scooter = scooter;
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
-    this.railSound = b.id === 'jungle' || b.id === 'farm' || b.id === 'pirate' || b.id === 'dino' ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
+    this.railSound = b.id === 'jungle' || b.id === 'farm' || b.id === 'pirate' || b.id === 'dino' || b.id === 'sky' ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
     this.snow = snow;
     this.bound = bound;
     // Start fresh: nothing the rider did on the last track should sound on this one.
@@ -1115,6 +1115,21 @@ export class Sound {
           const p = pan() * 0.6;
           for (let i = 0; i < 3; i++) this.tone(at + i * 0.7, { type: 'square', f: 440, fEnd: 330, gain: 0.006, attack: 0.05, decay: 0.55, glide: 0.5, lp: 1400, to: out, pan: p });
         });
+        break;
+      }
+      case 'sky': {
+        // High up in the open air: wind gusting past, birds chirping, wind chimes tinkling and
+        // the roar of a hot air balloon's burner now and then.
+        bed(this.pink, { type: 'bandpass', f: 600, q: 0.6 }, 0.07, 6, 0.8, 300);
+        every(1.5, 4, (at) => {
+          const f = 2600 + Math.random() * 1200, p = pan();
+          for (let i = 0; i < 3; i++) this.tone(at + i * 0.1, { f, fEnd: f * 1.25, gain: 0.015, attack: 0.005, decay: 0.06, glide: 0.05, to: out, pan: p });
+        });
+        every(5, 11, (at) => {
+          const notes = [1568, 1760, 2093, 2349, 2637], p = pan();
+          for (let i = 0; i < 4; i++) this.tone(at + i * 0.17 + Math.random() * 0.1, { type: 'triangle', f: notes[Math.floor(Math.random() * 5)], gain: 0.012, attack: 0.002, decay: 1.2, to: out, pan: p });
+        });
+        every(20, 40, (at) => this.burst(at, { buf: this.brown, type: 'bandpass', f: 500, q: 0.8, gain: 0.05, attack: 0.1, decay: 1.6, to: out, pan: pan() }));
         break;
       }
       case 'moon': {

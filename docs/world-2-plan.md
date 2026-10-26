@@ -18,9 +18,9 @@ The ground rules, difficulty scale, challenges and par calibration in `level-pla
 | 8 | Crystal Mine | rail lines and rail-to-rail hops | 10 | 6 to 9 | Mine Shaft Mega Ramp | built |
 | 9 | Dino Valley | giant humps to launch off | 10 | 7 to 9 | Long Neck Mega Ramp | built |
 | 10 | Moon Base | low gravity (about 7 instead of 14), bigger features | 10 | 7 to 10 | Crater Halfpipe | built |
-| 11 | Sky Islands | uphill gaps between floating islands | 10 | 8 to 10 | mega ramp | planned |
+| 11 | Sky Islands | uphill gaps between floating islands | 10 | 8 to 10 | Cloud Top Mega Ramp | built |
 
-New pieces still to build: sky pits (Sky Islands).
+All the new pieces are built.
 
 ## Autumn Farm: mud
 
@@ -251,3 +251,28 @@ pipe, as the mega ramp's sizes are tuned for normal gravity.
 | 9 | moon-9 | Dark Side | 10 | five craters and a drop | moon base, radio dish | starlight |
 | 10 | moon-10 | Moonshot | 10 | everything, a 10 m final crater | lander, rocket | blue shadows |
 | bonus | moon-pipe | Crater Halfpipe | - | - | moon base | earthrise |
+
+## Sky Islands: uphill gaps
+
+Floating islands above a sea of clouds. `groundShape: 'islands'` keeps a strip of grass behind
+the track and drops away past it (and over every gap) far below; the far scenery
+(`'skyislands'`) is more floating islands, some with waterfalls, over the cloud sea.
+`pitFill: 'sky'` gaps have no floor: clouds fill them, and falling in whistles down to a soft
+poof ("WHEEE!"). Uphill gaps are plain `kicker(5, 1.6).pit(len, +rise).land(26)` with a rise of
+0.4 to 1.0 m; around 6.6 m with a 0.8 m rise is the most the pumping bots clear reliably.
+Rope rails (`gapRail`) cross some gaps. Floating landmarks (`on: 'air'`) sit at track height,
+so the castle and windmill have their own clouds or island underneath.
+
+| # | id | Name | Diff | New | Landmarks | Mood |
+|---|----|------|----:|-----|-----------|------|
+| 1 | sky-1 | Island Hop | 8 | uphill gaps | floating island, windmill | morning |
+| 2 | sky-2 | Up and Up | 8 | four uphill gaps | balloons, sky castle | above the clouds |
+| 3 | sky-3 | Rope Bridges | 8 | rope rails over gaps | windmill, floating island | pink dawn |
+| 4 | sky-4 | Cloud Drops | 8 | drop down, jump back up | rainbow | sunset |
+| 5 | sky-5 | Windmill Isle | 9 | bigger rises, a hump | windmill, balloons | breezy blue |
+| 6 | sky-6 | Sky Temple | 9 | ledge, stairs, rails | sky castle, floating island | golden hour |
+| 7 | sky-7 | Rainbow Road | 9 | a loop between islands | rainbow, blimp | after the rain |
+| 8 | sky-8 | Thunderhead | 10 | five gaps in a storm | floating island, windmill | thunderstorm |
+| 9 | sky-9 | Sky Castle | 10 | everything | blimp, sky castle | night |
+| 10 | sky-10 | Top of the World | 10 | everything, the last island | floating island, sky castle | dusk |
+| bonus | sky-mega | Cloud Top Mega Ramp | - | - | rainbow | breezy blue |

@@ -1833,7 +1833,7 @@ export class World {
         far.add(sea);
         const cm = new THREE.MeshToonMaterial({ color: 0xffffff });
         for (let x = -60; x < len + 120; x += 5 + r() * 6) {
-          for (const z of [12, -14, -40]) {
+          for (const z of [-14, -40]) {
             const s = new THREE.Mesh(new THREE.SphereGeometry(4 + r() * 4, 10, 8), cm);
             s.position.set(x, tr.minY + 2 + r() * 1.5, z - r() * 10);
             far.add(s);

@@ -358,7 +358,7 @@ export const BIOMES: Record<string, Biome> = {
 /** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
 export const WORLDS: string[][] = [
   ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
-  ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair', 'toxic', 'mine', 'dino', 'moon'],
+  ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair', 'toxic', 'mine', 'dino', 'moon', 'sky'],
 ];
 export const BIOME_ORDER = WORLDS.flat();
 export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));
