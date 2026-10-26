@@ -719,10 +719,12 @@ def tops(m):
 
     # Hoodie: the original, with a hood, a kangaroo pocket and drawstrings.
     body = loft(top, HOODIE, cap0=False, name='hoodie')
-    t = [body, loft(dark, [
-        (-0.07, 0.186, 0.13, 0.015, -0.016, 2.6), (-0.06, 0.194, 0.14, 0.015, -0.016, 2.6),
-        (-0.01, 0.192, 0.134, 0.012, -0.01, 2.6), (0.0, 0.18, 0.118, 0.01, 0, 2.6),
-    ], name='hem')]
+    # A snug band at the bottom in the hoodie's own colour (a dark, flared one read as the
+    # pocket poking out below the hoodie).
+    t = [body, loft(top, [
+        (-0.04, 0.176, 0.116, 0.01, 0.0, 2.6), (-0.032, 0.184, 0.122, 0.01, 0.0, 2.6),
+        (-0.004, 0.184, 0.122, 0.01, 0.0, 2.6), (0.0, 0.182, 0.12, 0.01, 0, 2.6),
+    ], cap1=False, name='hem')]
     t.append(loft(dark, [(0.43, 0.1, 0.075, 0, 0.03, 2.4), (0.5, 0.115, 0.085, 0, 0.035, 2.4), (0.545, 0.085, 0.07, 0, 0.045, 2.2)], name='hood'))
     t.append(sphere(top, 0.07, loc=(0, 0.075, 0.5), scale=(1.45, 0.75, 0.9), segs=16, rings=10))
     # The pocket hugs the tummy: a flat box stood off the curve and read as a bum bag in game.
