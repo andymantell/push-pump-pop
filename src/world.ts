@@ -694,6 +694,45 @@ export class World {
 
   /** Height of the background ground at (x, z), z < 0 is behind the track. */
   groundY(x: number, z: number): number {
+    const y = this.baseGroundY(x, z);
+    const rv = this.ravineAt(x, z);
+    return rv ? Math.min(y, y + (rv.floor - y) * rv.w) : y;
+  }
+
+  /**
+   * Each gap carries on behind the track as a ravine cut through the land, so through the
+   * gap you see down into it and along it into the distance. It widens a little as it goes
+   * back and its floor climbs out far away. `w` is 0 on the rim and 1 on the floor.
+   */
+  private ravineAt(x: number, z: number): { w: number; floor: number; pit: Pit } | null {
+    const back = -z - TRACK_W / 2;
+    if (back < -0.2) return null;
+    const b = Math.max(0, back);
+    for (const p of this.track.pits) {
+      const spread = b * 0.08;
+      const x0 = p.x0 - spread, x1 = p.x1 + spread;
+      if (x <= x0 || x >= x1) continue;
+      const bank = 0.35 + b * 0.05;
+      const t = Math.min(1, Math.min(x - x0, x1 - x) / bank);
+      const fade = 1 - Math.min(1, Math.max(0, (b - 50) / 28));
+      const w = t * t * (3 - 2 * t) * fade * fade * (3 - 2 * fade);
+      return w > 0 ? { w, floor: this.ravineFloor(p), pit: p } : null;
+    }
+    return null;
+  }
+
+  private ravineFloor(p: Pit): number {
+    // Under water or lava the floor is out of sight; a dry ravine goes all the way down.
+    return this.biome.pitFill === 'dark' ? p.floorY + 0.3 : Math.min(p.lipY, p.landY) - 4;
+  }
+
+  /** Whether anything within `r` of (x, z) would sit in a ravine. */
+  private nearRavine(x: number, z: number, r = 1): boolean {
+    for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) if (this.ravineAt(x + dx, z + dz)) return true;
+    return false;
+  }
+
+  private baseGroundY(x: number, z: number): number {
     const f = Math.max(0, Math.min(this.groundCache.length - 1.001, x));
     const i = Math.floor(f), t = f - i;
     const near = this.groundCache[i] * (1 - t) + this.groundCache[i + 1] * t;
@@ -1219,7 +1258,6 @@ export class World {
 
   private buildPitFills() {
     const b = this.biome;
-    for (const p of this.track.pits) this.buildGapWall(p);
     if (b.pitFill === 'dark') {
       for (const p of this.track.pits) this.buildGapFloor(p);
       return;
@@ -1240,104 +1278,133 @@ export class World {
       );
       foam.position.set((p.x0 + p.x1) / 2, topY, 0);
       this.group.add(foam);
+      this.ravineRiver(p, topY, this.waterTop(3, b.pitFill === 'lava'));
       if (b.pitFill === 'lava') this.lamps.push({ x: (p.x0 + p.x1) / 2, y: topY + 0.6, z: 0.5, radius: 9 + (p.x1 - p.x0), color: new THREE.Color(0xff7a28), intensity: 18 });
     }
   }
 
-  /**
-   * The far side of a gap: a wall behind the track, in the biome's own rock, brick or ice,
-   * going darker as it drops away. Without it you look straight through the gap at the sky.
-   */
-  private buildGapWall(p: Pit) {
-    const z = -TRACK_W / 2 + 0.04;
-    const x0 = p.x0 - 0.1, x1 = p.x1 + 0.1;
-    const n = Math.max(2, Math.ceil((x1 - x0) / 0.5) + 1);
-    const bottom = p.floorY - 2;
-    const pos = new Float32Array(n * 2 * 3), uv = new Float32Array(n * 2 * 2), col = new Float32Array(n * 2 * 3);
-    // Ice and lava light the deep from below; everything else sinks into shadow.
-    const deep = new THREE.Color(this.biome.top.kind === 'snow' || this.biome.top.kind === 'ice' ? 0x2a5aa8
-      : this.biome.pitFill === 'lava' ? 0xc0461a : 0x302a3a);
-    const c = new THREE.Color();
-    const idx: number[] = [];
-    for (let i = 0; i < n; i++) {
-      const x = x0 + (x1 - x0) * i / (n - 1);
-      const top = Math.max(this.groundY(x, z), p.lipY + (p.landY - p.lipY) * Math.max(0, Math.min(1, (x - p.x0) / (p.x1 - p.x0)))) + 0.02;
-      pos.set([x, top, z, x, bottom, z], i * 6);
-      uv.set([x / 4, top / 4, x / 4, bottom / 4], i * 4);
-      if (i < n - 1) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 2, i * 2 + 1, i * 2 + 3);
-    }
-    // Shade by depth rather than per vertex pair, so the top stays in the light.
-    for (let i = 0; i < n * 2; i++) {
-      const y = pos[i * 3 + 1], top = pos[(i - (i % 2)) * 3 + 1];
-      const t = Math.min(1, Math.max(0, (top - y) / 7));
-      c.set(0xffffff).lerp(deep, Math.sqrt(t));
-      col.set([c.r, c.g, c.b], i * 3);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    g.setIndex(idx);
-    g.computeVertexNormals();
-    const mat = toon(0xffffff, { map: (this.frontMat as THREE.MeshToonMaterial).map, vertexColors: true });
-    mat.userData.outlineParameters = { visible: false };
-    const wall = new THREE.Mesh(g, mat);
-    wall.receiveShadow = true;
-    this.group.add(wall);
+  /** The colour of a ravine's walls and floor, per biome. */
+  private ravineColors(): { wall: number; floor: number } {
+    const b = this.biome;
+    const wall = b.front.kind === 'lattice' ? 0x8a6a4a : new THREE.Color(b.front.base).getHex();
+    const floor: Record<string, number> = {
+      park: 0x5aa64a, rooftops: 0x3a3a42, snow: 0x7ab4ea, desert: 0xdca868,
+      haunted: 0x2e3a30, funfair: 0x62b04a, mine: 0x3e3648,
+    };
+    return { wall, floor: floor[b.id] ?? new THREE.Color(b.ground[1]).getHex() };
   }
 
-  /** Something to see at the bottom of a dry gap: a creek, an alley, a crevasse or a gully. */
+  /** Sample points (x, z) along the floor of a gap's ravine, from under the track back into the distance. */
+  private ravineFloorSpots(p: Pit, r: () => number, step: number, maxBack = 40): [number, number][] {
+    const out: [number, number][] = [];
+    for (let z = TRACK_W / 2 - 0.3; z > -TRACK_W / 2 - maxBack; z -= step * (0.6 + r() * 0.8)) {
+      const back = Math.max(0, -z - TRACK_W / 2);
+      const spread = back * 0.08, bank = 0.35 + back * 0.05;
+      const x0 = p.x0 - spread + bank, x1 = p.x1 + spread - bank;
+      if (x1 - x0 < 0.4) continue;
+      out.push([x0 + (x1 - x0) * (0.1 + r() * 0.8), z]);
+    }
+    return out;
+  }
+
+  /** A ribbon lying along the middle of a ravine floor (a creek, a lane line), `width` across. */
+  private ravineRibbon(p: Pit, width: number, lift: number, mat: THREE.Material, maxBack = 70) {
+    const cx = (p.x0 + p.x1) / 2;
+    const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+    let n = 0;
+    for (let z = TRACK_W / 2; z > -TRACK_W / 2 - maxBack; z -= 1) {
+      const y = (z > -TRACK_W / 2 ? p.floorY + 0.3 : this.groundY(cx, z)) + lift;
+      const hw = width / 2 + Math.max(0, -z - TRACK_W / 2) * 0.03;
+      pos.push(cx - hw, y, z, cx + hw, y, z);
+      uv.push(0, z / 3, 1, z / 3);
+      if (n) idx.push((n - 1) * 2, (n - 1) * 2 + 1, n * 2, n * 2, (n - 1) * 2 + 1, n * 2 + 1);
+      n++;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    mat.userData.outlineParameters = { visible: false };
+    this.group.add(new THREE.Mesh(g, mat));
+  }
+
+  /**
+   * A river (or lava flow) along a wet gap's ravine, level with the fill under the track,
+   * running back until the land falls below it or the ravine climbs out.
+   */
+  private ravineRiver(p: Pit, topY: number, mat: THREE.Material) {
+    const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+    let n = 0;
+    const cx = (p.x0 + p.x1) / 2;
+    for (let back = 0; back <= 80; back += 2) {
+      const z = -TRACK_W / 2 - back + (back === 0 ? 0.1 : 0);
+      if (back > 0 && this.baseGroundY(cx, z) < topY + 0.2) break;
+      const spread = back * 0.08;
+      pos.push(p.x0 - spread, topY, z, p.x1 + spread, topY, z);
+      uv.push((p.x0 - spread) / 3, z / 3, (p.x1 + spread) / 3, z / 3);
+      if (n) idx.push((n - 1) * 2, (n - 1) * 2 + 1, n * 2, n * 2, (n - 1) * 2 + 1, n * 2 + 1);
+      n++;
+    }
+    if (n < 2) return;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    this.group.add(new THREE.Mesh(g, mat));
+  }
+
+  /** Something to see at the bottom of a dry gap's ravine: a creek, an alley, a crevasse, a gully. */
   private buildGapFloor(p: Pit) {
     const w = p.x1 - p.x0, cx = (p.x0 + p.x1) / 2, y = p.floorY;
     const r = rng(hashString(`${p.x0}`));
-    const add = (m: THREE.Mesh, outline = false) => {
-      if (!outline) for (const mm of ([] as THREE.Material[]).concat(m.material)) mm.userData.outlineParameters = { visible: false };
+    const add = (m: THREE.Object3D, outline = false) => {
+      if (!outline) this.noOutline(m);
       this.group.add(m);
       return m;
     };
-    const slab = (color: number, h: number, map?: THREE.Material) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, h, TRACK_W), map ?? toon(color));
-      m.position.set(cx, y + h / 2, 0);
-      return add(m);
-    };
+    // The track's own floor under the gap, level with and coloured like the ravine floor.
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.3, TRACK_W + 0.1), toon(this.ravineColors().floor));
+    slab.position.set(cx, y + 0.15, 0);
+    add(slab);
+    const floorAt = (x: number, z: number) => (z > -TRACK_W / 2 ? y + 0.3 : this.groundY(x, z));
     const rock = (x: number, z: number, s: number, color: number) => {
       const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), toon(color));
-      m.position.set(x, y + s * 0.5, z);
+      m.position.set(x, floorAt(x, z) + s * 0.3, z);
       m.rotation.set(r() * 3, r() * 3, r() * 3);
       m.scale.y = 0.7;
       return add(m, true);
     };
+    const model = (kind: string, x: number, z: number, scale: number) => {
+      const m = this.models[kind];
+      if (!m) return;
+      const o = m.clone();
+      o.position.set(x, floorAt(x, z), z);
+      o.scale.setScalar(scale);
+      o.rotation.y = r() * 6;
+      add(shadows(o), true);
+    };
+    const wallColor = this.ravineColors().wall;
     switch (this.biome.id) {
-      case 'park': {
-        // A little creek between grassy banks.
-        slab(0x5aa64a, 0.4);
-        const water = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.08, 1.4), this.waterTop(w, false, 0x2aa6d9));
-        water.position.set(cx, y + 0.42, 0.1);
-        add(water);
-        for (let x = p.x0 + 0.4; x < p.x1; x += 0.9 + r()) rock(x, r() > 0.5 ? 0.95 : -0.8, 0.15 + r() * 0.15, 0x9a958c);
+      case 'park':
+        // A creek winding away between grassy banks.
+        this.ravineRibbon(p, 1.2, 0.06, this.waterTop(3, false, 0x2aa6d9));
+        for (const [x, z] of this.ravineFloorSpots(p, r, 2.5, 30)) rock(x, z, 0.15 + r() * 0.2, 0x9a958c);
         break;
-      }
       case 'rooftops': {
-        // An alley far below: tarmac, a yellow line and the odd bin.
-        slab(0x3a3a42, 0.2);
-        for (let x = p.x0 + 0.3; x < p.x1 - 0.5; x += 1.6) {
-          const dash = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.02, 0.12), toon(0xf2c84a));
-          dash.position.set(x + 0.4, y + 0.21, 0.3);
-          add(dash);
+        // An alley far below with a yellow line down the middle and the odd bin.
+        this.ravineRibbon(p, 0.12, 0.03, toon(0xf2c84a), 9);
+        for (const [x, z] of this.ravineFloorSpots(p, r, 5, 9)) {
+          const bin = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 1.1), toon(r() > 0.5 ? 0x3a7a4a : 0x4a5a7a));
+          bin.position.set(x, floorAt(x, z) + 0.45, z);
+          add(bin, true);
         }
-        const bin = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.9, 0.7), toon(0x3a7a4a));
-        bin.position.set(p.x0 + w * (0.3 + r() * 0.4), y + 0.65, -0.9);
-        add(bin, true);
-        const lid = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.08, 0.75), toon(0x2a5a36));
-        lid.position.set(bin.position.x, y + 1.14, -0.9);
-        add(lid, true);
-        if (this.biome.lights) this.lamps.push({ x: cx, y: y + 2, z: -0.6, radius: 4 + w, color: new THREE.Color(0xffc870), intensity: 6 });
+        if (this.biome.lights) this.lamps.push({ x: cx, y: y + 2, z: -2, radius: 4 + w, color: new THREE.Color(0xffc870), intensity: 6 });
         break;
       }
       case 'snow': {
-        // A blue crevasse with icicles hanging off both lips.
-        const ice = new THREE.MeshBasicMaterial({ color: 0x5aa0e0 });
-        slab(0, 0.3, ice);
+        // An icy blue crevasse: icicles off both lips and shards of ice along the bottom.
         const icicle = toon(0xdff0ff);
         for (const [x0, top, dir] of [[p.x0, p.lipY, 1], [p.x1, p.landY, -1]] as const) {
           for (let z = -1.2; z <= 1.2; z += 0.4 + r() * 0.3) {
@@ -1348,24 +1415,32 @@ export class World {
             add(m);
           }
         }
-        break;
-      }
-      case 'desert': {
-        // A dry gully: pale sand, rocks and a cactus clinging on.
-        slab(0xdca868, 0.5);
-        for (let x = p.x0 + 0.5; x < p.x1; x += 0.8 + r() * 1.2) rock(x, -1.1 + r() * 2.2, 0.15 + r() * 0.25, 0xa85a34);
-        const cactus = this.models.cactus;
-        if (cactus && w > 3) {
-          const c = cactus.clone();
-          c.position.set(p.x0 + w * (0.3 + r() * 0.4), y + 0.5, -0.8);
-          c.scale.multiplyScalar(0.6);
-          this.group.add(c);
+        const shard = toon(0xbfe2ff);
+        for (const [x, z] of this.ravineFloorSpots(p, r, 2, 35)) {
+          const h = 0.5 + r() * 1.2;
+          const m = new THREE.Mesh(new THREE.ConeGeometry(0.15 + r() * 0.2, h, 5), shard);
+          m.position.set(x, floorAt(x, z) + h / 2 - 0.1, z);
+          m.rotation.z = (r() - 0.5) * 0.5;
+          add(m, true);
         }
         break;
       }
+      case 'desert':
+        // A dry gully: rocks, the odd cactus and a skull.
+        for (const [x, z] of this.ravineFloorSpots(p, r, 2.2, 40)) rock(x, z, 0.15 + r() * 0.3, wallColor);
+        for (const [x, z] of this.ravineFloorSpots(p, r, 9, 40)) model(r() > 0.3 ? 'cactus' : 'skull', x, z, 0.6);
+        break;
+      case 'haunted':
+        for (const [x, z] of this.ravineFloorSpots(p, r, 2.5, 30)) rock(x, z, 0.15 + r() * 0.25, 0x4a4456);
+        for (const [x, z] of this.ravineFloorSpots(p, r, 10, 30)) model(r() > 0.5 ? 'pumpkin' : 'gravestone', x, z, 0.7);
+        break;
+      case 'mine':
+        // Crystals glowing at the bottom of the shaft.
+        for (const [x, z] of this.ravineFloorSpots(p, r, 4, 30)) model(['crystals', 'crystalsblue', 'crystalsgreen'][Math.floor(r() * 3)], x, z, 0.7);
+        for (const [x, z] of this.ravineFloorSpots(p, r, 3, 30)) rock(x, z, 0.15 + r() * 0.25, wallColor);
+        break;
       default:
-        slab(0x6a6258, 0.3);
-        for (let x = p.x0 + 0.5; x < p.x1; x += 1 + r()) rock(x, -1 + r() * 2, 0.2 + r() * 0.2, 0x8a8278);
+        for (const [x, z] of this.ravineFloorSpots(p, r, 2.5, 30)) rock(x, z, 0.15 + r() * 0.25, wallColor);
     }
   }
 
@@ -1400,22 +1475,40 @@ export class World {
     const zs = [-TRACK_W / 2 + 0.05, -2.5, -4, -7, -10.9, -11.1, -16, -23, -32, -45, -60, -80];
     // The harbour wall drops straight into the water.
     if (this.biome.groundShape === 'quay') zs.splice(8, 0, -24.4);
-    const pos = new Float32Array(nx * zs.length * 3);
-    const col = new Float32Array(nx * zs.length * 3);
+    // A metre apart, but finer around gaps so their ravines have crisp edges.
+    const xset = new Set<number>();
+    for (let i = 0; i < nx; i++) xset.add(i - 20);
+    for (const p of this.track.pits) {
+      for (let x = Math.floor(p.x0) - 8; x <= p.x1 + 8; x += 0.25) xset.add(x);
+      for (const x of [p.x0, p.x1]) xset.add(x);
+    }
+    const xs = [...xset].sort((a, b) => a - b);
+    const cols = xs.length;
+    const pos = new Float32Array(cols * zs.length * 3);
+    const col = new Float32Array(cols * zs.length * 3);
     const [c1, c2, c3] = this.biome.ground.map((c) => new THREE.Color(c));
+    const rc = this.ravineColors();
+    const wall = new THREE.Color(rc.wall), floor = new THREE.Color(rc.floor), shade = new THREE.Color(0x201c28);
     const tmp = new THREE.Color();
-    for (let i = 0; i < nx; i++) {
-      const x = i - 20;
+    for (let i = 0; i < cols; i++) {
+      const x = xs[i];
       for (let j = 0; j < zs.length; j++) {
         const k = (i * zs.length + j) * 3;
         pos[k] = x; pos[k + 1] = this.groundY(x, zs[j]); pos[k + 2] = zs[j];
         const n = (Math.sin(x * 0.7 + j * 1.9) + Math.sin(x * 0.23 - j)) * 0.25 + 0.5;
         tmp.copy(c1).lerp(n > 0.5 ? c3 : c2, Math.abs(n - 0.5) * 1.6);
+        // Ravine walls in the biome's rock, darker further down, and its own floor at the bottom.
+        const rv = this.ravineAt(x, zs[j]);
+        if (rv) {
+          const drop = Math.min(1, (this.baseGroundY(x, zs[j]) - pos[k + 1]) / 8);
+          if (rv.w > 0.97) tmp.copy(floor).lerp(shade, 0.15);
+          else tmp.lerp(wall, Math.min(1, rv.w * 4)).lerp(shade, drop * 0.45);
+        }
         col.set([tmp.r, tmp.g, tmp.b], k);
       }
     }
     const idx: number[] = [];
-    for (let i = 0; i < nx - 1; i++) for (let j = 0; j < zs.length - 1; j++) {
+    for (let i = 0; i < cols - 1; i++) for (let j = 0; j < zs.length - 1; j++) {
       const a = i * zs.length + j, b = a + 1, c = a + zs.length, d = c + 1;
       idx.push(a, c, b, b, c, d);
     }
@@ -1986,6 +2079,7 @@ export class World {
   private placeProp(kind: string, x: number, z: number, scale = 1, rot = 0): THREE.Object3D | undefined {
     const model = this.models[kind];
     if (!model) return undefined;
+    if (this.nearRavine(x, z, kind === this.biome.fence?.kind ? 1.3 : Math.max(0.5, Math.min(2, this.footprint(kind, model) * scale * 0.6)))) return undefined;
     const o = model.clone();
     if (kind === this.biome.fence?.kind) {
       // Fence bays are 2.4 m long: shear each one to follow the ground so the rails meet
@@ -2083,7 +2177,8 @@ export class World {
     names.forEach((name, i) => {
       const lm = LANDMARKS[name];
       if (!lm) return;
-      const x = tr.startX + (end - tr.startX) * (names.length === 1 ? 0.45 : 0.28 + i * 0.44);
+      let x = tr.startX + (end - tr.startX) * (names.length === 1 ? 0.45 : 0.28 + i * 0.44);
+      if (lm.on !== 'sea' && lm.on !== 'air') for (let k = 0; k < 40 && this.nearRavine(x, lm.z, Math.max(1, lm.r * 0.6)); k++) x += 2;
       const o = lm.build(this.rand);
       let y: number;
       if (lm.on === 'sea') y = this.biome.groundShape === 'quay' ? this.seaY(x) : tr.minY - 3;
@@ -2147,6 +2242,7 @@ export class World {
     torch.add(pole, bowl, f1, f2);
     for (let x = 9; x < end; x += 16) {
       const z = -2.4, y = this.groundY(x, z);
+      if (this.nearRavine(x, z, 0.5)) continue;
       const t = torch.clone();
       t.position.set(x, y, z);
       const halo = new THREE.Sprite(haloMaterial());
@@ -2243,7 +2339,9 @@ export class World {
       }
       g.add(board);
       const z = -2.0;
-      g.position.set(s.x + 2, this.groundY(s.x + 2, z), z);
+      let sx = s.x + 2;
+      while (this.nearRavine(sx, z, 1.2)) sx -= 1;
+      g.position.set(sx, this.groundY(sx, z), z);
       this.group.add(shadows(g));
     }
   }
