@@ -345,6 +345,8 @@ const HOLE_DRAG = 1.2;
  * back and forth, until enough strokes (STICKY_TAPS, and they wear off) paddle it out, or until
  * STICKY_TIME, when it flips you over.
  */
+/** On a standing wave: how hard the current pulls you back to the trough (per metre away), and how fast the rocking dies away. */
+const WAVE_PULL = 1.6, WAVE_DAMP = 0.35, WAVE_TOP = 6.5;
 export const STICKY_SPEED = 7, STICKY_TAPS = 3, STICKY_TIME = 4;
 const SPLAT_POINTS = 600;
 
@@ -1188,7 +1190,7 @@ export class Rider {
         return;
       }
       const lip = this.opts.pipe ? null : tr.spots.find((s) => s.tag === 'qp');
-      if (this.inPipe && (lip ? this.x >= lip.x : this.y >= tr.maxY - 1e-3) && Math.abs(k) < 0.05) {
+      if (this.inPipe && !this.opts.kayak && (lip ? this.x >= lip.x : this.y >= tr.maxY - 1e-3) && Math.abs(k) < 0.05) {
         // Never ride out onto the deck of a half pipe: turn back at the lip.
         this.x -= this.v * cos * dt * 2;
         this.y = tr.height(this.x);
@@ -1399,8 +1401,17 @@ export class Rider {
     }
     if (this.grab && !hole && !this.stuck) { this.held = null; this.release(); }
     if (this.grab) this.grabT += dt;
-    // On a standing wave an end move holds you in the trough, wheeling on the spot.
-    if (this.grab && hole && this.opts.pipe) this.v += ((hole.x0 + hole.x1) / 2 - this.x) * 4 * dt - this.v * 3 * dt;
+    // On a standing wave the current holds you on the face: drift up it and the water pushes
+    // you back down; ride down into the trough and the wave pulls you back. Strokes build the
+    // rocking, and an end move holds you in the trough, wheeling on the spot.
+    const wh = this.opts.pipe ? tr.holes.find((h) => h.wave) : undefined;
+    if (wh?.wave && !this.roll) {
+      const d = this.x - wh.wave.trough;
+      // Over the crest or up onto the tongue, the water shoves you back hard.
+      const out = Math.max(0, this.x - (wh.x1 - 1.5), wh.wave.crest + 0.5 - this.x);
+      this.v += (-d * WAVE_PULL - Math.sign(d) * out * 8 - this.v * (this.grab ? 3 : WAVE_DAMP)) * dt;
+      this.v = Math.max(-WAVE_TOP, Math.min(WAVE_TOP, this.v));
+    }
     // Paddle into a rock as you reach it: splat!
     const ahead = this.x + this.v * dt;
     if (this.pumpTimer > 0 && !this.roll && !this.bailing && this.v > 0) {

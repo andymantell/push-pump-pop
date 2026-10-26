@@ -15,7 +15,10 @@ the next biome; the first river is open from the start):
 
 Each river has three challenges, pars from the kayak bot (p75), and three lives (a swim costs one).
 Each biome's bonus level is a **standing wave** instead of a half pipe: surfed in a playboat for
-60 seconds, rocking between the green face and the foam pile, with the whole trough a hole for end moves.
+60 seconds. It is a real river wave, not a half pipe: the water pours down a smooth tongue into
+the trough and piles up into a breaking crest, flowing right to left. You surf the green face
+facing upstream, held by the current (a spring towards the trough in `stepWater`), rock up and
+down it with strokes, pop into the air with a swipe up, and the whole wave is a hole for end moves.
 
 | # | Whitewater Centre | Features |
 | --- | --- | --- |

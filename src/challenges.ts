@@ -366,7 +366,8 @@ export class ChallengeRun {
       this.pending = [];
     }
     if (this.air) {
-      const h = this.pipe ? r.y - this.track.maxY : r.y - this.track.height(r.x);
+      // In a half pipe, above the lip; on a standing wave or anywhere else, above the water below.
+      const h = this.pipe && !this.track.holes.some((w) => w.wave) ? r.y - this.track.maxY : r.y - this.track.height(r.x);
       this.air.peak = Math.max(this.air.peak, h);
       // Caught a rail: that air was clean.
       if (r.grind) this.closeAir(true);

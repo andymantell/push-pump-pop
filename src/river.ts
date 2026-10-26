@@ -115,7 +115,16 @@ export function foamAlong(tr: Track): Float32Array {
       const u = k / m;
       // A standing wave: smooth green water pours down the face into a white trough, and piles
       // up white on the far side.
-      if (hl.wave) { f[i0 + k] = u < 0.3 ? 0.08 + u * 0.6 : u < 0.5 ? 0.26 + (u - 0.3) * 3.2 : 0.9 + 0.1 * Math.min(1, (u - 0.5) * 4); continue; }
+      if (hl.wave) {
+        // A standing wave: white where it breaks over the crest and boils back down the top of
+        // the face, green and glassy lower down, a little froth in the trough, and the tongue
+        // pouring in smooth.
+        const x = (i0 + k) * DX, { crest, trough } = hl.wave;
+        f[i0 + k] = x < crest ? 0.55 + 0.45 * (x - hl.x0) / (crest - hl.x0)
+          : x < trough ? Math.max(0.12, 1 - ((x - crest) / (trough - crest)) * 1.6)
+          : x < trough + 1.6 ? 0.4 : 0.06;
+        continue;
+      }
       // White from the trough up the pile, a sticky one boiling hardest.
       const w = u < 0.25 ? u / 0.25 * 0.5 : u < 0.85 ? 1 : (1 - u) / 0.15;
       f[i0 + k] = Math.max(f[i0 + k], w * (hl.sticky ? 1 : 0.8));
@@ -134,8 +143,11 @@ export class River {
   private foam: THREE.Texture[] = [];
   private splashes: Splashes;
   private time = 0;
+  /** Which way the water runs: downstream is +x, except on a standing wave, surfed facing upstream. */
+  private dir = 1;
 
   constructor(private track: Track, private biome: Biome) {
+    if (track.holes.some((h) => h.wave)) this.dir = -1;
     const rv = biome.river!;
     const tr = track;
     const n = tr.heights.length;
@@ -268,8 +280,8 @@ export class River {
 
   update(dt: number) {
     this.time += dt;
-    for (const t of this.flow) t.offset.x = -(this.time * FLOW) / 4;
-    for (const t of this.foam) { t.offset.x = -(this.time * FLOW * 1.25) / 3; t.offset.y = Math.sin(this.time * 1.7) * 0.02; }
+    for (const t of this.flow) t.offset.x = -(this.time * FLOW * this.dir) / 4;
+    for (const t of this.foam) { t.offset.x = -(this.time * FLOW * 1.25 * this.dir) / 3; t.offset.y = Math.sin(this.time * 1.7) * 0.02; }
     this.splashes.update(dt);
   }
 

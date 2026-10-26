@@ -159,11 +159,11 @@ export const KAYAK_CREEK: TrackDef[] = [
 
 /** The standing wave below the mill weir, surfed in a playboat. */
 export const KAYAK_CREEK_WAVE: TrackDef = {
-  id: 'kayak-creek-wave', biome: 'kayak-creek', name: 'Mill Wave', kind: 'pipe', par: 24500,
+  id: 'kayak-creek-wave', biome: 'kayak-creek', name: 'Mill Wave', kind: 'pipe', par: 6500,
   challenges: [
-    { text: 'Score 12,000', kind: 'score', points: 12000 },
+    { text: 'Score 6,000', kind: 'score', points: 6000 },
     { text: 'Blunt in the wave', kind: 'trick', match: 'Blunt' },
-    { text: 'Land 6 different tricks', kind: 'variety', count: 6 },
+    { text: 'Land 4 different tricks', kind: 'variety', count: 4 },
   ],
-  build: wave(3.4, 2.6),
+  build: wave(1.3, 3.2),
 };

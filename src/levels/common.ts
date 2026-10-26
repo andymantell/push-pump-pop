@@ -76,18 +76,29 @@ export function pipe(radius: number, flatLen: number): () => Track {
 }
 
 /**
- * A standing wave bonus level for the kayak: a river feature you surf in place, rocking back and
- * forth between the green face and the foam pile and launching off them, for PIPE_TIME seconds.
- * It rides like a half pipe, and the whole trough counts as a hole for end moves.
+ * A standing wave bonus level for the kayak, surfed in place for PIPE_TIME seconds. The river
+ * flows right to left: smooth water pours down the tongue into the trough and piles up into a
+ * breaking wave, and you surf the wave's green face facing upstream, held there by the current.
+ * Paddle to rock up and down the face, swipe up to pop off it, and the whole wave is a hole
+ * for end moves.
  */
-export function wave(radius: number, flatLen: number): () => Track {
+export function wave(height: number, face: number): () => Track {
   return () => {
     const b = new TrackBuilder(0);
-    const deck = 16;
-    const x0 = b.x + deck;
-    b.halfpipe(radius, flatLen, deck);
-    b.holes.push({ x0, x1: b.x - deck, sticky: false, wave: true });
-    const centre = deck + radius * 0.96 + flatLen / 2;
-    return b.build(centre, Infinity);
+    b.flat(30);
+    const x0 = b.x;
+    // The back of the wave, up to the crest where it breaks.
+    b.ease(4, height);
+    const crest = b.x;
+    // The green face down into the trough.
+    b.ease(face, -height - 0.35);
+    const trough = b.x;
+    b.flat(1.2);
+    // The tongue: the river pouring down from upstream.
+    b.ease(6, height + 1.1);
+    const x1 = b.x;
+    b.flat(30);
+    b.holes.push({ x0, x1, sticky: false, wave: { crest, trough: trough + 0.6 } });
+    return b.build(trough + 0.6, Infinity);
   };
 }

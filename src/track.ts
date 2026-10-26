@@ -143,8 +143,12 @@ export interface Hole {
   x0: number;
   x1: number;
   sticky: boolean;
-  /** A standing wave level's whole bowl: a glassy green face, a white trough and the foam pile. */
-  wave?: boolean;
+  /**
+   * A standing wave: from x0 the back of the wave rises to its breaking crest, the green face
+   * falls from the crest to the trough, and the tongue of water pours down into the trough from
+   * upstream (on the right), ending at x1. The water flows right to left.
+   */
+  wave?: { crest: number; trough: number };
 }
 
 /** A rock on a river to splat: paddle into it as you pass and the kayak goes vertical against it. */

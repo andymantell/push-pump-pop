@@ -276,7 +276,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       if (alive()) chal.land(r.x);
       // Scoring as in the game.
       if (TURNS && r.backwards && !r.bailing) score.addBonus('Fakie', 100);
-      if (isPipe) { const h = peakY - track.maxY; if (h > 0.5) score.addBonus('Air', Math.round(h * 150)); score.bank(); }
+      if (isPipe) { const h = peakY - (track.holes.some((w) => w.wave) ? track.height(r.x) : track.maxY); if (h > 0.5) score.addBonus('Air', Math.round(h * 150)); score.bank(); }
       else if (airTime > 0.7) score.addBonus('Air', Math.round(airTime * 120));
       if (smooth) score.addBonus('Smooth', 75);
       const up = track.slope(r.x) * (Math.sign(r.v) || 1);
@@ -296,7 +296,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   if (skater instanceof Skater) skater.setBoard(def.biome === 'snow' ? 'snow' : def.biome === 'farm' ? 'mountain' : 'skate');
   if (skater instanceof ScooterRig) skater.setKind(def.biome === 'snow' ? 'snow' : 'scooter');
   if (skater instanceof MtbRig) skater.setSnow(def.biome === 'snow');
-  if (isPipe || isMega) r.perch();
+  const onWave = track.holes.some((h) => h.wave);
+  if ((isPipe && !onWave) || isMega) r.perch();
   const mega = new MegaRun();
   let dropsDone = 0;
   let peakAboveLip = 0, tricks = 0;
@@ -362,6 +363,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     const drop = track.spots.find((sp) => sp.tag === 'dropoff' && sp.x > r.x && Math.abs(sp.x - r.x - lead) < 0.35 + r.v * 0.03);
     if (drop && t - lipPlanned > 0.6 && !pumpOnly) { press('up'); lipPlanned = t; }
     // A play hole coming up: hold an end move through it.
+    // On a standing wave: pop off the face now and then for an air move.
+    if (onWave && !r.grab && !r.held && t - lipPlanned > 1.6 && !(endGoal && t - endAt > 2)) { press('up'); lipPlanned = t; }
     // On a standing wave you're always in the hole: throw one every so often, in the trough.
     const surfing = isPipe && t - endAt > (endGoal ? 2.5 : 8) && Math.abs(track.slope(r.x)) < 0.3 && track.holeAt(r.x);
     const hole = surfing || track.holes.find((h) => h.x0 > r.x && h.x0 - r.x < lead + 0.6);
@@ -594,7 +597,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
           // Kayak: throw the boat about, spin it, or on a big air, loop it.
           const big = flight().time - REACTION - JITTER > 0.8;
           if (big && pick < 0.25) { const lean = rand() > 0.5 ? 'lean+' : 'lean-'; press(lean); press('lean0', 0.2); }
-          else if (flight().time - REACTION - JITTER > 0.7) press(pickFrom(['left', 'right', 'down', 'spin']));
+          else if (flight().time - REACTION - JITTER > (onWave ? 0.45 : 0.7)) press(pickFrom(['left', 'right', 'down', 'spin']));
         } else if (r.vy > 5 && pick < 0.5) {
           // A big air: grab with the other thumb, and let go well before landing.
           press('grab');
@@ -639,7 +642,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     }
     if (skater) checkLegs(skater, r, track, trackId, t);
     t += DT;
-    if (!r.grounded) peakAboveLip = Math.max(peakAboveLip, r.y - track.maxY);
+    if (!r.grounded) peakAboveLip = Math.max(peakAboveLip, r.y - (onWave ? track.height(r.x) : track.maxY));
     if (r.grounded && track.slope(r.x) < -0.12) downT += DT;
     else if (downT > 0) { if (downT > 0.1) res.downs.push(downT); downT = 0; }
     // Sudden stops, measured on forward (horizontal) speed so landings don't count.

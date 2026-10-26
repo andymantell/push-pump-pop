@@ -170,11 +170,11 @@ export const KAYAK_CENTRE: TrackDef[] = [
 
 /** The standing wave at the bottom of the course, surfed in a playboat. */
 export const KAYAK_CENTRE_WAVE: TrackDef = {
-  id: 'kayak-centre-wave', biome: 'kayak-centre', name: 'The Centre Wave', kind: 'pipe', par: 22500,
+  id: 'kayak-centre-wave', biome: 'kayak-centre', name: 'The Centre Wave', kind: 'pipe', par: 8000,
   challenges: [
-    { text: 'Score 8,000', kind: 'score', points: 8000 },
+    { text: 'Score 5,000', kind: 'score', points: 5000 },
     { text: 'Cartwheel for 1 second', kind: 'trick', match: 'Cartwheel', minTime: 1 },
-    { text: 'Air 1.5 m off the wave', kind: 'air', metres: 1.5 },
+    { text: 'Air 1 m off the wave', kind: 'air', metres: 1 },
   ],
-  build: wave(3.2, 3),
+  build: wave(1.1, 3),
 };

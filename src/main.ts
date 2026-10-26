@@ -161,7 +161,8 @@ const rider = new Rider(track, {
     // Coming down backwards on a scooter or a bike.
     if (ride !== 'skate' && rider.backwards && !rider.bailing) score.addBonus('Fakie', 100);
     if (def.kind === 'pipe') {
-      const h = peakY - track.maxY;
+      // Above the lip of a half pipe, or the water below on a standing wave.
+      const h = peakY - (track.holes.some((w) => w.wave) ? track.height(rider.x) : track.maxY);
       if (h > 0.5) score.addBonus(`Air ${h.toFixed(1)}m`, Math.round(h * 150));
       // Each air in the pipe scores on its own as you land it.
       score.bank();
@@ -287,8 +288,8 @@ function loadTrack(d: TrackDef) {
   kayak.root.visible = boat;
   sound.setScene(world.biome, snow && !bike, ride === 'skate' && (snow || mountain), scoot, bike, boat);
   rider.reset();
-  // Half pipes start up on the coping: the first tap drops you in.
-  if (isPipe || isMega) rider.perch();
+  // Half pipes start up on the coping: the first tap drops you in. A standing wave starts in its trough.
+  if ((isPipe && !track.holes.some((h) => h.wave)) || isMega) rider.perch();
   camPos.set(track.startX + 3, track.height(track.startX) + 2, 12);
 }
 
