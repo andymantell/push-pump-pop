@@ -68,6 +68,11 @@ jobs:
           merge-multiple: true
       - uses: actions/download-artifact@v4
         with:
+          pattern: seen-roller-*
+          path: seen/roller
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
           pattern: seen-mtb-*
           path: seen/mtb
           merge-multiple: true
