@@ -232,7 +232,7 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   'dino-4': set(19500, grind('Grind 3 logs', { count: 3 }), gaps('Clear every gap'), tricks(4)),
   'dino-5': set(10500, air('Air for 1.2 seconds', { seconds: 1.2 }), everyKicker('A trick off every hump'), noLives()),
   'dino-6': set(15000, gaps('Clear every gap'), trick('A spin over the tar', 'spin', { overGap: true }), pumps(16)),
-  'dino-7': set(8000, air('Air for 1.3 seconds', { seconds: 1.3 }), trick('A body trick off a hump', 'hold', { from: 'hump' }), gaps('Clear every gap')),
+  'dino-7': set(8000, air('Air for 1.2 seconds', { seconds: 1.2 }), trick('A body trick off a hump', 'hold', { from: 'hump' }), gaps('Clear every gap')),
   'dino-8': set(23500, grind('Grind 3 logs', { count: 3 }), gaps('Clear every gap'), noLives()),
   'dino-9': set(13000, gaps('Clear every gap'), everyKicker('A trick off every hump'), variety(6)),
   'dino-10': scored(17500, gaps('Clear the final gap', { which: [-1] }), air('Air for 1.4 seconds', { seconds: 1.4 })),
