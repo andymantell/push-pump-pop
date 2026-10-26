@@ -2,6 +2,7 @@
   {
     "date": "2026-10-26",
     "items": [
+      "Fixed: the NEXT button no longer sends a bike, board or skates onto the kayak rivers (or a kayak onto dry land). Each ride only goes on to tracks it can ride",
       "Better: tilting in the kayak is gentler. Tip a little and the boat pitches a little, tip more and it turns faster, and level the iPad to bring it back upright. Stalls need a firmer tilt, so a wobble won't stand you on end",
       "Fixed: spinning out of a manual ends it on every ride, so the bike doesn't turn it into a backwards stoppie. Level out and tilt again to start the next one",
       "New: roller skates! Pick ROLLER above the worlds to ride every track on aggressive inline skates, with its own stars and challenges. Swipe for flatspins, misty flips and rocket airs, hold for mute and japan grabs, tilt for heel rolls, and grind rails in a soul, royale, makio or unity. Snowblades on the snow, off-road skates on the farm, and choose your skate colours in MY RIDER",

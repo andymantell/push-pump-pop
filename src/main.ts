@@ -423,6 +423,8 @@ function show(panel: string | null) {
 }
 
 function start(d: TrackDef = def) {
+  // Never onto a track the ride can't go to (a bike on a river): take the ride that can.
+  if (!rideGoes(ride, worldOf(d.biome))) setRide(RIDES.find((r) => rideGoes(r.id, worldOf(d.biome)))!.id);
   loadTrack(d);
   selWorld = worldOf(d.biome);
   score.reset();
@@ -567,9 +569,9 @@ function lockHint(t: TrackDef): string {
   return `&#128274; ${what} to open this`;
 }
 
-/** The next run track in this world, or the first open one in the next world. */
+/** The next run track in this world, or the first open one in the next world this ride can go to. */
 function nextTrack(): TrackDef | null {
-  const runs = TRACKS.filter((t) => (t.kind ?? 'run') === 'run');
+  const runs = TRACKS.filter((t) => (t.kind ?? 'run') === 'run' && rideGoes(ride, worldOf(t.biome)));
   const i = runs.findIndex((t) => t.id === def.id);
   const after = i >= 0 ? runs.slice(i + 1) : runs.filter((t) => t.biome === def.biome);
   return after.find((t) => progress.unlocked(t) && !progress.done(t.id)) ?? after.find((t) => progress.unlocked(t)) ?? null;
