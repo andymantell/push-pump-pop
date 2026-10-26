@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { addLighting } from './lighting';
+import { twoToneGradient } from './toon';
 import { drawPattern, PatternName, drawDeck, DeckArt, PATTERNS, DECK_ARTS } from './patterns';
 
 // The rider's look, chosen in the customiser and saved on this device.
@@ -243,7 +245,8 @@ export function paint(root: THREE.Object3D) {
       if (!(m.name in SLOTS)) return m;
       let s = shared.get(m.name);
       if (!s) {
-        s = m.clone();
+        // A clone loses the lamp and rim light shader patch, so it goes back on.
+        s = addLighting(m.clone());
         s.name = m.name;
         s.userData = { ...m.userData };
         shared.set(m.name, s);
@@ -252,7 +255,22 @@ export function paint(root: THREE.Object3D) {
       return s;
     };
     mesh.material = Array.isArray(mesh.material) ? mesh.material.map(swap) : swap(mesh.material);
+    for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) riderStyle(m);
   });
+}
+
+/**
+ * Riders are shaded like Wind Waker: no outline, and just a lit side and a shadow side.
+ * Only named materials (from the models): unnamed ones may be shared with the scenery.
+ */
+function riderStyle(m: THREE.Material) {
+  if (!m.name) return;
+  m.userData.outlineParameters = { visible: false };
+  const t = m as THREE.MeshToonMaterial;
+  if (t.isMeshToonMaterial && t.gradientMap !== twoToneGradient()) {
+    t.gradientMap = twoToneGradient();
+    t.needsUpdate = true;
+  }
 }
 
 const darker = (c: number, k = 0.72) => new THREE.Color(c).multiplyScalar(k).getHex();

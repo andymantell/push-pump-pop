@@ -14,6 +14,19 @@ export function toonGradient(): THREE.DataTexture {
   return gradient;
 }
 
+let twoTone: THREE.DataTexture | null = null;
+
+/** Two-step ramp for the riders: a lit side and one crisp shadow side, like Wind Waker. */
+export function twoToneGradient(): THREE.DataTexture {
+  if (twoTone) return twoTone;
+  const data = new Uint8Array([125, 125, 125, 255, 255, 255, 255, 255]);
+  twoTone = new THREE.DataTexture(data, 2, 1, THREE.RGBAFormat);
+  twoTone.minFilter = THREE.NearestFilter;
+  twoTone.magFilter = THREE.NearestFilter;
+  twoTone.needsUpdate = true;
+  return twoTone;
+}
+
 const cache = new Map<string, THREE.MeshToonMaterial>();
 
 export function toon(color: THREE.ColorRepresentation, opts: THREE.MeshToonMaterialParameters = {}): THREE.MeshToonMaterial {
