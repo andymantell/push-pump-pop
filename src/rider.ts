@@ -64,7 +64,15 @@ export type ScooterHold = 'Superman' | 'No Footer' | 'Can Can' | 'X-Up';
 /** On a downhill bike: the same body tricks, but hands off the bars instead of an X-Up. */
 export type BikeHold = 'Superman' | 'No Footer' | 'Can Can' | 'No Hander';
 export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
+/** Spins added up through one air: 180 + 180 is a 360, and so on. */
+export type SpinTotal = `${'FS' | 'BS'} ${number}`;
 export type FlipName = 'Backflip' | 'Frontflip';
+/**
+ * Tricks done one after another in the same air that riders call by one name: a backflip with
+ * a 180 (flair) or a 360 (cash roll), a frontflip with a backside 540 or more (misty), a 360
+ * with a barspin (truckdriver), a 360 flip with the body turning 180 backside with it (bigspin flip).
+ */
+export type ComboName = 'Flair' | 'Cash Roll' | 'Misty' | `Misty ${number}` | 'Truckdriver' | 'Bigspin Flip';
 /** Manuals on a skateboard, presses on a snowboard: nose up first. */
 export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press' | 'Stoppie';
 export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind' | 'Feeble' | 'Smith' | 'Skinny' | 'Skinny Manual' | 'Skinny Stoppie';
@@ -76,7 +84,7 @@ type BoardTrick = 'Ollie' | 'Bunny Hop' | 'Kickflip' | 'Heelflip' | 'Pop Shove-i
 export type BikeTrick = 'Whip' | 'Tabletop' | 'Turndown';
 /** Scooter tricks: the deck whipped round the bars, the bars spun round, or both at once. */
 export type WhipName = 'Tailwhip' | 'Double Whip' | 'Heelwhip' | 'Double Heelwhip' | 'Barspin' | 'Double Barspin' | 'Tailwhip Barspin' | 'Heelwhip Barspin';
-export type TrickName = BoardTrick | WhipName | GrabName | SpinName | FlipName | ManualName | GrindName | LoopName | GardenName;
+export type TrickName = BoardTrick | WhipName | GrabName | SpinName | SpinTotal | ComboName | FlipName | ManualName | GrindName | LoopName | GardenName;
 /** Tilt of the device: +1 nose up (manual, backflip), -1 nose down (nose manual, frontflip). */
 export type Lean = -1 | 0 | 1;
 export type Swipe = 'up' | 'down' | 'left' | 'right';
@@ -93,6 +101,12 @@ export interface Trick {
   /** Scooter whips: turns of the deck round the bars (+ tailwhip, - heelwhip), and of the bars. */
   whip?: number;
   bars?: number;
+  /** Several tricks in one air put together (see combined): the tricks it's made of. */
+  parts?: TrickName[];
+  /** Tells this trick apart in the combo list, so a later one can take its place. */
+  id?: number;
+  /** Earlier tricks (by id) this one was put together from: it takes their place. */
+  replaces?: number[];
 }
 
 export const TRICKS: Record<BoardTrick, Trick> = {
@@ -153,6 +167,42 @@ export function whipTrick(whip: number, bars: number): Trick | null {
     name, axis: 'whip', dir: whip < 0 ? -1 : 1, whip, bars,
     duration: Math.max(Math.abs(whip) * WHIP_TIME, bars * BARS_TIME),
     points: Math.round(pts * (Math.abs(whip) + bars > 1 ? WHIP_DOUBLE : 1) / 50) * 50,
+  };
+}
+
+/** Body spins and the tricks that join up with them into one: barspins, body flips, 360 flips. */
+const JOINS = (t: Trick) => (t.axis === 'body' && !t.parts) || t.name === 'Barspin' || t.name === '360 Flip';
+const isSpin = (t: Trick) => t.axis === 'body' && t.name !== 'Backflip' && t.name !== 'Frontflip';
+
+/**
+ * Tricks done one after another in the same air, put together. Spins the same way add up
+ * (FS 180 + FS 180 is an FS 360); spins back the other way don't, and give null. With other
+ * tricks in, it's the name riders give them together, or null if there isn't one.
+ */
+export function combined(parts: Trick[]): Trick | null {
+  if (parts.length < 2) return null;
+  const spins = parts.filter(isSpin);
+  const rest = parts.filter((t) => !isSpin(t)).map((t) => t.name).sort().join('+');
+  const dir = spins[0]?.dir ?? 1;
+  if (!spins.length || spins.some((t) => t.dir !== dir)) return null;
+  const deg = spins.reduce((d, t) => d + (t.name.endsWith('360') ? 360 : 180), 0);
+  let name: TrickName | null = null;
+  if (!rest) name = `${dir > 0 ? 'FS' : 'BS'} ${deg}`;
+  else if (rest === 'Backflip' && deg === 180) name = 'Flair';
+  else if (rest === 'Backflip' && deg === 360) name = 'Cash Roll';
+  // A frontflip spun backside, 540 or more.
+  else if (rest === 'Frontflip' && dir < 0 && deg === 540) name = 'Misty';
+  else if (rest === 'Frontflip' && dir < 0 && deg > 540) name = `Misty ${deg}`;
+  else if (rest === 'Barspin' && deg === 360) name = 'Truckdriver';
+  else if (rest === '360 Flip' && deg === 180 && dir < 0) name = 'Bigspin Flip';
+  if (!name) return null;
+  const sum = parts.reduce((p, t) => p + t.points, 0);
+  return {
+    name, parts: parts.map((t) => t.name), axis: 'body', dir,
+    duration: parts.reduce((d, t) => d + t.duration, 0),
+    // Spins alone: 400 a half turn, plus 100 for each half turn after the first (a 360 is 900, as swiped).
+    // Named tricks: a quarter more than their parts.
+    points: rest ? Math.round(sum * 1.25 / 50) * 50 : (deg / 180) * 500 - 100,
   };
 }
 
@@ -337,6 +387,12 @@ export class Rider {
   pipeYaw = 0;
   /** Time spent riding backwards on a scooter (see FAKIE_SAFE). */
   fakieT = 0;
+  /**
+   * Tricks this air so far that the next one could join up with (see combined): all of them,
+   * what they show as now (one name for the lot, or the spins added up and the rest on their own).
+   */
+  private chain: { tricks: Trick[]; whole: number | null; spins: number | null; rest: number[] } = { tricks: [], whole: null, spins: null, rest: [] };
+  private trickId = 0;
   /** Device tilt, and whether it has been back to level since take-off. */
   lean: Lean = 0;
   private leanArmed = false;
@@ -511,7 +567,7 @@ export class Rider {
     if (canPop) {
       // An ollie with a rail coming up hops you straight onto it.
       if (!(hop && this.railHop())) this.pop();
-      if (hop) { this.ev.trick(TRICKS[name]); return; }
+      if (hop) { this.emit(TRICKS[name]); return; }
     }
     if (hop) return;
     if (this.grounded || this.current) return;
@@ -553,13 +609,14 @@ export class Rider {
     this.boardYaw += (c.shove ?? 0) * Math.PI;
     this.current = null;
     this.tricksThisAir++;
-    this.ev.trick(c);
+    this.emit(c);
   }
 
   private clearBody() {
     this.garden = null;
     this.balance = 0;
     this.spin = null;
+    this.chain = { tricks: [], whole: null, spins: null, rest: [] };
     this.bodyYaw = 0;
     this.pipeYaw = 0;
     this.fakieT = 0;
@@ -603,7 +660,46 @@ export class Rider {
     if (sp.auto) return;
     this.tricksThisAir++;
     const name = `${sp.dir > 0 ? 'FS' : 'BS'} ${sp.deg}` as SpinName;
-    this.ev.trick({ name, duration: SPIN_TIME, points: SPIN_POINTS[sp.deg], axis: 'body', dir: sp.dir });
+    this.emit({ name, duration: SPIN_TIME, points: SPIN_POINTS[sp.deg], axis: 'body', dir: sp.dir });
+  }
+
+  /**
+   * Score a trick. One that follows on from tricks earlier in this air is put together with
+   * them in their place: another 180 the same way adds to the spin, and a backflip and a 180
+   * become a Flair.
+   */
+  private emit(t: Trick) {
+    const id = ++this.trickId;
+    const c = this.chain;
+    if (!JOINS(t) || this.grounded && !c.tricks.length || this.grind) {
+      this.chain = { tricks: [], whole: null, spins: null, rest: [] };
+      this.ev.trick({ ...t, id });
+      return;
+    }
+    const all = [...c.tricks, t];
+    const named = combined(all);
+    const shown = c.whole !== null ? [c.whole] : [...c.rest, ...(c.spins !== null ? [c.spins] : [])];
+    if (named && !all.every(isSpin)) {
+      // The whole lot has a name: one trick in place of them all.
+      this.chain = { tricks: all, whole: id, spins: null, rest: [] };
+      this.ev.trick({ ...named, id, replaces: shown });
+      return;
+    }
+    const spins = all.filter(isSpin);
+    const total = isSpin(t) && c.whole === null ? combined(spins) : null;
+    if (total) {
+      // Spinning further the same way: the spins add up, the other tricks stay as they are.
+      this.chain = { tricks: all, whole: null, spins: id, rest: c.rest };
+      this.ev.trick({ ...total, id, replaces: c.spins !== null ? [c.spins] : [] });
+      return;
+    }
+    if (c.whole !== null || (isSpin(t) && spins.length > 1)) {
+      // Spun back the other way, or past what the named trick can be: start again from here.
+      this.chain = { tricks: [t], whole: null, spins: isSpin(t) ? id : null, rest: isSpin(t) ? [] : [id] };
+    } else {
+      this.chain = { tricks: all, whole: null, spins: isSpin(t) ? id : c.spins, rest: isSpin(t) ? c.rest : [...c.rest, id] };
+    }
+    this.ev.trick({ ...t, id });
   }
 
   /** Device tilt changed. */
@@ -620,7 +716,7 @@ export class Rider {
     this.manual = null;
     // Too short to count as a manual: a wobble.
     if (this.manualT < 0.25) return;
-    this.ev.trick({ name, duration: this.manualT, points, axis: 'manual', dir: 1 });
+    this.emit({ name, duration: this.manualT, points, axis: 'manual', dir: 1 });
   }
 
   get manualPoints() {
@@ -660,7 +756,7 @@ export class Rider {
       this.angle = 0;
       this.grounded = true;
       this.ev.loop?.(true);
-      this.ev.trick({ name: 'Loop', duration: 0, points: LOOP_POINTS, axis: 'loop', dir: 1 });
+      this.emit({ name: 'Loop', duration: 0, points: LOOP_POINTS, axis: 'loop', dir: 1 });
       return;
     }
     // Too slow to stay on (the curve can't hold you up), or rolling back: you fall off.
@@ -687,7 +783,7 @@ export class Rider {
     this.grind = null;
     // Barely touched it: no grind.
     if (t < 0.12) return;
-    this.ev.trick({ name: style, duration: t, points, axis: 'grind', dir: 1 });
+    this.emit({ name: style, duration: t, points, axis: 'grind', dir: 1 });
   }
 
   /** Come down onto a rail: lock into a grind, finishing any trick that's nearly done. */
@@ -696,6 +792,7 @@ export class Rider {
       && (!this.spin || this.spinProgress >= 0.8) && !this.grab && !this.flipping;
     // Mid-trick you can't stand on it: you pass by the rail instead.
     if (!almost) return;
+    this.chain = { tricks: [], whole: null, spins: null, rest: [] };
     // A flip or spin that's nearly round finishes on the rail (see the grind step).
     const th = Math.atan((rail.y1 - rail.y0) / (rail.x1 - rail.x0));
     const dir = Math.sign(this.vx) || 1;
@@ -727,7 +824,7 @@ export class Rider {
     const points = Math.round((GRAB_POINTS + GRAB_POINTS_PER_SEC * this.grabT) / 10) * 10;
     this.grab = null;
     this.tricksThisAir++;
-    this.ev.trick({ name, duration: this.grabT, points, axis: 'grab', dir: 1 });
+    this.emit({ name, duration: this.grabT, points, axis: 'grab', dir: 1 });
   }
 
   /** Points the grab in progress is worth so far. */
@@ -807,6 +904,7 @@ export class Rider {
       if (this.opts.mtb && this.dropT < 0 && !this.spin && (this.v > 0 ? Math.PI : 0) !== this.pipeYaw) this.spin = { dir: this.pipeYaw ? -1 : 1, deg: 180, t: 0, turn: true, auto: true, dur: Math.max(0.15, Math.min(SPIN_TIME, this.vy / this.g * 0.9)) };
     }
     this.tricksThisAir = 0;
+    this.chain = { tricks: [], whole: null, spins: null, rest: [] };
     this.airPump = 0;
     this.endManual();
     // A tilt held through take-off doesn't flip you: level out, then tilt.
@@ -1039,7 +1137,7 @@ export class Rider {
         this.flipT += dt / FLIP_TIME;
         if (this.flipT >= 1) {
           this.tricksThisAir++;
-          this.ev.trick({ name: this.flipDir > 0 ? 'Backflip' : 'Frontflip', duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
+          this.emit({ name: this.flipDir > 0 ? 'Backflip' : 'Frontflip', duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
           if (this.lean === this.flipDir) this.flipT -= 1;
           else { this.flipping = false; this.flipT = 0; }
         }
@@ -1119,7 +1217,7 @@ export class Rider {
     const midFlip = this.flipping && this.flipT > FLIP_SAFE && this.flipT < FLIP_LAND;
     if (this.flipping && this.flipT >= FLIP_LAND) {
       this.tricksThisAir++;
-      this.ev.trick({ name: this.flipDir > 0 ? 'Backflip' : 'Frontflip', duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
+      this.emit({ name: this.flipDir > 0 ? 'Backflip' : 'Frontflip', duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
     }
     this.flipping = false;
     this.flipT = 0;
@@ -1130,6 +1228,7 @@ export class Rider {
       this.bodyYaw = 0;
       this.v = tang * 0.35;
       this.bailTimer = BAIL_TIME;
+      this.chain = { tricks: [], whole: null, spins: null, rest: [] };
       this.ev.bail();
       return;
     }
@@ -1139,7 +1238,7 @@ export class Rider {
       this.boardYaw += (done.shove ?? 0) * Math.PI;
       this.current = null;
       this.tricksThisAir++;
-      this.ev.trick(done);
+      this.emit(done);
     }
     const smooth = diff < 0.3 && this.airTime > 0.35;
     // Arcade landing: coming down onto an upslope (the back of a roller, a kicker) would
@@ -1148,6 +1247,7 @@ export class Rider {
     const kept = Math.max(tang * dir, Math.abs(this.vx) * LAND_KEEP);
     this.v = dir * kept * (smooth ? 1.04 : 1);
     this.ev.land({ airTime: this.airTime, smooth, hadTricks: this.tricksThisAir > 0 || this.ollied, peakY: this.peakY });
+    this.chain = { tricks: [], whole: null, spins: null, rest: [] };
     this.ollied = false;
   }
 
@@ -1160,7 +1260,7 @@ export class Rider {
       if (this.garden && !this.bailing) {
         // Out the other side: points for every metre ridden.
         const m = Math.max(0, this.x - this.garden.x0);
-        if (m > 2) this.ev.trick({ name: 'Rock Garden', duration: m / Math.max(1, Math.abs(this.v)), points: Math.round((GARDEN_POINTS + GARDEN_POINTS_PER_M * m) / 10) * 10, axis: 'garden', dir: 1 });
+        if (m > 2) this.emit({ name: 'Rock Garden', duration: m / Math.max(1, Math.abs(this.v)), points: Math.round((GARDEN_POINTS + GARDEN_POINTS_PER_M * m) / 10) * 10, axis: 'garden', dir: 1 });
       }
       this.garden = null;
       this.balance *= Math.exp(-dt * GARDEN_SETTLE);

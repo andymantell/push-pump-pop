@@ -127,13 +127,18 @@ export function icon(c: Challenge): string {
   return '&#9733;';
 }
 
+/** An air trick done; one put together from several (see combined in rider.ts) keeps its parts. */
+interface Done { name: TrickName; duration: number; parts?: TrickName[]; id?: number }
+/** What a trick counts as: its own name and, if it's put together from others, theirs too. */
+const aliases = (t: Done) => (t.parts ? [t.name, ...t.parts] : [t.name]);
+
 interface Air {
   x0: number;
   spots: Set<string>;
   /** Index into track.spots of a kicker you took off from, or -1. */
   kicker: number;
   fromRail: boolean;
-  tricks: { name: TrickName; duration: number }[];
+  tricks: Done[];
   peak: number;
   t0: number;
 }
@@ -148,11 +153,11 @@ export class ChallengeRun {
   private now = 0;
   private x = 0;
   private air: Air | null = null;
-  private pending: { name: TrickName; duration: number; at: number }[] = [];
+  private pending: (Done & { at: number })[] = [];
   private grindEnd = -10;
   private grindRail = -1;
   private manualX0: number | null = null;
-  private combo: { name: TrickName; x: number }[] = [];
+  private combo: (Done & { x: number })[] = [];
   private comboGaps = 0;
   private landed = new Set<TrickName>();
   /** Per challenge: things counted towards it (gaps, rails, kickers, tricks). */
@@ -223,7 +228,7 @@ export class ChallengeRun {
 
   trick(t: Trick) {
     if (t.axis === 'grind') {
-      this.credit(t.name, t.duration, null);
+      this.credit(t, null);
       const rail = this.track.rails[this.grindRail];
       this.each('grind', (c, i) => {
         if (!rail || t.duration < (c.seconds ?? 0) || (c.railKind && rail.kind !== c.railKind)) return;
@@ -240,25 +245,31 @@ export class ChallengeRun {
         if (c.pad) return this.track.pads.some((p) => x0 <= p.x0 + 0.6 && this.x >= p.x1 - 0.6);
         return t.duration >= (c.seconds ?? 0);
       });
-      this.credit(t.name, t.duration, null, [], x0);
+      this.credit(t, null, [], x0);
       return;
     }
     if (t.axis === 'loop') {
       this.each('loop', (c, i) => ++this.counts[i] >= (c.count ?? 1));
-      this.credit(t.name, t.duration, null);
+      this.credit(t, null);
       return;
     }
     // Air tricks count once you land them. An ollie fires as you pop, just before take-off.
-    if (this.air) this.air.tricks.push({ name: t.name, duration: t.duration });
-    else this.pending.push({ name: t.name, duration: t.duration, at: this.now });
+    // One put together from tricks before it (a 180 and another 180) takes their place.
+    const gone = (d: Done) => d.id !== undefined && !!t.replaces?.includes(d.id);
+    if (this.air) this.air.tricks = this.air.tricks.filter((d) => !gone(d));
+    this.pending = this.pending.filter((d) => !gone(d));
+    const d = { name: t.name, duration: t.duration, parts: t.parts, id: t.id };
+    if (this.air) this.air.tricks.push(d);
+    else this.pending.push({ ...d, at: this.now });
   }
 
   /** A trick landed, with the air it was done in (null on the ground or a rail). */
-  private credit(name: TrickName, duration: number, air: Air | null, gaps: number[] = [], x = this.x) {
-    this.landed.add(name);
-    this.combo.push({ name, x });
+  private credit(t: Done, air: Air | null, gaps: number[] = [], x = this.x) {
+    const { duration } = t;
+    for (const n of aliases(t)) this.landed.add(n);
+    this.combo.push({ ...t, x });
     this.each('trick', (c, i) => {
-      if (!matches(c.match, name) || duration < (c.minTime ?? 0)) return;
+      if (!aliases(t).some((n) => matches(c.match, n)) || duration < (c.minTime ?? 0)) return;
       if ((c.overGap || c.from || c.fromRail) && !air) return;
       if (air && c.from && !air.spots.has(c.from)) return;
       if (air && c.fromRail && !air.fromRail) return;
@@ -293,9 +304,11 @@ export class ChallengeRun {
   /** A combo banked for `points`. */
   bank(points: number) {
     this.total += points;
-    const names = this.combo.map((e) => e.name);
+    // A trick put together from several counts as all of them.
+    const names = this.combo.flatMap(aliases);
+    const count = this.combo.reduce((n, e) => n + (e.parts?.length ?? 1), 0);
     this.each('combo', (c) => {
-      if (names.length < (c.tricks ?? 0) || points < (c.points ?? 0) || this.comboGaps < (c.gaps ?? 0)) return;
+      if (count < (c.tricks ?? 0) || points < (c.points ?? 0) || this.comboGaps < (c.gaps ?? 0)) return;
       const left = [...names];
       for (const m of (c.include ?? []) as Match[]) {
         const k = left.findIndex((n) => matches(m, n));
@@ -352,7 +365,7 @@ export class ChallengeRun {
       // Caught a rail: that air was clean.
       if (r.grind) this.closeAir(true);
     }
-    for (const p of this.pending.filter((p) => this.now - p.at >= 0.35)) this.credit(p.name, p.duration, null);
+    for (const p of this.pending.filter((p) => this.now - p.at >= 0.35)) this.credit(p, null);
     this.pending = this.pending.filter((p) => this.now - p.at < 0.35);
 
     if (r.grind) { this.grindRail = this.track.rails.indexOf(r.grind.rail); this.grindEnd = this.now; }
@@ -377,10 +390,10 @@ export class ChallengeRun {
     const gaps = this.cleared(a.x0, this.x);
     const airTime = this.now - a.t0;
     // A combo across a stretch counts an air from where it took off.
-    for (const t of a.tricks) this.credit(t.name, t.duration, a, gaps, a.x0);
+    for (const t of a.tricks) this.credit(t, a, gaps, a.x0);
     this.comboGaps += gaps.length;
     if (!a.tricks.length && !this.combo.length) this.comboGaps = 0;
-    const names = a.tricks.map((t) => t.name);
+    const names = a.tricks.flatMap(aliases);
     this.each('sameAir', (c) => {
       if ((c.from && !a.spots.has(c.from)) || !this.gapOk(c.overGap, gaps)) return;
       const left = [...names];
