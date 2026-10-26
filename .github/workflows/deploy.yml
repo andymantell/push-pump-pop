@@ -17,13 +17,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # npm test, split so the three careers playtest side by side (CI time is what
-  # decides how long an update takes to reach the iPad).
+  # npm test, split so the careers playtest side by side, each in four parts (CI
+  # time is what decides how long an update takes to reach the iPad).
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         ride: [skate, scooter, mtb]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,10 +33,15 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Unit checks
-        if: matrix.ride == 'skate'
+        if: matrix.ride == 'skate' && matrix.shard == 1
         run: npm run test:unit
       - name: Playtest every track with a human-speed bot
-        run: npm run playtest:${{ matrix.ride }}
+        run: npm run playtest:${{ matrix.ride }} -- --shard=${{ matrix.shard }}/4 --seen-out=seen-${{ matrix.ride }}-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seen-${{ matrix.ride }}-${{ matrix.shard }}
+          path: seen-${{ matrix.ride }}-${{ matrix.shard }}.json
+          retention-days: 1
 
   build:
     needs: test
@@ -48,7 +54,27 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: seen-skate-*
+          path: seen/skate
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: seen-scooter-*
+          path: seen/scooter
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: seen-mtb-*
+          path: seen/mtb
+          merge-multiple: true
       - run: npm ci
+      - name: Check every trick got landed somewhere
+        run: |
+          for ride in skate scooter mtb; do
+            npm run playtest:$ride -- --check-tricks=seen/$ride
+          done
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

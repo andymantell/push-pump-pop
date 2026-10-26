@@ -21,6 +21,7 @@ import { MegaRun } from '../src/mega';
 import { ChallengeRun, Challenge, members, offSpot } from '../src/challenges';
 import { Track, Rail, railY } from '../src/track';
 import * as THREE from 'three';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { Skater } from '../src/skater';
 import { ScooterRig } from '../src/scooter';
 import { MtbRig } from '../src/mtb';
@@ -615,16 +616,25 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
 const args = process.argv.slice(2);
 const verbose = args.includes('--verbose');
 const only = args.find((a) => !a.startsWith('--'));
+const opt = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
+// CI splits a career across jobs: --shard=2/4 plays every 4th track starting with the
+// 2nd and saves which tricks it landed to --seen-out; --check-tricks=<dir> then pools
+// those files and checks every trick got landed somewhere.
+const [shard, shards] = (opt('shard') ?? '1/1').split('/').map(Number);
+const seenOut = opt('seen-out');
+const tricksDir = opt('check-tricks');
 if (SCOOT) console.log('Scooter career');
 if (BIKE) console.log('Mountain bike career');
 if (BIKE && MTB_TODO.length) console.log(`(no bike challenges written yet for ${MTB_TODO.length} tracks, using the skateboard ones swapped over)`);
 if (SCOOT && SCOOTER_TODO.length) console.log(`(no scooter challenges written yet, using the skateboard ones swapped over: ${SCOOTER_TODO.join(', ')})`);
 let failed = false;
 
-for (const def of TRACKS) {
+// The downhill world is the bike's alone.
+const rideTracks = TRACKS.filter((def) => rideGoes(RIDE, worldOf(def.biome)));
+for (const [n, def] of rideTracks.entries()) {
+  if (tricksDir) break;
   if (only && !def.id.startsWith(only)) continue;
-  // The downhill world is the bike's alone.
-  if (!rideGoes(RIDE, worldOf(def.biome))) continue;
+  if (n % shards !== shard - 1) continue;
   const results = Array.from({ length: RUNS }, (_, i) => play(def.id, 1000 + i * 7919, false, i < LEG_RUNS));
   const pumpers = Array.from({ length: RUNS / 4 }, (_, i) => play(def.id, 5000 + i * 7919, true, true));
   const stops = [...results, ...pumpers].flatMap((r) => r.stops);
@@ -716,7 +726,13 @@ if (legHits.size) {
 }
 
 // The bots should be able to land every kind of move, not just survive.
-if (!only) {
+if (seenOut) writeFileSync(seenOut, JSON.stringify([...seen]));
+if (tricksDir) {
+  for (const f of readdirSync(tricksDir)) {
+    for (const [n, c] of JSON.parse(readFileSync(`${tricksDir}/${f}`, 'utf8')) as [string, number][]) seen.set(n, (seen.get(n) ?? 0) + c);
+  }
+}
+if (!only && (shards === 1 || tricksDir)) {
   console.log(`\ntricks landed: ${[...seen].map(([n, c]) => `${n} ${c}`).join(', ')}`);
   const all = ['Manual', 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360'];
   const missing = [...all, ...(BIKE
