@@ -774,6 +774,9 @@ export class Rider {
     // On a bike's pipe air the turn is already under way: swiping makes it your 180.
     if (this.spin?.auto && !this.bailing) { this.spin.auto = false; this.spin.dir = dir === 'right' ? 1 : -1; return; }
     if (this.bailing || this.spin || this.roll) return;
+    // Spinning out of a manual ends it: level out and tilt again for the next one,
+    // or you'd land it turned round (on a bike, a stoppie the wrong way).
+    if (this.manual) { this.endManual(); this.manualBlocked = this.lean !== 0; }
     // A kayak spins flat on the water, without leaving it.
     if (this.opts.kayak && this.grounded) { this.spin = { dir: dir === 'right' ? 1 : -1, deg: 180, t: 0 }; return; }
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);

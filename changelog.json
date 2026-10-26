@@ -2,6 +2,7 @@
   {
     "date": "2026-10-26",
     "items": [
+      "Fixed: spinning out of a manual ends it on every ride, so the bike doesn't turn it into a backwards stoppie. Level out and tilt again to start the next one",
       "New: roller skates! Pick ROLLER above the worlds to ride every track on aggressive inline skates, with its own stars and challenges. Swipe for flatspins, misty flips and rocket airs, hold for mute and japan grabs, tilt for heel rolls, and grind rails in a soul, royale, makio or unity. Snowblades on the snow, off-road skates on the farm, and choose your skate colours in MY RIDER",
       "New: Waterfall Gorge, the last ten kayak rivers! Paddle a jungle river down a staircase of waterfalls, each taller than the last, past huts on stilts, a toucan in a giant tree, an old temple and a huge waterfall with a rainbow, then surf the Gorge Wave. Every river in the kayak world is open now",
       "Better: on the standing waves, the foam breaks back onto the wave and churns round and round, tumbling down the face and riding back up to the crest, with a few bits washing away downstream",
