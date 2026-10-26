@@ -1886,6 +1886,64 @@ export const LANDMARKS: Record<string, Landmark> = {
     bird.position.set(0, 11.5, 0);
     return g.add(bird), g;
   } },
+  // ---- Waterfall Gorge
+  tallfall: { z: -30, r: 10, build: () => {
+    // A huge two-tier waterfall pouring off the jungle cliff, with a rainbow in its spray.
+    const g = cliff(22, 22, 0x5a6a52, 0x3a8a3a);
+    const water = 0x9adcf0, white = 0xeaf8ff;
+    g.add(box(4, 10, 0.5, water, [0, 17, 5.3]), box(8, 1.2, 4, 0x5a6a52, [0, 11.4, 6.5]));
+    g.add(box(6, 11, 0.5, water, [0, 5.5, 8.6]));
+    for (let i = 0; i < 5; i++) g.add(box(0.2, 10, 0.05, white, [-1.4 + i * 0.7, 17, 5.6]), box(0.25, 11, 0.05, white, [-2.2 + i * 1.1, 5.5, 8.9]));
+    g.add(box(7, 1, 2.6, white, [0, 11.8, 6.4]), box(10, 1.2, 3, white, [0, 0.5, 9.6]));
+    const pool = mesh(new THREE.CircleGeometry(6, 24), 0x3aa8c8, [0, 0.12, 11], [-Math.PI / 2, 0, 0]);
+    pool.scale.y = 0.5;
+    g.add(pool);
+    // The rainbow: thin bands arcing across the spray.
+    [0xff5a4a, 0xffb02a, 0xffe84a, 0x5ad05a, 0x4a8aff, 0x8a5ad8].forEach((c, i) => {
+      // Lit like everything else, so it fades away after dark.
+      const m = toon(c);
+      m.transparent = true;
+      m.opacity = 0.5;
+      m.depthWrite = false;
+      m.userData.outlineParameters = { visible: false };
+      const arc = new THREE.Mesh(new THREE.TorusGeometry(7 - i * 0.28, 0.14, 4, 32, Math.PI), m);
+      arc.position.set(0, 1, 10);
+      g.add(arc);
+    });
+    return g;
+  } },
+  stilthut: { z: -14, r: 5, build: () => {
+    // A thatched hut up on stilts at the water's edge, with a canoe tied below.
+    const wood = 0x8a5a30, thatch = 0xc8a050;
+    const g = new THREE.Group();
+    for (const [x, z] of [[-2, -1.5], [2, -1.5], [-2, 1.5], [2, 1.5]]) g.add(cyl(0.15, 0.18, 3.4, wood, [x, 1.7, z], 6));
+    g.add(box(5, 0.25, 4, wood, [0, 3.4, 0]), box(4.4, 2.2, 3.4, 0xb08050, [0, 4.6, 0]), box(0.9, 1.4, 0.1, 0x3a2418, [0, 4.3, 1.75]));
+    const roof = cyl(0, 3.8, 2.4, thatch, [0, 6.9, 0], 4);
+    roof.rotation.y = Math.PI / 4;
+    g.add(roof);
+    for (let k = 0; k < 6; k++) g.add(box(1.2, 0.08, 0.3, wood, [3.2, 0.4 + k * 0.55, 1.6]));
+    g.add(beam([2.6, 0, 1.6], [2.6, 3.4, 1.6], 0.1, wood), beam([3.8, 0, 1.6], [3.8, 3.4, 1.6], 0.1, wood));
+    const canoe = cyl(0.35, 0.35, 4, 0x6a3a1a, [-1, 0.25, 3.2], 8, [0, 0, Math.PI / 2]);
+    canoe.scale.z = 0.6;
+    g.add(canoe);
+    return g;
+  } },
+  toucantree: { z: -12, r: 4, build: () => {
+    // A giant jungle tree with buttress roots, hanging vines and a toucan on a branch.
+    const bark = 0x6a5a3a, leaf = 0x2e8a3a;
+    const g = group(cyl(0.9, 1.4, 14, bark, [0, 7, 0], 8));
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      g.add(box(0.3, 2.6, 2.2, bark, [Math.cos(a) * 1.3, 1.3, Math.sin(a) * 1.3], [0, -a, 0]));
+    }
+    for (const [x, y, z, r] of [[0, 15, 0, 4], [-3, 14, 1, 3], [3, 14.2, -1, 3.2], [1, 16.5, 1, 2.6]]) g.add(ball(r, leaf, [x, y, z], 8));
+    for (const x of [-2.5, -1, 2, 3.4]) g.add(box(0.06, 5 + Math.abs(x), 0.06, 0x3a7a2a, [x, 12 - (5 + Math.abs(x)) / 2, 1.8]));
+    g.add(box(4, 0.3, 0.3, bark, [2.4, 10, 0.6]));
+    const bird = new THREE.Group();
+    bird.add(ball(0.35, 0x1a1a1e, [0, 0, 0], 8), ball(0.2, 0xfff0a0, [0.15, 0.1, 0.18], 8), box(0.6, 0.2, 0.2, 0xff8a1a, [0.5, 0.15, 0]), box(0.1, 0.5, 0.25, 0x1a1a1e, [-0.35, -0.2, 0]));
+    bird.position.set(3.2, 10.5, 0.6);
+    return g.add(bird), g;
+  } },
   startgate: { z: -6, r: 4, build: () => {
     // The race's inflatable arch and a timing screen.
     const g = new THREE.Group();
@@ -1978,4 +2036,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'kayak-canyon-1': ['raftcamp', 'arch'], 'kayak-canyon-2': ['cliffdwelling'], 'kayak-canyon-3': ['condorrock', 'raftcamp'], 'kayak-canyon-4': ['hoodoos'],
   'kayak-canyon-5': ['arch', 'cliffdwelling'], 'kayak-canyon-6': ['raftcamp', 'condorrock'], 'kayak-canyon-7': ['cliffdwelling', 'hoodoos'], 'kayak-canyon-8': ['arch', 'raftcamp'],
   'kayak-canyon-9': ['condorrock', 'cliffdwelling'], 'kayak-canyon-10': ['hoodoos', 'arch'], 'kayak-canyon-wave': ['raftcamp'],
+  'kayak-gorge-1': ['stilthut', 'toucantree'], 'kayak-gorge-2': ['waterfall'], 'kayak-gorge-3': ['ropebridge', 'stilthut'], 'kayak-gorge-4': ['tallfall'],
+  'kayak-gorge-5': ['temple', 'toucantree'], 'kayak-gorge-6': ['bighead', 'waterfall'], 'kayak-gorge-7': ['ropebridge', 'totems'], 'kayak-gorge-8': ['tallfall', 'stilthut'],
+  'kayak-gorge-9': ['temple', 'ropebridge'], 'kayak-gorge-10': ['tallfall', 'bighead'], 'kayak-gorge-wave': ['tallfall'],
 };

@@ -11,7 +11,7 @@ the next biome; the first river is open from the start):
 1. **Whitewater Centre** (`kayak-centre`): a man-made concrete slalom course. Built.
 2. **Forest Creek** (`kayak-creek`): a narrow rocky creek under conifers. Built.
 3. **Canyon River** (`kayak-canyon`): a wide river between red canyon walls. Built: big wave trains, ledges and wide play holes with calm pools before them.
-4. **Waterfall Gorge** (`kayak-gorge`): a jungle gorge of waterfalls.
+4. **Waterfall Gorge** (`kayak-gorge`): a jungle gorge of waterfalls. Built: a staircase of falls from 1.8 m up to the 4.2 m Big Plunge, with chutes, holes and pools between.
 
 Each river has three challenges, pars from the kayak bot (p75), and three lives (a swim costs one).
 Each biome's bonus level is a **standing wave** instead of a half pipe: surfed in a playboat for
@@ -66,7 +66,7 @@ Auto quality turns the spray down on slow devices.
 
 ## Still to do
 
-- Forest Creek, Canyon River and Waterfall Gorge, each with its own standing wave, with full polish
+- Forest Creek, Canyon River and Waterfall Gorge, each with its own standing wave, with full polish (all built 2026-10-26)
   (mood, landmarks, trackside detail, lighting, ambience, screenshot review, landings and playtest gates).
 - A proper white water helmet model (it borrows the skate helmet for now).
 - Slalom gates and more landmarks on the Whitewater Centre.
