@@ -1,4 +1,5 @@
 import type { Rider, Trick } from './rider';
+import { PUSH_RATE, PUSH_START } from './skater';
 import type { Biome } from './biomes';
 import type { Rail } from './track';
 
@@ -407,11 +408,11 @@ export class Sound {
     } else this.squelchT = 0.5;
     this.inMud = mud;
 
-    // Pushing: a shoe scuffing the ground on each kick.
+    // Pushing: a shoe scuffing the ground on each kick, as the skater's foot plants.
     if (active && r.pushing && r.grounded && !this.bound) {
-      this.pushT += dt * 1.6;
+      this.pushT += dt * (this.scooter ? 1.6 : PUSH_RATE);
       if (this.pushT >= 1) { this.pushT -= 1; this.scuff(t); }
-    } else this.pushT = 0.7;
+    } else this.pushT = this.scooter ? 0.7 : PUSH_START;
 
     // Bounced off a jelly pad.
     if (r.bounces !== this.bounces) {

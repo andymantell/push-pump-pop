@@ -3,7 +3,8 @@
 // a held grab, ?spin=right a body spin, ?snow=1 the snowboard; ?at=0,0.03,... the frame times
 // in seconds after the pop, ?rail=1 a hop onto a rail, and ?views=side,three-quarter,back the camera angles.
 // ?ride=scooter rides the scooter instead; ?then=left a second swipe 0.12 s after the first
-// (a double whip, or a grind style once on the rail).
+// (a double whip, or a grind style once on the rail). ?v=0&swipe=none starts from a standstill,
+// pushing off: ?at= is then seconds from the start.
 import * as THREE from 'three';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { loadAssets } from '../src/assets';
@@ -40,7 +41,7 @@ const assets = await loadAssets();
 const scoot = q.get('ride') === 'scooter';
 const skater = scoot ? new ScooterRig(assets.parts) : new Skater(assets.parts);
 if (skater instanceof ScooterRig) skater.setKind(snow ? 'snow' : 'scooter');
-else skater.setSnow(snow);
+else skater.setBoard(snow ? 'snow' : 'skate');
 scene.add(skater.root);
 
 const rail = q.get('rail') === '1';
@@ -51,10 +52,11 @@ const track = b.build(5, 190);
 const noop = () => {};
 const r = new Rider(track, { trick: noop, land: noop, bail: noop, pump: noop, fall: noop } as never);
 r.opts = { friction: 1, maxSpeed: 17, snow, scooter: scoot };
-r.v = 8;
+const v0 = q.get('v');
+r.v = v0 === null ? 8 : Number(v0);
 const dt = 1 / 120;
 const step = () => { r.update(dt); skater.update(dt, r, (x) => track.height(x), (x) => track.slope(x)); };
-for (let i = 0; i < 120; i++) step();
+if (v0 === null) for (let i = 0; i < 120; i++) step();
 while (rail && r.x < track.rails[0].x0 - r.v * 0.45) step();
 const swipe = q.get('swipe'), grab = q.get('grab'), spin = q.get('spin');
 if (grab) r.grabSwipe(grab as Swipe);

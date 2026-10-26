@@ -39,6 +39,12 @@ const ANKLE = 0.075;
 /** Ankle joint height above the bottom of the sole. */
 const SOLE = 0.09;
 const STAND_HIP = DECK_TOP + ANKLE + (THIGH + SHIN) * 0.97;
+/** Pushing: strides a second, starting partway through the swing forward to the first plant. */
+export const PUSH_RATE = 0.9, PUSH_START = 0.8;
+/** Where the push foot plants (beside the front foot) and where the drive back ends. */
+const PLANT_X = 0.26, DRIVE_X = -0.6;
+/** Share of each stride with the foot on the ground. */
+const PLANT_SHARE = 0.5;
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const DOWN = v3(0, -1, 0);
@@ -212,6 +218,8 @@ export class Skater {
   private pumpAnim = 0;
   private pushT = 0;
   private pushW = 0;
+  /** A stride under way: once planted, the foot always drives right back. */
+  private pushOn = false;
   private bailT = 0;
   private bailBoard = new THREE.Vector3();
   /** 0..1 blend into the grab pose, and the last grab for easing out. */
@@ -338,7 +346,21 @@ export class Skater {
     let armT = 0.45;
     if (r.pumpTimer > 0) crouchT = 0.55;
     this.pumpAnim = Math.max(0, this.pumpAnim - dt * 3);
-    if (r.pushing) crouchT = 0.32;
+    // Pushing: one long stride at a time. Up to speed, he finishes the stride and steps
+    // back onto the board as the foot swings past it, unless he leaves the ground or
+    // starts doing something else first.
+    const canPush = r.grounded && !r.bailing && !this.bound && !r.manual && !r.grind && r.pumpTimer <= 0;
+    if (canPush && (r.pushing || this.pushOn)) {
+      // Picking up again while the last stride is still easing out carries on from where it was.
+      if (!this.pushOn && this.pushW < 0.01) this.pushT = PUSH_START;
+      this.pushOn = true;
+      this.pushT += dt * PUSH_RATE;
+      if (this.pushT >= 1) this.pushT -= 1;
+      if (!r.pushing && this.pushT > PLANT_SHARE + 0.4 * (1 - PLANT_SHARE)) this.pushOn = false;
+    } else this.pushOn = false;
+    // Sinking low on the front leg as the back one drives out behind.
+    const drive = this.pushDrive();
+    if (this.pushOn) crouchT = 0.5 + 0.22 * drive;
     if (!r.grounded) {
       const peak = Math.min(1, r.airTime * 4);
       liftT = r.current ? 0.32 : 0.16 * peak;
@@ -468,7 +490,7 @@ export class Skater {
     // and the head turns the other way. cos(yaw) is +1 regular, -1 fakie.
     const facing = Math.cos(yaw);
     const twist = 0.3 * (facing - 1) / 2;
-    p.torso.rotation.set(0.18 + crouch * 0.55 + gw * 0.25, twist, 0);
+    p.torso.rotation.set(0.18 + crouch * 0.55 + gw * 0.25 + 0.12 * this.pushW, twist, 0);
     p.head.rotation.set(-0.15 - crouch * 0.4, 1.0 * facing - twist, 0);
 
     // Feet lift off the board to let it flip or spin under them. Smoothed, so a flip that
@@ -491,36 +513,39 @@ export class Skater {
     // Ease in and out of pushing so the foot never snaps between the ground and the board.
     // No pushing on a snowboard or mountain board: both feet are strapped in.
     // Capped too: starting to push the moment you land, after a big crouch, mustn't fling the foot down.
-    const pushTo = (r.pushing && r.grounded && !r.bailing && !this.bound ? 1 : 0) - this.pushW;
+    const pushTo = (this.pushOn ? 1 : 0) - this.pushW;
     this.pushW += Math.max(-dt * 6, Math.min(dt * 6, pushTo * (1 - Math.exp(-dt * 12))));
+    // The hips sit back over the board as the push leg reaches out behind.
+    const hipBack = 0.1 * this.pushW * drive;
     if (this.pushW > 0.01) {
-      this.pushT = (this.pushT + dt * 1.6) % 1;
       const t = this.pushT;
+      // Slow at each end, fastest in the middle.
+      const ease = (s: number) => s - Math.sin(s * Math.PI * 2) / (Math.PI * 2);
       const foot = v3();
-      if (t < 0.55) {
-        const s = t / 0.55;
-        foot.set(0.1 - 0.6 * s, ANKLE - 0.03, 0.26);
+      if (t < PLANT_SHARE) {
+        // Planted beside the front foot, driving all the way back.
+        foot.set(PLANT_X + (DRIVE_X - PLANT_X) * ease(t / PLANT_SHARE), ANKLE - 0.03, 0.26);
       } else {
-        const s = (t - 0.55) / 0.45;
-        foot.set(-0.5 + 0.6 * s, ANKLE + Math.sin(s * Math.PI) * 0.15, 0.26 - 0.1 * Math.sin(s * Math.PI));
+        // Knee up, swinging forward to plant again.
+        const s = (t - PLANT_SHARE) / (1 - PLANT_SHARE);
+        foot.set(DRIVE_X + (PLANT_X - DRIVE_X) * ease(s), ANKLE - 0.03 + Math.sin(s * Math.PI) * 0.2, 0.26 - 0.08 * Math.sin(s * Math.PI));
       }
       backFoot.lerp(foot, this.pushW);
       // The push foot follows the real ground, which curves away from the board's line
       // on rollers and dips: never plant it below the surface.
       backFoot.y = Math.max(backFoot.y, this.groundLocalY(backFoot.x, backFoot.z, groundY) + SOLE);
-    } else {
-      this.pushT = 0;
     }
 
-    const hipL = v3(0.14, hipY, 0);
-    const hipR = v3(-0.06, hipY, 0);
+    p.pelvis.position.x -= hipBack;
+    const hipL = v3(0.14 - hipBack, hipY, 0);
+    const hipR = v3(-0.06 - hipBack, hipY, 0);
     // Knees point forward, splaying apart for a grab between the legs.
     const splay = grab.splay * gw;
     this.leg(p.thigh_L, p.shin_L, p.shoe_L, hipL, front, v3(splay, 0, 1));
     this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, backFoot, v3(-splay, 0, 1));
 
     // Arms out for balance, higher in the air, swinging when pushing.
-    const swing = r.pushing ? Math.sin(this.pushT * Math.PI * 2) * 0.5 : 0;
+    const swing = Math.sin(this.pushT * Math.PI * 2) * 0.75 * this.pushW;
     p.upperArm_L.rotation.set(0.25 + swing, 0, 0.35 + this.armRaise * 0.9);
     p.upperArm_R.rotation.set(0.25 - swing, 0, -(0.35 + this.armRaise * 0.9));
     p.forearm_L.rotation.set(0.6, 0, -0.3 - this.armRaise * 0.3);
@@ -685,6 +710,12 @@ export class Skater {
     this.root.updateMatrixWorld(true);
     const w = this.root.localToWorld(v3(x, 0, z));
     return this.root.worldToLocal(w.set(w.x, groundY(w.x), w.z)).y;
+  }
+
+  /** How far through the drive back the push foot is, 0 at the plant to 1 fully out behind. */
+  private pushDrive() {
+    const t = this.pushT;
+    return t < PLANT_SHARE ? t / PLANT_SHARE : 1 - (t - PLANT_SHARE) / (1 - PLANT_SHARE);
   }
 
   private leg(thigh: THREE.Object3D, shin: THREE.Object3D, shoe: THREE.Object3D, hip: THREE.Vector3, foot: THREE.Vector3, pole: THREE.Vector3) {
