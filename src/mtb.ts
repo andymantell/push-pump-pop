@@ -61,7 +61,7 @@ const TRAVEL = 0.15, DROOP = 0.05;
 /** How fast a wheel drops back down to the ground (rebound), m/s. */
 const REBOUND = 3;
 /** Feet and hips: standing on the pedals, knees and elbows bent. */
-const HIP = new THREE.Vector2(-0.27, 1.2);
+const HIP = new THREE.Vector2(-0.27, 1.14);
 const HIP_Z = 0.08;
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -378,7 +378,7 @@ export class MtbRig {
     const bt = r.current?.axis === 'bike' ? r.current : null;
     if (bt) this.lastTrick = bt.name;
     const tw = bt ? bump(r.trickProgress, 0.3, 0.75) : 0;
-    this.trickW += cap((tw - this.trickW) * (1 - Math.exp(-dt * 40)), 4.5);
+    this.trickW += cap((tw - this.trickW) * (1 - Math.exp(-dt * 40)), 4);
     if (bt) { crouchT = Math.max(crouchT, 0.45); liftT = Math.max(liftT, 0.15); }
 
     const hold = r.grab && r.grab in HOLDS ? r.grab as BikeHold : null;
@@ -550,7 +550,7 @@ export class MtbRig {
     const crouch = crouchIn > 0.6 ? 0.6 + (crouchIn - 0.6) * 0.4 : crouchIn;
     const hold3 = H.hip.clone().multiplyScalar(hw);
     const bikeY = this.frameY + this.lift * 0.6;
-    let hipY = HIP.y - crouch * 0.38 + bikeY + hold3.y + 0.05 * this.trickW + this.jolt;
+    let hipY = HIP.y - crouch * 0.38 + bikeY + hold3.y + 0.02 * this.trickW + this.jolt;
     // In a rock garden the rider's weight goes where the balance is.
     this.weight += (r.balance - this.weight) * (1 - Math.exp(-dt * 10));
     const hipX = HIP.x - MID_X + hold3.x - (this.lean - 0.95) * 0.06 + this.weight * 0.16;
