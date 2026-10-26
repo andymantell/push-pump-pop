@@ -457,7 +457,15 @@ function openSelect(world: number | null = selWorld) {
     if (worldOf(id) !== world) return;
     const b = BIOMES[id];
     const tracks = TRACKS.filter((t) => t.biome === id);
-    if (!tracks.length) return;
+    if (!tracks.length) {
+      // A biome still being built shows what's on the way.
+      const soon = document.createElement('div');
+      soon.className = 'biome locked';
+      soon.style.setProperty('--swatch', b.swatch);
+      soon.innerHTML = `<div class="biome-head"><b>${b.name}</b><span>Coming soon!</span></div>`;
+      list.appendChild(soon);
+      return;
+    }
     const open = progress.biomeOpen(id);
     const row = document.createElement('div');
     row.className = 'biome' + (open ? '' : ' locked');

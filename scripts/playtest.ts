@@ -208,8 +208,9 @@ function trickActs(name: TrickName, hold: number): [string, number][] {
 /** Air time a trick needs to land clean. */
 function trickTime(name: TrickName, hold: number): number {
   if (['Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'Superman', 'No Footer', 'Can Can', 'X-Up', 'No Hander'].includes(name)) return hold + 0.2;
-  if (name === 'Whip' || name === 'Turndown') return 0.55;
-  if (name === 'Tabletop') return 0.6;
+  // The bike's thrown about for 0.5 s, and a player leaves room to straighten it up.
+  if (name === 'Whip' || name === 'Turndown') return 0.62;
+  if (name === 'Tabletop') return 0.67;
   if (name.startsWith('Double') || name.endsWith(' Barspin')) return 0.85;
   if (name === 'Tailwhip' || name === 'Heelwhip') return 0.45;
   if (name.endsWith('360')) return 0.75;
@@ -326,6 +327,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     while (tt < 4) {
       tt += 0.01; x += r.vx * 0.01; vy -= r.g * 0.01; y += vy * 0.01;
       if (vy < 0 && y <= track.height(x)) break;
+      // Coming down onto a rail (or skinny) ends the air too.
+      if (vy < 0 && track.rails.some((rl) => x >= rl.x0 && x <= rl.x1 && y <= railY(rl, x) && y - vy * 0.01 > railY(rl, x))) break;
     }
     return { time: tt, x };
   }
@@ -524,6 +527,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
           // A big air: grab with the other thumb, and let go well before landing.
           press('grab');
           press('let go', 0.3);
+        } else if (BIKE && flight().time - REACTION - JITTER < 0.62) {
+          // Too short to throw the bike about and straighten it again: a rider just rides it.
         } else if (TURNS && pick < 0.55 && flight().time - REACTION - JITTER < 0.65) {
           // Not enough air to get round and back: a scooter rider would rather not end up backwards.
           press('left');

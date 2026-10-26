@@ -30,7 +30,7 @@ export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JU
 // Every track's scooter challenges. New tracks get their skateboard ones with scooter tricks
 // swapped in until they have their own (the scooter playtest lists them).
 for (const t of TRACKS) t.scooter = SCOOTER[t.id] ?? scooterFallback(t);
-export const SCOOTER_TODO = TRACKS.filter((t) => !SCOOTER[t.id]).map((t) => t.id);
+export const SCOOTER_TODO = TRACKS.filter((t) => !SCOOTER[t.id] && !t.biome.startsWith('dh-')).map((t) => t.id);
 // And the downhill bike's, the same way.
 // The bike's own downhill courses are written for it: their challenges are the MTB ones.
 for (const t of TRACKS) t.mtb = MTB[t.id] ?? (t.biome.startsWith('dh-') ? { par: t.par ?? 0, challenges: t.challenges ?? [] } : mtbFallback(t));

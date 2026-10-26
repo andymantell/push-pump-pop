@@ -43,7 +43,20 @@ Pick **SKATE** or **SCOOTER** above the world tabs on the level select. The scoo
 | Superman, No Footer, Can Can, X-Up | On the left half, swipe up, down, left or right and keep holding | Hold I / K / J / L |
 | Grinds | 50-50 by default; on a rail swipe left for a Boardslide, right for a Feeble, down for a Smith | Arrows |
 
-A 180 on a scooter leaves you riding backwards: landing like that adds **Fakie** to the combo, but after 3 s on the ground fakie the rider starts to wobble, more and more, and falls off at 10 s (`FAKIE_SAFE`, `FAKIE_FALL` in `src/rider.ts`) unless another 180 turns them forwards. On the Snowy Mountain tracks the scooter is a snow scooter, on skis. A future ride (a downhill MTB) can add worlds only it reaches through `skipWorlds` in `src/ride.ts`.
+A 180 on a scooter leaves you riding backwards: landing like that adds **Fakie** to the combo, but after 3 s on the ground fakie the rider starts to wobble, more and more, and falls off at 10 s (`FAKIE_SAFE`, `FAKIE_FALL` in `src/rider.ts`) unless another 180 turns them forwards. On the Snowy Mountain tracks the scooter is a snow scooter, on skis..
+
+### Downhill MTB career
+
+Pick **MTB** for a full-suspension downhill bike (`src/mtb.ts`, modelled in `art/build_assets.py` after a modern 29in DH bike), with its own challenges and stars like the scooter (`src/levels/mtb.ts`). It rides every track, and has a world only it reaches, **DOWNHILL**: courses that all run down a hill (`src/levels/dh-*.ts`, plan in `docs/mtb-plan.md`). The rider wears a full-face helmet and goggles, and the tyres get ice studs on snow.
+
+| Action | Touch | Keyboard |
+| --- | --- | --- |
+| Bunny hop | Swipe up | Up arrow / W |
+| Whip / Tabletop / Turndown | Swipe left / right / down | Arrows / WASD |
+| Superman, No Footer, Can Can, No Hander | On the left half, swipe up, down, left or right and keep holding | Hold I / K / J / L |
+| Manual / Stoppie | Tilt as for a manual / nose manual (on a skinny too); in the air the same tilt flips | Hold Q / E |
+
+Rails are wooden skinnies on the bike. Rock gardens knock your weight forwards and back (the balance meter shows it): tilt against it, or go over the bars or loop out. Riding backwards wobbles from 1.5 s and bails at 5 s.
 
 You get three lives per track. Each bail or fall into a gap costs one, and losing the third means starting the track again: the game freezes behind the Out of Lives screen and ignores taps, swipes and tilt until you do. Half-pipe bonus levels are timed and have no lives.
 
@@ -55,6 +68,7 @@ npm run dev      # local dev server
 npm run build    # type check and build to dist/
 npm test                 # human-speed bot plays every track on both rides; fails if one is too hard
 npx tsx scripts/playtest.ts --ride=scooter [track]   # just the scooter career
+npx tsx scripts/playtest.ts --ride=mtb [track]       # just the MTB career
 npx tsx scripts/sim.ts   # quick physics stats per track, for tuning
 ```
 

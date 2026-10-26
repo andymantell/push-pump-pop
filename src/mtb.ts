@@ -536,13 +536,20 @@ export class MtbRig {
     const footL = footOn(farPedal), footR = footOn(nearPedal);
     // Deep squats ease off, so a big landing never folds the legs flat (the knees would flick).
     const crouchIn = this.crouch + 0.45 * this.absorb + 0.6 * squash;
-    const crouch = crouchIn > 0.7 ? 0.7 + (crouchIn - 0.7) * 0.4 : crouchIn;
+    const crouch = crouchIn > 0.6 ? 0.6 + (crouchIn - 0.6) * 0.4 : crouchIn;
     const hold3 = H.hip.clone().multiplyScalar(hw);
     const bikeY = this.frameY + this.lift * 0.6;
-    const hipY = HIP.y - crouch * 0.38 + bikeY + hold3.y + 0.05 * this.trickW + this.jolt;
+    let hipY = HIP.y - crouch * 0.38 + bikeY + hold3.y + 0.05 * this.trickW + this.jolt;
     // In a rock garden the rider's weight goes where the balance is.
     this.weight += (r.balance - this.weight) * (1 - Math.exp(-dt * 10));
     const hipX = HIP.x - MID_X + hold3.x - (this.lean - 0.6) * 0.06 + this.weight * 0.16;
+    // Never squat so deep the legs fold flat (the knees would flick about): stand up off a
+    // pedal that comes up too close under the hips.
+    const MIN_LEG = 0.5;
+    for (const f of [footL, footR]) {
+      const dx = f.x - hipX, dy = hipY - f.y;
+      if (Math.hypot(dx, dy) < MIN_LEG) hipY = f.y + Math.sqrt(Math.max(0, MIN_LEG * MIN_LEG - dx * dx));
+    }
     p.pelvis.position.set(hipX, hipY, 0);
     const shake = this.chatter;
     p.torso.rotation.set(this.lean + crouch * 0.3 + this.weight * 0.25 - this.joltP, 0, shake);

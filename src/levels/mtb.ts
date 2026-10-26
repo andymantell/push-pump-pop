@@ -10,6 +10,22 @@ import type { Challenge } from '../challenges';
 export interface MtbTrack { par: number; challenges: Challenge[] }
 
 export const MTB: Record<string, MtbTrack> = {
+  'beach-3': {
+    par: 18000,
+    challenges: [
+      { text: 'Ride a pier skinny', kind: 'grind' },
+      { text: 'Ride skinnies for 2 seconds', kind: 'grind', seconds: 2 },
+      { text: 'Manual along a skinny', kind: 'trick', match: 'Skinny Manual' },
+    ],
+  },
+  'rooftops-2': {
+    par: 9500,
+    challenges: [
+      { text: 'Bunny hop a stair set', kind: 'trick', match: 'Bunny Hop', from: 'stairs' },
+      { text: 'Body trick off a stair set', kind: 'trick', match: 'hold', from: 'stairs' },
+      { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
+    ],
+  },
   'rooftops-4': {
     par: 22000,
     challenges: [
@@ -24,6 +40,22 @@ export const MTB: Record<string, MtbTrack> = {
       { text: 'Clear the final gap', kind: 'gaps', which: [-1] },
       { text: 'Skinny + body trick combo', kind: 'combo', include: ['skinny', 'hold'] },
       { text: 'Score 59,000', kind: 'score', points: 59000 },
+    ],
+  },
+  'toxic-4': {
+    par: 22000,
+    challenges: [
+      { text: 'Ride 3 pipes', kind: 'grind', count: 3 },
+      { text: 'Ride a pipe over the goo', kind: 'grind', rails: [1] },
+      { text: 'Land a 4-trick combo', kind: 'combo', tricks: 4 },
+    ],
+  },
+  'mine-10': {
+    par: 38500,
+    challenges: [
+      { text: 'Clear the final gap', kind: 'gaps', which: [-1] },
+      { text: 'Ride 7 skinnies', kind: 'grind', count: 7 },
+      { text: 'Score 38,500', kind: 'score', points: 38500 },
     ],
   },
   'volcano-9': {
