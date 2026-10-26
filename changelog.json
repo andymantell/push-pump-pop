@@ -2,6 +2,7 @@
   {
     "date": "2026-10-26",
     "items": [
+      "Fixed: when your skater pushes, his whole body turns to face the way he's going with his legs, instead of his body facing one way and his legs the other",
       "Fixed: the bottom of the hoodie is a neat band in the hoodie's own colour now, so nothing pokes out underneath",
       "Better: the downhill bike is faster, most of all down the steep bits, and the rider stands up on the pedals ready to attack, instead of sitting on the seat. Air up a half pipe wall and the bike turns round by itself, so you ride back down facing forwards",
       "New: Boulder Peak, ten downhill courses high in the mountains! Balance through rock gardens (tilt against the rocks or you go over the bars), drop off boulders, race down scree chutes and jump the crags, past a mountain hut, a cable car, an eagle on its rock and the summit cross",

@@ -46,6 +46,8 @@ export const PUSH_RATE = 0.9, PUSH_START = 0.8;
 const PLANT_X = 0.26, DRIVE_X = -0.6;
 /** Share of each stride with the foot on the ground. */
 const PLANT_SHARE = 0.5;
+/** How far the hips and shoulders turn from square on to facing ahead while pushing. */
+const PUSH_TURN = 1.2;
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const DOWN = v3(0, -1, 0);
@@ -509,7 +511,8 @@ export class Skater {
     const facing = Math.cos(yaw);
     const twist = 0.3 * (facing - 1) / 2;
     p.torso.rotation.set(0.18 + crouch * 0.55 + gw * 0.25 + 0.12 * this.pushW, twist, 0);
-    p.head.rotation.set(-0.15 - crouch * 0.4, 1.0 * facing - twist, 0);
+    // Turned to push, the head turns back by as much to keep looking ahead.
+    p.head.rotation.set(-0.15 - crouch * 0.4, 1.0 * facing - twist - smooth(0, 1, this.frontTurn) * PUSH_TURN, 0);
 
     // Feet lift off the board to let it flip or spin under them. Smoothed, so a flip that
     // lands (or locks onto a rail) at 80% round doesn't snap the feet down.
@@ -557,15 +560,21 @@ export class Skater {
       backFoot.y = Math.max(backFoot.y, this.groundLocalY(backFoot.x, backFoot.z, groundY) + SOLE);
     }
 
+    // Pushing, the hips and everything above them turn to face ahead with the feet, so the
+    // legs never point one way with the body square on to the other.
+    const ft = smooth(0, 1, this.frontTurn), bt = smooth(0, 1, this.pushW);
+    const turn = ft * PUSH_TURN;
     p.pelvis.position.x -= hipBack;
-    const hipL = v3(0.14 - hipBack, hipY, 0);
-    const hipR = v3(-0.06 - hipBack, hipY, 0);
+    p.pelvis.rotation.y = turn;
+    const ct = Math.cos(turn), st = Math.sin(turn);
+    const hipAt = (dx: number) => v3(p.pelvis.position.x + dx * ct, hipY, -dx * st);
+    const hipL = hipAt(0.12);
+    const hipR = hipAt(-0.08);
     // Knees point forward, splaying apart for a grab between the legs.
     const splay = grab.splay * gw;
-    // Feet pointing ahead to push, the knees point ahead with them.
-    const ft = smooth(0, 1, this.frontTurn), bt = smooth(0, 1, this.pushW);
-    this.leg(p.thigh_L, p.shin_L, p.shoe_L, hipL, front, v3(splay + ft * 0.8, 0, 1), ft * Math.PI / 2);
-    this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, backFoot, v3(-splay + bt * 1.2, 0, 1 - bt * 0.6), bt * Math.PI / 2);
+    // Knees point the way the hips face, feet the way they're pointing.
+    this.leg(p.thigh_L, p.shin_L, p.shoe_L, hipL, front, v3(splay + st, 0, ct), ft * Math.PI / 2);
+    this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, backFoot, v3(-splay + st, 0, ct), bt * Math.PI / 2);
 
     // Arms out for balance, higher in the air, swinging when pushing.
     const swing = Math.sin(this.pushT * Math.PI * 2) * 0.75 * this.pushW;
