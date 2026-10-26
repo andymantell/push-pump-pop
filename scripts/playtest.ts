@@ -45,6 +45,10 @@ const [SAFE, FALL] = BIKE ? [BIKE_FAKIE_SAFE, BIKE_FAKIE_FALL] : [FAKIE_SAFE, FA
 const GARDEN_SLACK = 0.3;
 type Figure = Skater | ScooterRig | RollerRig | MtbRig | KayakRig;
 const GRINDS = new Set<string>(members('grind'));
+/** Inline skates' airs and grabs: only a skater picks these out of a group like 'any'. */
+const SKATES_ONLY = new Set<string>([...members('skates'), 'Mute', 'Japan', 'Safety', 'Stalefish']);
+/** The tricks in a group this ride can do. */
+const doable = (names: TrickName[]) => (ROLL ? names : names.filter((n) => !SKATES_ONLY.has(n)));
 /** The swipe on a rail that changes to each grind. */
 const STYLE_SWIPE: Record<string, Swipe | string> = SCOOT ? { Boardslide: 'left', Feeble: 'right', Smith: 'down' }
   : ROLL ? { Soul: 'left', Royale: 'right', Makio: 'down', Unity: 'combo:left' } : { Boardslide: 'left', Nosegrind: 'right', '5-0': 'down' };
@@ -426,10 +430,10 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         : (['Kickflip', 'Heelflip', 'Pop Shove-it', 'Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'FS 180', 'BS 180'] as TrickName[])
           .map((n) => (def.biome === 'snow' || def.biome === 'farm' ? ({ Kickflip: 'BS Shifty', Heelflip: 'FS Shifty', 'Pop Shove-it': 'Tuck Knee' } as Record<string, TrickName>)[n] ?? n : n));
       switch (g.kind) {
-        case 'trick': airNames = [pickFrom(members(g.match))]; break;
-        case 'sameAir': airNames = g.match.map((m) => pickFrom(members(m))); break;
+        case 'trick': airNames = [pickFrom(doable(members(g.match)))]; break;
+        case 'sameAir': airNames = g.match.map((m) => pickFrom(doable(members(m)))); break;
         case 'allOf': { const left = g.names.filter((n) => !landed.has(n)); airNames = left.length ? [pickFrom(left)] : [pickFrom(g.names)]; break; }
-        case 'everyKicker': airNames = g.match ? [pickFrom(members(g.match))] : ['Ollie']; break;
+        case 'everyKicker': airNames = g.match ? [pickFrom(doable(members(g.match)))] : ['Ollie']; break;
         case 'bothAirs': airNames = [pickFrom(pool)]; break;
         case 'variety': airNames = [pickFrom(pool.filter((n) => !landed.has(n)))]; break;
         case 'combo': {
@@ -441,7 +445,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
             sofar.splice(k, 1);
             return false;
           });
-          const air = (left?.length ? left : g.include?.filter((m) => !grindy(m) && !['manual', 'loop'].includes(m)))?.flatMap((m) => members(m));
+          const air = (left?.length ? left : g.include?.filter((m) => !grindy(m) && !['manual', 'loop'].includes(m)))?.flatMap((m) => doable(members(m)));
           airNames = [pickFrom(air?.length ? air : pool)];
           break;
         }
