@@ -25,7 +25,7 @@ export type Bottom = (typeof BOTTOMS)[number];
 export const SHOES = ['low', 'high'] as const;
 export type Shoes = (typeof SHOES)[number];
 /** What's on the rider's head: their own hat, or the helmet a ride puts on them. */
-export type Headgear = 'own' | 'skate' | 'farm' | 'snow' | 'fullface';
+export type Headgear = 'own' | 'skate' | 'farm' | 'snow' | 'fullface' | 'water';
 
 export interface Look {
   skin: number;
@@ -301,6 +301,7 @@ const SLOTS: Record<string, (l: Look) => number> = {
   beanie_cuff: (l) => darker(l.helmetColour),
   fullface: (l) => l.helmetColour,
   fullface_stripe: (l) => darker(l.helmetColour, 0.6),
+  water_helmet: (l) => l.helmetColour,
   top: (l) => l.topColour,
   top_dark: (l) => l.trimColour,
   top_inner: (l) => (l.top === 'jacket' ? l.trimColour : 0xf4f4f0),

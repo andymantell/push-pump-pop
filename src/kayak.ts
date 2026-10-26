@@ -297,7 +297,7 @@ export class KayakRig {
   wear(look: Look, w: Wardrobe) {
     if (w.loaded) {
       for (const [n, names] of Object.entries(bodyPieces(look))) dress(this.p[n as PartName], names, w);
-      dress(this.helmet, headPieces(look, 'skate'), w, look);
+      dress(this.helmet, headPieces(look, 'water'), w, look);
     }
     paint(this.root);
   }

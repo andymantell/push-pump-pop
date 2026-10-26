@@ -140,6 +140,19 @@ export class River {
     const tr = track;
     const n = tr.heights.length;
     const foam = foamAlong(tr);
+    // The water's surface: the track, except over a drop, where it pours off the lip in a
+    // curve instead of a sheer wall, white all the way down.
+    const wy = Float32Array.from(tr.heights);
+    for (let i = 1; i < n; i++) {
+      const fall = tr.heights[i - 1] - tr.heights[i];
+      if (fall < 0.3) continue;
+      const lipY = tr.heights[i - 1], len = 0.6 + Math.sqrt(fall) * 0.9;
+      for (let k = 0; k * DX < len && i + k < n; k++) {
+        const u = (k * DX) / len;
+        wy[i + k] = Math.max(tr.heights[i + k], lipY - fall * u * u);
+        foam[i + k] = 1;
+      }
+    }
     const water = new THREE.Color(rv.water), white = new THREE.Color(rv.foam), deep = new THREE.Color(rv.deep);
     const z0 = 1.5;
     // The river runs from the cut-away front back to its far bank, a few strips deep.
@@ -148,7 +161,7 @@ export class River {
     const pos = new Float32Array(n * rows * 3), uv = new Float32Array(n * rows * 2), col = new Float32Array(n * rows * 3);
     const tmp = new THREE.Color();
     for (let i = 0; i < n; i++) {
-      const x = i * DX, y = tr.heights[i];
+      const x = i * DX, y = wy[i];
       for (let j = 0; j < rows; j++) {
         const k = i * rows + j;
         pos.set([x, y, zs[j]], k * 3);
@@ -180,7 +193,7 @@ export class River {
     // Foam drawn over the broken water, sliding a little faster than the flow below it.
     const fpos = new Float32Array(n * 2 * 3), fuv = new Float32Array(n * 2 * 2), fa = new Float32Array(n * 2 * 4);
     for (let i = 0; i < n; i++) {
-      const x = i * DX, y = tr.heights[i] + 0.012;
+      const x = i * DX, y = wy[i] + 0.012;
       fpos.set([x, y, z0, x, y, -z0 - rv.width * 0.4], i * 6);
       fuv.set([x / 3, 0.4, x / 3, -z0 / 3 - rv.width * 0.13], i * 4);
       const a = Math.min(1, foam[i] * 1.3);
@@ -204,7 +217,7 @@ export class River {
     const wpos = new Float32Array(n * 2 * 3), wcol = new Float32Array(n * 2 * 3);
     const lip = water.clone().lerp(white, 0.25);
     for (let i = 0; i < n; i++) {
-      const x = i * DX, y = tr.heights[i];
+      const x = i * DX, y = wy[i];
       const bed = this.bedY(i);
       wpos.set([x, y, z0, x, bed, z0], i * 6);
       const top = lip.clone().lerp(white, foam[i] * 0.6);
@@ -221,7 +234,7 @@ export class River {
     // A bright line where the surface meets the cut.
     const lpos = new Float32Array(n * 2 * 3);
     for (let i = 0; i < n; i++) {
-      const x = i * DX, y = tr.heights[i];
+      const x = i * DX, y = wy[i];
       lpos.set([x, y + 0.01, z0 + 0.004, x, y - 0.05, z0 + 0.004], i * 6);
     }
     const lg = new THREE.BufferGeometry();

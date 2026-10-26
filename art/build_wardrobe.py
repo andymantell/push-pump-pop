@@ -1012,6 +1012,39 @@ def build_heads(parts):
     parts.append(head_piece('helmet__farm', helmet_parts()))
     parts.append(head_piece('helmet__snow', beanie_parts()))
     parts.append(head_piece('helmet__fullface', fullface_parts(res=(64, 44))))
+    parts.append(head_piece('helmet__water', water_helmet_parts()))
+
+
+def water_helmet_parts():
+    """A white water kayaking helmet: a smooth shell low over the back of the head, ear covers
+    down over the ears, a short peak at the front (-Y) to keep the spray out of your eyes, slot
+    drain vents along the sides and a chin strap."""
+    shell_m = mat('water_helmet', (226, 48, 52))
+    peak_m = mat('water_helmet_peak', (34, 34, 38))
+    vent_m = mat('helmet_vent', (40, 40, 44))
+    strap = mat('helmet_strap', (34, 34, 38))
+    dome = sphere(shell_m, 0.166, loc=(0, 0.01, 0.17), scale=(1.02, 1.07, 1.0), segs=32, rings=18)
+    bm = bmesh.new()
+    bm.from_mesh(dome.data)
+    # Down over the ears and the back of the head, up above the eyebrows at the front.
+    def keep(co):
+        front = max(0.0, -co.y) / 0.16
+        ear = max(0.0, 1.0 - abs(co.y + 0.005) / 0.075) * (abs(co.x) > 0.1)
+        return co.z >= 0.12 + 0.085 * front - 0.06 * ear
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not keep(v.co)], context='VERTS')
+    bm.to_mesh(dome.data)
+    bm.free()
+    bits = [dome]
+    # The peak: a short, slightly down-turned visor over the forehead.
+    bits.append(cube(peak_m, (0.2, 0.065, 0.012), loc=(0, -0.178, 0.228), rot=(0.3, 0, 0), bevel=0.005))
+    # Drain slots along each side and two over the top.
+    for s in (1, -1):
+        for y in (-0.06, 0.0, 0.06):
+            bits.append(cube(vent_m, (0.012, 0.035, 0.012), loc=(s * 0.158, y, 0.21), rot=(0, s * 0.35, 0), bevel=0.004))
+        bits.append(cube(strap, (0.008, 0.012, 0.11), loc=(s * 0.13, -0.01, 0.07), rot=(0.2, 0, 0)))
+    for x in (-0.04, 0.04):
+        bits.append(cube(vent_m, (0.014, 0.07, 0.01), loc=(x, 0.02, 0.33), rot=(0, x * 6, 0), bevel=0.004))
+    return bits
 
 
 def export_parts(path, parts):

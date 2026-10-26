@@ -2834,7 +2834,10 @@ export class World {
         g.add(post);
       }
       g.add(board);
-      const z = -2.0;
+      // On a river the sign stands up on the far bank, bigger so it still reads from the water.
+      const river = this.biome.river;
+      if (river) g.scale.setScalar(1.6);
+      const z = river ? -(TRACK_W / 2 + river.width + (this.biome.groundShape === 'channel' ? 1.2 : 2.2)) : -2.0;
       let sx = s.x + 2;
       while (this.nearRavine(sx, z, 1.2)) sx -= 1;
       g.position.set(sx, this.groundY(sx, z), z);
