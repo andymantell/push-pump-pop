@@ -230,8 +230,9 @@ function trickActs(name: TrickName, hold: number): [string, number][] {
     // A kayak pitches only while tipped: hold the tilt past halfway round, and it carries on over.
     case 'Back Loop': return [['tilt:1', 0], ['tilt:0', 0.45]];
     case 'Front Loop': return [['tilt:-1', 0], ['tilt:0', 0.45]];
-    case 'Flatspin 180': return [['turn:3.14', 0]];
-    case 'Flatspin 360': return [['turn:6.28', 0]];
+    // (A 'spin' goal on another ride can pick a kayak's flatspin: there it's a spin swipe.)
+    case 'Flatspin 180': return BOAT ? [['turn:3.14', 0]] : [['spin:right', 0]];
+    case 'Flatspin 360': return BOAT ? [['turn:6.28', 0]] : [['spin360:right', 0]];
     // Inline skates: airs on the right, grabs held on the left.
     case 'Flatspin': return [['flick:left', 0]];
     case 'Misty Flip': return [['flick:right', 0]];
@@ -259,7 +260,7 @@ function trickTime(name: TrickName, hold: number): number {
   if (name === 'Back Loop' || name === 'Front Loop') return 0.7;
   if (name === 'Air Blunt' || name === 'Pan-Am') return 0.62;
   if (name === 'Helix' || name === 'McNasty') return 0.78;
-  if (name === 'Flatspin 180') return 0.35;
+  if (name === 'Flatspin 180' && BOAT) return 0.35;
   if (name === 'Flatspin 360') return 0.6;
   if (name === 'Ollie') return 0;
   if (name === '360 Flip' || name === 'Hardflip') return 0.55;
