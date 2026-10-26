@@ -460,7 +460,7 @@ const thumbCache = new Map<string, string>();
 function framing(f: Frame, aspect: number): [THREE.Vector3, THREE.Vector3] {
   const wide = aspect > 0 && aspect < 0.8 ? 1.25 : 1;
   switch (f) {
-    case 'face': return [new THREE.Vector3(0, 1.56, 0.95), new THREE.Vector3(0, 1.52, 0)];
+    case 'face': return [new THREE.Vector3(0, 1.6, 1.1), new THREE.Vector3(0, 1.56, 0)];
     case 'torso': return [new THREE.Vector3(0, 1.2, 1.9), new THREE.Vector3(0, 1.08, 0)];
     case 'head': return [new THREE.Vector3(0, 1.6, 2.1 * wide), new THREE.Vector3(0, 1.38, 0)];
     case 'legs': return [new THREE.Vector3(0, 0.75, 2.3 * wide), new THREE.Vector3(0, 0.6, 0)];
