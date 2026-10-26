@@ -380,6 +380,14 @@ const GARDEN_DRAG = 1.0;
  */
 const BIKE_DRAG = 0.8;
 const BIKE_TOP_SPEED = 1.12;
+/**
+ * The mountain board on the farm: big pneumatic tyres roll on over dirt and through mud, so it
+ * keeps its speed a little better than a skateboard would there.
+ */
+const BOARD_FRICTION = 0.75;
+const BOARD_DRAG = 1;
+const BOARD_MUD = 0.75;
+const BOARD_TOP_SPEED = 1;
 const GARDEN_POINTS = 150, GARDEN_POINTS_PER_M = 40;
 /** Where the front wheel is, ahead of the rider's point (see mtb.ts). */
 const FRONT_WHEEL = 0.65;
@@ -571,6 +579,7 @@ export class Rider {
   get backwards() { return this.bodyYaw !== 0; }
   /** The downhill bike rolls faster than the rest, except in a pipe or on a mega ramp. */
   private get fastBike() { return !!this.opts.mtb && !this.opts.pipe && !this.opts.mega; }
+  private get fastBoard() { return !!this.opts.mountain && !this.opts.roller && !this.opts.pipe && !this.opts.mega; }
 
   constructor(public track: Track, private ev: RiderEvents) {
     this.reset();
@@ -1197,8 +1206,8 @@ export class Rider {
       const dir = Math.sign(this.v) || 1;
 
       let a = -this.g * sin;
-      a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * (this.fastBike ? BIKE_DRAG : 1) * this.v * this.v);
-      if (tr.inMud(this.x)) a -= dir * (MUD_DRAG + MUD_DRAG_PER_SPEED * Math.abs(this.v));
+      a -= dir * (ROLL_FRICTION * this.opts.friction * (this.fastBoard ? BOARD_FRICTION : 1) + AIR_DRAG * (this.fastBike ? BIKE_DRAG : this.fastBoard ? BOARD_DRAG : 1) * this.v * this.v);
+      if (tr.inMud(this.x)) a -= dir * (MUD_DRAG + MUD_DRAG_PER_SPEED * Math.abs(this.v)) * (this.fastBoard ? BOARD_MUD : 1);
       if (this.garden) a -= dir * GARDEN_DRAG;
       // An end move digs the boat into the hole's foam and holds it back.
       if (this.opts.kayak && tr.holeAt(this.x)) a -= dir * (this.grab ? END_DRAG : HOLE_DRAG);
@@ -1229,7 +1238,7 @@ export class Rider {
       }
 
       this.v += a * dt;
-      const top = this.opts.maxSpeed * (this.fastBike ? BIKE_TOP_SPEED : 1);
+      const top = this.opts.maxSpeed * (this.fastBike ? BIKE_TOP_SPEED : this.fastBoard ? BOARD_TOP_SPEED : 1);
       this.v = Math.max(-top, Math.min(top, this.v));
       if (braking && this.v < 0) this.v = 0;
 
