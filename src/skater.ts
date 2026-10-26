@@ -3,6 +3,7 @@ import { Rider, BoardGrab } from './rider';
 import { toon } from './toon';
 import { spaceKit } from './spacesuit';
 import { railY } from './track';
+import { Look, Wardrobe, bodyPieces, headPieces, dress, markModels, paint } from './look';
 
 // Rigid-part skater posed procedurally: two-bone IK keeps the feet on the
 // board while the body crouches, pumps, pops and tucks.
@@ -260,6 +261,7 @@ export class Skater {
     const p = this.p;
     this.snowParts = { ...placeholderSnowParts(), ...(parts ?? {}) } as Record<SnowPartName, THREE.Object3D>;
     this.mtbParts = { ...placeholderMtbParts(), ...(parts ?? {}) } as Record<MtbPartName, THREE.Object3D>;
+    markModels([...Object.values(p), this.snowParts.head_snow, this.mtbParts.head_helmet]);
 
     this.root.add(this.body);
     this.body.add(this.boardTilt);
@@ -304,6 +306,17 @@ export class Skater {
   }
 
   get shadowMesh() { return this.shadow; }
+
+  /** Dress in a look from the customiser: their own hat on a skateboard, the ride's helmet on the others. */
+  wear(look: Look, w: Wardrobe) {
+    if (!w.loaded) return;
+    for (const [n, names] of Object.entries(bodyPieces(look))) dress(this.p[n as PartName], names, w);
+    dress(this.p.head, headPieces(look, 'own'), w, look);
+    dress(this.snowParts.head_snow, headPieces(look, 'snow'), w, look);
+    dress(this.mtbParts.head_helmet, headPieces(look, 'farm'), w, look);
+    dress(this.p.deck, ['deck__std'], w);
+    paint(this.root);
+  }
 
   /** The space helmet, on the moon. */
   setSpace(on: boolean) { this.space.visible = on; }

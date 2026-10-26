@@ -43,10 +43,26 @@
       <p><b>SWIPE</b> to do tricks. Chain them into combos!</p>
     </div>
     <button id="play">TAP TO PLAY</button>
+    <button id="riderbtn" class="rider">&#127912; MY RIDER</button>
     <button id="guidebtn" class="small">TRICK GUIDE</button>
     <button id="soundbtn" class="small alt">SOUND: ON</button>
     <button id="qualitybtn" class="small alt">QUALITY: AUTO</button>
     <button id="movebtn" class="small alt">MY STARS</button>
+  </div>
+  <div id="rider" class="hidden">
+    <div class="rd-stage">
+      <canvas aria-label="Your rider: drag to spin, tap for a trick"></canvas>
+      <div class="rd-top">
+        <h2>MY RIDER</h2>
+        <button class="rd-dice" aria-label="Surprise me">&#127922;</button>
+      </div>
+      <p class="rd-hint">Drag to spin &middot; tap for a trick</p>
+    </div>
+    <div class="rd-side">
+      <div class="rd-tabs"></div>
+      <div class="rd-body"></div>
+      <button class="rd-done">DONE</button>
+    </div>
   </div>
   <div id="guide" class="panel hidden">
     <h2>TRICK GUIDE</h2>

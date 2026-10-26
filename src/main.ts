@@ -26,6 +26,8 @@ import { exportCode, importCode, hasProgress } from './transfer';
 import { Replays, Player, Clip, HudSnap, MAX_CLIPS } from './replay';
 import { Sound } from './audio';
 import { Quality, Setting, SETTINGS } from './quality';
+import { Wardrobe, loadLook, setColours } from './look';
+import { Customiser } from './customiser';
 
 const $ = (id: string) => document.getElementById(id)!;
 const progress = new Progress(TRACKS, BIOME_ORDER, (() => { try { return localStorage; } catch { return null; } })(), WORLDS[MTB_WORLD]?.slice(0, 1) ?? []);
@@ -284,7 +286,25 @@ const skater = new Skater(assets.parts);
 const scooter = new ScooterRig(assets.parts, skater.shadowMesh);
 const mtb = new MtbRig(assets.parts, skater.shadowMesh);
 scene.add(skater.root, scooter.root, mtb.root, skater.shadowMesh);
-for (const f of [skater, scooter, mtb]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+// Dressed in the look from the customiser.
+const wardrobe = new Wardrobe(assets.wardrobe);
+let look = loadLook();
+setColours(look);
+function dressRiders() {
+  skater.wear(look, wardrobe);
+  scooter.wear(look, wardrobe);
+  for (const f of [skater, scooter, mtb]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+}
+dressRiders();
+let customiser: Customiser | null = null;
+$('riderbtn').addEventListener('click', () => {
+  customiser ??= new Customiser(assets, wardrobe, look, (l) => {
+    look = l;
+    setColours(l);
+    dressRiders();
+  });
+  customiser.show(look);
+});
 /** Whoever's riding. */
 const figure = () => (ride === 'scooter' ? scooter : ride === 'mtb' ? mtb : skater);
 
@@ -699,6 +719,8 @@ function frame(now: number) {
   quality.frame((now - last) / 1000);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  // The customiser draws its own rider over the whole screen.
+  if (customiser?.isOpen) { requestAnimationFrame(frame); return; }
 
   if (state === 'replay') {
     // Replays pose the skater and camera themselves; the run waits, timer and all.

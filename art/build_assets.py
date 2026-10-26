@@ -780,7 +780,7 @@ def skate_helmet_parts():
     bm = bmesh.new()
     bm.from_mesh(dome.data)
     # Low over the ears and the back of the head, up above the eyebrows at the front.
-    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < 0.13 - 0.07 * max(0.0, -v.co.y) / 0.16 + 0.0 * v.co.y], context='VERTS')
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < 0.13 + 0.075 * max(0.0, -v.co.y) / 0.16], context='VERTS')
     bm.to_mesh(dome.data)
     bm.free()
     bits = [dome]

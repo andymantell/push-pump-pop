@@ -157,3 +157,21 @@ for the scooter (`?swipe=left&then=right` for a Tailwhip Barspin, `?grab=up` for
 `?rail=1&then=down` for a Smith grind, `?snow=1` for the snow scooter).
 To judge trick animation frame by frame, open `/art/ollie.html`: a filmstrip of a real ollie from the physics
 (`?swipe=left` for a kickflip, `?grab=up`, `?spin=right`, `?snow=1`, `?rail=1`, `?at=0,0.05,...` for the frame times).
+
+### The rider's wardrobe
+
+MY RIDER on the title screen dresses the rider from a look saved on the device (`src/look.ts`,
+localStorage key `push-pump-pop-look`). The clothes, hair, hats, faces, glasses and the printable
+deck come from `art/build_wardrobe.py`, which writes `public/models/wardrobe.glb`:
+
+```sh
+.venv/bin/python art/build_wardrobe.py
+```
+
+Every piece is named `<slot>__<style>` and hangs from one of the skater's joints like the parts in
+`skater.glb`, so `dress()` can swap a joint's model. Colours go on by material name (`skin`, `hair`,
+`top`, `hat`, `helmet`...), patterns and deck pictures are drawn on a canvas (`src/patterns.ts`).
+A new style needs its piece in `build_wardrobe.py`, its name in the list in `look.ts` and a label in
+`src/customiser.ts`; `npm test` (scripts/look-test.ts) fails if any choice has no piece. To judge them,
+open `/art/look.html` (`?set=b`, `?ride=scooter`, `?board=snow`, `?close=1`), `/art/heads.html`
+(`?items=hat:cap+hair:bob__under,...`) or `/art/decks.html`.

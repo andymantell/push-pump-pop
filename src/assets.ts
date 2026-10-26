@@ -11,6 +11,8 @@ import { toonify } from './toon';
 export interface Assets {
   parts: Partial<Record<PartName | SnowPartName | MtbPartName | ScooterPartName | BikePartName | (typeof SCOOTER_HEAD_NAMES)[number], THREE.Object3D>>;
   props: Partial<Record<PropKind, THREE.Object3D>>;
+  /** The customiser's clothes, hair and hats (see look.ts), or null if they didn't load. */
+  wardrobe: THREE.Object3D | null;
 }
 
 /** Props keep their node transform: a prop's origin is wherever its first part was made, not
@@ -33,14 +35,20 @@ function pick(scene: THREE.Object3D, name: string, keepTransform = false): THREE
 export async function loadAssets(): Promise<Assets> {
   const loader = new GLTFLoader();
   const base = import.meta.env.BASE_URL;
-  const assets: Assets = { parts: {}, props: {} };
+  const assets: Assets = { parts: {}, props: {}, wardrobe: null };
   try {
-    const [skater, props, scooter, mtb] = await Promise.all([
+    const [skater, props, scooter, mtb, wardrobe] = await Promise.all([
       loader.loadAsync(`${base}models/skater.glb`),
       loader.loadAsync(`${base}models/props.glb`),
       loader.loadAsync(`${base}models/scooter.glb`),
       loader.loadAsync(`${base}models/mtb.glb`),
+      // Without the wardrobe the rider just keeps the original clothes.
+      loader.loadAsync(`${base}models/wardrobe.glb`).catch((e) => { console.warn('Could not load the wardrobe', e); return null; }),
     ]);
+    if (wardrobe) {
+      toonify(wardrobe.scene);
+      assets.wardrobe = wardrobe.scene;
+    }
     toonify(skater.scene);
     toonify(props.scene);
     toonify(scooter.scene);

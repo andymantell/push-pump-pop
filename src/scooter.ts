@@ -4,6 +4,7 @@ import { toon } from './toon';
 import { spaceKit } from './spacesuit';
 import { railY } from './track';
 import { PartName, PART_NAMES } from './skater';
+import { Look, Wardrobe, bodyPieces, headPieces, dress, markModels, paint } from './look';
 
 // The scooter rider: the same kid as the skater, in a helmet, standing on a scooter and
 // facing the way he rides, one foot behind the other, hands on the grips. Posed like the
@@ -163,6 +164,7 @@ export class ScooterRig {
     const [dk, bk] = placeholderScooter('scooter'), [ds, bs] = placeholderScooter('snow');
     this.decks = { scooter: parts.scooter_deck?.clone() ?? dk, snow: parts.snowscoot_deck?.clone() ?? ds };
     this.barsParts = { scooter: parts.scooter_bars?.clone() ?? bk, snow: parts.snowscoot_bars?.clone() ?? bs };
+    markModels([...Object.values(p), this.helmet, this.snowHead]);
 
     this.root.add(this.body);
     this.body.add(this.pivot);
@@ -207,6 +209,15 @@ export class ScooterRig {
 
   /** The space helmet, on the moon. */
   setSpace(on: boolean) { this.space.visible = on; }
+
+  /** Dress in a look from the customiser, in a skate helmet (or beanie and goggles on the snow). */
+  wear(look: Look, w: Wardrobe) {
+    if (!w.loaded) return;
+    for (const [n, names] of Object.entries(bodyPieces(look))) dress(this.p[n as PartName], names, w);
+    dress(this.helmet, headPieces(look, 'skate'), w, look);
+    dress(this.snowHead, headPieces(look, 'snow'), w, look);
+    paint(this.root);
+  }
 
   /** A snow scooter, beanie and goggles on the snow; a scooter and helmet everywhere else. */
   setKind(kind: ScooterKind) {
