@@ -46,6 +46,12 @@ const smooth = (a: number, b: number, t: number) => {
   return u * u * (3 - 2 * u);
 };
 /** Up and back down over a trick's progress: 0 at the ends, 1 in the middle. */
+/** An angle brought round to between -π and π. */
+const wrapAngle = (a: number) => a - Math.round(a / (Math.PI * 2)) * Math.PI * 2;
+const clampAbs = (a: number, m: number) => Math.max(-m, Math.min(m, a));
+/** How far the hands turn the bars to throw a barspin, and catch them back from. */
+const THROW = 0.6;
+const UP = new THREE.Vector3(0, 1, 0);
 const bump = (p: number, a = 0.15, b = 0.85) => smooth(0, a, p) * (1 - smooth(b, 1, p));
 
 /**
@@ -297,8 +303,10 @@ export class ScooterRig {
     const relT = barTurns ? bump(bp, 0.12 / barTurns, 1 - 0.15 / barTurns) : 0;
     this.release += (relT - this.release) * (1 - Math.exp(-dt * 30));
     if (tr) { liftT = Math.max(liftT, 0.22); crouchT = Math.max(crouchT, 0.5); }
-    // Turn the deck and the bars, easing out to straight when the trick's done.
+    // Turn the deck and the bars, easing out to straight when the trick's done. A full turn
+    // looks the same as none, so they ease from the nearest straight rather than spinning back.
     const deckTarget = whipTurns ? -Math.sign(whipTurns) * r.whipT * Math.PI * 2 : 0;
+    if (!whipTurns) this.deckAngle = wrapAngle(this.deckAngle);
     this.deckAngle = whipTurns ? deckTarget : this.deckAngle * Math.exp(-dt * 30);
     const hold = r.grab && r.grab in HOLDS ? r.grab as ScooterHold : null;
     if (hold) this.lastHold = hold;
@@ -306,6 +314,7 @@ export class ScooterRig {
     this.holdW += cap(((hold ? 1 : 0) - this.holdW) * (1 - Math.exp(-dt * 14)), 3);
     const hw = this.holdW, H = HOLDS[this.lastHold];
     const barTarget = barTurns ? -r.barsT * Math.PI * 2 : H.bars * hw;
+    if (!barTurns) this.barsAngle = wrapAngle(this.barsAngle);
     this.barsAngle = barTurns ? barTarget : this.barsAngle + (H.bars * hw - this.barsAngle) * (1 - Math.exp(-dt * 25));
     this.deckPivot.rotation.y = this.deckAngle;
     this.barsPivot.rotation.y = this.barsAngle + this.wob * 0.3 * Math.sin(this.wobT * 1.3);
@@ -422,14 +431,18 @@ export class ScooterRig {
     this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, back, polR, BACK.yaw + this.pushW * 0.45);
 
     // Hands on the grips, wherever the bars have turned to; off them for a barspin.
+    // In a barspin the hands only go round with the bars as far as the throw: past that
+    // they've let go, and they meet the grips again as the bars come back round to the catch.
     this.root.updateMatrixWorld(true);
+    const turned = this.barsPivot.rotation.y;
+    const held = barTurns || this.release > 0.01 ? clampAbs(wrapAngle(turned), THROW) : turned;
     for (const [side, s] of [['L', -1], ['R', 1]] as const) {
-      const gripLocal = v3(0, GRIP_Y + lift0, s * GRIP_Z);
-      const grip = this.barsPivot.localToWorld(gripLocal.clone());
-      // Let go: hands thrown up and out from the bars, arms out wide. Kept well out
+      const gripLocal = v3(0, GRIP_Y + lift0, s * GRIP_Z).applyAxisAngle(UP, held);
+      const grip = this.steer.localToWorld(gripLocal);
+      // Let go: hands open just above and outside the grips, ready to catch. Kept out
       // from the shoulders: a hand pulled in close behind them can only be reached by
       // bending the elbow backwards.
-      const free = this.steer.localToWorld(v3(0.05, GRIP_Y + lift0 + 0.5, s * (GRIP_Z + 0.42)));
+      const free = this.steer.localToWorld(v3(0.2, GRIP_Y + lift0 + 0.1, s * (GRIP_Z + 0.24)));
       grip.lerp(free, this.release);
       const target = p.torso.worldToLocal(grip);
       const upper = side === 'L' ? p.upperArm_L : p.upperArm_R, fore = side === 'L' ? p.forearm_L : p.forearm_R;
