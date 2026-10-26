@@ -2,7 +2,6 @@
 // /art/look.html. ?set=a picks a row of preset looks, ?views=front,three-quarter,side,back the
 // angles, ?ride=scooter rides the scooter, ?board=snow|mountain, ?close=1 frames heads and shoulders.
 import * as THREE from 'three';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { loadAssets } from '../src/assets';
 import { Skater } from '../src/skater';
 import { ScooterRig } from '../src/scooter';
@@ -44,7 +43,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setSize(W, H);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setScissorTest(true);
-const effect = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
+const effect = renderer;
 const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xdff3ff, 0x6b8f4e, 1.4));
 const sun = new THREE.DirectionalLight(0xffffff, 2.2);

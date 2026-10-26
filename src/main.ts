@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { Rider, Trick, Lean } from './rider';
 import { Score, ComboView } from './score';
 import { Input } from './input';
@@ -44,7 +43,6 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: quality.antialias 
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-const effect = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
 
 const scene = new THREE.Scene();
 const hemi = new THREE.HemisphereLight(0xdff3ff, 0x6b8f4e, 1.4);
@@ -84,8 +82,7 @@ function applyQuality() {
 }
 quality.onChange = () => { applyQuality(); drawQuality(); };
 function draw() {
-  if (quality.current.outlines) effect.render(scene, camera);
-  else renderer.render(scene, camera);
+  renderer.render(scene, camera);
 }
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 500);

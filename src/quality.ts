@@ -1,6 +1,6 @@
 // Picture quality that steps itself down to hold 60fps on slower phones and tablets, and back up
 // when there's room. Resolution goes first (the biggest cost on phones, and hard to spot), then
-// shadows, weather particles, the ink outlines and lamp lights.
+// shadows, weather particles and lamp lights.
 //
 // A frame that keeps up with a 60Hz screen takes ~16.7ms however much spare time it has, so
 // frame times only say when we're too slow, never how much headroom there is. So: step down
@@ -14,20 +14,19 @@ export type Level = {
   shadows: number;
   /** Share of the weather particles (snow, rain, fireflies...) drawn. */
   particles: number;
-  outlines: boolean;
   /** Real lamp lights on night tracks (each one costs on every pixel). */
   lamps: number;
 };
 
 /** Best first. Each step costs a bit less to draw than the one before. */
 export const LEVELS: Level[] = [
-  { scale: 1, shadows: 1024, particles: 1, outlines: true, lamps: 4 },
-  { scale: 0.85, shadows: 1024, particles: 1, outlines: true, lamps: 4 },
-  { scale: 0.72, shadows: 1024, particles: 1, outlines: true, lamps: 4 },
-  { scale: 0.72, shadows: 512, particles: 0.6, outlines: true, lamps: 4 },
-  { scale: 0.72, shadows: 0, particles: 0.6, outlines: true, lamps: 2 },
-  { scale: 0.6, shadows: 0, particles: 0.4, outlines: true, lamps: 2 },
-  { scale: 0.5, shadows: 0, particles: 0.3, outlines: false, lamps: 2 },
+  { scale: 1, shadows: 1024, particles: 1, lamps: 4 },
+  { scale: 0.85, shadows: 1024, particles: 1, lamps: 4 },
+  { scale: 0.72, shadows: 1024, particles: 1, lamps: 4 },
+  { scale: 0.72, shadows: 512, particles: 0.6, lamps: 4 },
+  { scale: 0.72, shadows: 0, particles: 0.6, lamps: 2 },
+  { scale: 0.6, shadows: 0, particles: 0.4, lamps: 2 },
+  { scale: 0.5, shadows: 0, particles: 0.3, lamps: 2 },
 ];
 
 export type Setting = 'auto' | 'high' | 'medium' | 'low';

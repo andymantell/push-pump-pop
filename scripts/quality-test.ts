@@ -16,8 +16,8 @@ const store = () => {
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
 };
 
-/** Rough drawing cost of a level, relative to full quality: pixels, then shadows and outlines. */
-const cost = (l: Level) => (0.25 + 0.75 * l.scale * l.scale) * (l.shadows ? 1 : 0.7) * (l.outlines ? 1 : 0.92);
+/** Rough drawing cost of a level, relative to full quality: pixels, then shadows. */
+const cost = (l: Level) => (0.25 + 0.75 * l.scale * l.scale) * (l.shadows ? 1 : 0.7);
 
 /** Run for `seconds` on a 60Hz screen where full quality takes `fullMs` to draw, optionally capped. */
 function run(q: Quality, fullMs: number, seconds: number, cap = 0) {

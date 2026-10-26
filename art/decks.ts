@@ -1,7 +1,6 @@
 // Every deck picture on the underside of a board, seen from below, for judging them:
 // `npm run dev`, then open /art/decks.html.
 import * as THREE from 'three';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { loadAssets } from '../src/assets';
 import { DEFAULT_LOOK, Wardrobe, dress, setColours } from '../src/look';
 import { DECK_ARTS } from '../src/patterns';
@@ -15,7 +14,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setSize(W, H);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setScissorTest(true);
-const effect = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
+const effect = renderer;
 const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xdff3ff, 0xdff3ff, 1.6));
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);

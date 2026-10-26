@@ -2,7 +2,6 @@
 // ?pose=stand|crouch|air  picks the pose, ?close=1 frames the head and shoulders,
 // ?t=<height>&d=<distance> frames anything else.
 import * as THREE from 'three';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { loadAssets } from '../src/assets';
 import { Skater } from '../src/skater';
 import { Rider } from '../src/rider';
@@ -17,7 +16,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setSize(W, H);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setScissorTest(true);
-const effect = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
+const effect = renderer;
 
 const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xdff3ff, 0x6b8f4e, 1.4));

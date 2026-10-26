@@ -3,7 +3,6 @@
 // (slot:style, with the head and a smile added). ?yaw=0.6 turns them, ?cols=6.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { toonify } from '../src/toon';
 
 const q = new URLSearchParams(location.search);
@@ -18,7 +17,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setSize(W, H);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setScissorTest(true);
-const effect = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
+const effect = renderer;
 const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xdff3ff, 0x6b8f4e, 1.4));
 const sun = new THREE.DirectionalLight(0xffffff, 2.2);

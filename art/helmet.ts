@@ -1,7 +1,6 @@
 // Close-ups of a head part from the side, three-quarter, front and back:
 // `npm run dev`, then open /art/helmet.html?part=head_fullface
 import * as THREE from 'three';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { loadAssets } from '../src/assets';
 
 const q = new URLSearchParams(location.search);
@@ -13,7 +12,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setSize(views.length * T, T);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setScissorTest(true);
-const effect = new OutlineEffect(renderer, { defaultThickness: 0.004, defaultColor: [0.1, 0.08, 0.08] });
+const effect = renderer;
 
 const assets = await loadAssets();
 const scene = new THREE.Scene();

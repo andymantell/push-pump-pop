@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { Assets } from './assets';
 import { Skater } from './skater';
 import { ScooterRig } from './scooter';
@@ -242,7 +241,7 @@ class Stage {
 
 export class Customiser {
   private renderer: THREE.WebGLRenderer;
-  private effect: OutlineEffect;
+  private effect: THREE.WebGLRenderer;
   private camera = new THREE.PerspectiveCamera(32, 1, 0.05, 50);
   private camPos = new THREE.Vector3(0, 1.2, 3.6);
   private camLook = new THREE.Vector3(0, 0.9, 0);
@@ -250,7 +249,7 @@ export class Customiser {
   /** For pictures of the choices: a second rider standing still. */
   private thumbStage: Stage;
   private thumbs: THREE.WebGLRenderer;
-  private thumbEffect: OutlineEffect;
+  private thumbEffect: THREE.WebGLRenderer;
   private tab = TABS[0];
   private frame: Frame = 'head';
   private yaw = FACE_YAW;
@@ -269,7 +268,7 @@ export class Customiser {
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.effect = new OutlineEffect(this.renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
+    this.effect = this.renderer;
     this.stage = new Stage(assets, wardrobe);
     this.thumbStage = new Stage(assets, wardrobe);
     for (let i = 0; i < 60; i++) this.thumbStage.update(1 / 30);
@@ -277,7 +276,7 @@ export class Customiser {
     this.thumbs = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     this.thumbs.setSize(THUMB, THUMB);
     this.thumbs.outputColorSpace = THREE.SRGBColorSpace;
-    this.thumbEffect = new OutlineEffect(this.thumbs, { defaultThickness: 0.008, defaultColor: [0.1, 0.08, 0.08] });
+    this.thumbEffect = this.thumbs;
     this.buildTabs();
     this.panel.querySelector('.rd-done')!.addEventListener('click', () => this.close());
     this.panel.querySelector('.rd-dice')!.addEventListener('click', () => {

@@ -1,7 +1,6 @@
 // Contact sheet for props: `npm run dev`, then open /art/props.html?names=haybale,pumpkin
 // Each prop gets a tile with a three-quarter view from the game camera's side, on a ground disc.
 import * as THREE from 'three';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { loadAssets } from '../src/assets';
 
 const q = new URLSearchParams(location.search);
@@ -13,7 +12,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setSize(cols * T, rows * T);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setScissorTest(true);
-const effect = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
+const effect = renderer;
 
 const assets = await loadAssets();
 names.forEach((n, i) => {

@@ -2,7 +2,6 @@
 // `npm run dev`, then open /art/bike.html. window.frame(t) steps the ride to t seconds and draws it
 // (for recording); ?view=side|three-quarter|close picks the camera, ?w=&h= the size.
 import * as THREE from 'three';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { loadAssets } from '../src/assets';
 import { MtbRig } from '../src/mtb';
 import { Rider } from '../src/rider';
@@ -16,7 +15,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setSize(W, H);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setClearColor(0x8fcff2);
-const effect = new OutlineEffect(renderer, { defaultThickness: 0.006, defaultColor: [0.1, 0.08, 0.08] });
+const effect = renderer;
 const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xdff3ff, 0x6b8f4e, 1.4));
 const sun = new THREE.DirectionalLight(0xffffff, 2.2);
