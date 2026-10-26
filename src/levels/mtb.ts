@@ -58,6 +58,38 @@ export const MTB: Record<string, MtbTrack> = {
       { text: 'Score 38,500', kind: 'score', points: 38500 },
     ],
   },
+  'beach-8': {
+    par: 16000,
+    challenges: [
+      { text: 'Ride into the jetty gap and clear it', kind: 'air', fromRail: true, overGap: true },
+      { text: 'Skinny + whip combo over the gap', kind: 'combo', include: ['skinny', 'bike'], gaps: 1 },
+      { text: 'Land a 4-trick combo', kind: 'combo', tricks: 4 },
+    ],
+  },
+  'rooftops-6': {
+    par: 18000,
+    challenges: [
+      { text: 'Ride a ledge and clear its gap', kind: 'air', fromRail: true, overGap: true },
+      { text: 'Ledge + whip over the gap', kind: 'trick', match: 'bike', fromRail: true, overGap: true },
+      { text: 'Score 18,000', kind: 'score', points: 18000 },
+    ],
+  },
+  'jungle-1': {
+    par: 62000,
+    challenges: [
+      { text: 'Clear both river gaps', kind: 'gaps' },
+      { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
+      { text: 'Score 46,000', kind: 'score', points: 46000 },
+    ],
+  },
+  'pirate-6': {
+    par: 61500,
+    challenges: [
+      { text: 'Land 6 different tricks', kind: 'variety', count: 6 },
+      { text: 'Manual the jetty', kind: 'manual', pad: true },
+      { text: 'Land a 6-trick combo', kind: 'combo', tricks: 6 },
+    ],
+  },
   'volcano-9': {
     par: 59500,
     challenges: [
@@ -91,6 +123,11 @@ export function mtbFallback(def: { par?: number; challenges?: Challenge[] }): Mt
   const challenges = (def.challenges ?? []).map((c) => {
     const out = Object.fromEntries(Object.entries(c).map(([k, v]) => [k, k === 'text' || k === 'kind' || k === 'railKind' ? v : swap(v)])) as Challenge;
     out.text = WORDS.reduce((t, [re, to]) => t.replace(re, to), c.text);
+    // The bike is quicker down the slopes, so there's less time on them to pump: fewer pumps.
+    if (out.kind === 'pumps') {
+      out.count = Math.round(out.count * 0.75);
+      out.text = out.text.replace(/\d+/, String(out.count));
+    }
     return out;
   });
   return { par: def.par ?? 0, challenges };

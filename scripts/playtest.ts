@@ -156,7 +156,7 @@ function state(r: Rider) {
   return [
     r.bailing ? 'bailing' : r.grounded ? 'ground' : 'air',
     r.pushing && 'pushing', r.manual, r.pumpTimer > 0 && 'pumping', r.flipping && 'flipping',
-    r.spin && 'spinning', r.grab, r.grind && 'grinding', r.current?.name, r.bodyYaw && 'fakie',
+    r.spin && 'spinning', r.grab, r.grind && 'grinding', r.current?.name, r.backwards && 'fakie',
   ].filter(Boolean).join(' ');
 }
 
@@ -254,7 +254,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     land({ airTime, smooth, peakY }) {
       if (alive()) chal.land(r.x);
       // Scoring as in the game.
-      if (TURNS && r.bodyYaw && !r.bailing) score.addBonus('Fakie', 100);
+      if (TURNS && r.backwards && !r.bailing) score.addBonus('Fakie', 100);
       if (isPipe) { const h = peakY - track.maxY; if (h > 0.5) score.addBonus('Air', Math.round(h * 150)); score.bank(); }
       else if (airTime > 0.7) score.addBonus('Air', Math.round(airTime * 120));
       if (smooth) score.addBonus('Smooth', 75);
@@ -288,6 +288,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   let grindStyled = false;
   /** The lean last decided on for balancing through a rock garden, and when. */
   let gardenLean = 0, gardenAt = -10;
+  /** The balance a step ago, and how fast it's moving (smoothed). */
+  let lastBal = 0, balRate = 0;
   const inputTimes: number[] = [];
   let lastPumpDecision = -1;
   let lipPlanned = -1;
@@ -334,7 +336,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     return { time: tt, x };
   }
   /** On a scooter, still turning from a trick started off a jelly pad's last bounce (or a 180 back round). */
-  const busy = () => TURNS && (!!r.spin || !!r.current || queue.some((q) => q.act === 'spin'));
+  const busy = () => TURNS && ((!!r.spin && !r.spin.auto) || !!r.current || queue.some((q) => q.act === 'spin'));
   /** Goal mode in the air: undefined to fall back to the ordinary bot, else handled. */
   function goalAir(): true | undefined {
     const g = G!;
@@ -448,11 +450,16 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       if (r.grounded) {
         trickPlanned = false;
         // In a rock garden: lean against your weight once it drifts too far, and level out when
-        // it's back near the middle. Like a player, it reacts to what it sees, late.
+        // it's coming back to the middle. Like a player watching the meter, it judges where the
+        // balance is heading, and reacts late.
         const inGarden = BIKE && (!!r.garden || !!track.gardenAt(r.x + lead * dir));
+        balRate += ((r.balance - lastBal) / DT - balRate) * 0.2;
+        lastBal = r.balance;
         if (inGarden && t - gardenAt > 0.08) {
-          const want = r.balance > GARDEN_SLACK ? 1 : r.balance < -GARDEN_SLACK ? -1 : Math.abs(r.balance) < 0.1 ? 0 : gardenLean;
-          if (want !== gardenLean) { press(want > 0 ? 'lean+' : want < 0 ? 'lean-' : 'lean0'); gardenLean = want; gardenAt = t; }
+          const pred = r.balance + balRate * REACTION;
+          const want = pred > GARDEN_SLACK ? 1 : pred < -GARDEN_SLACK ? -1 : Math.abs(pred) < 0.12 ? 0 : gardenLean;
+          // Checked against the actual tilt too: a manual's late level-out can land in here.
+          if (want !== gardenLean || (want !== Math.sign(r.lean) && t - gardenAt > REACTION + 0.1)) { press(want > 0 ? 'lean+' : want < 0 ? 'lean-' : 'lean0'); gardenLean = want; gardenAt = t; }
         } else if (!inGarden && gardenLean) { press('lean0'); gardenLean = 0; }
         if (t - railOllieAt > REACTION + JITTER + 0.1) railOllie = false;
         const slopeThen = track.slope(r.x + lead * dir) * dir;
@@ -505,14 +512,14 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
             press('lean0', hold);
             manualPlanned = t;
           }
-        } else if (!careful && !pumpOnly && !rail && flat && clearAhead(Math.abs(r.v) * 1.3) && t - manualPlanned > 3 && rand() < 0.02) {
+        } else if (!careful && !pumpOnly && !rail && flat && clearAhead(Math.abs(r.v) * 1.3) && !track.gardenAt(r.x + Math.abs(r.v) * 1.2 * dir) && t - manualPlanned > 3 && rand() < 0.02) {
           press(rand() > 0.5 ? 'lean+' : 'lean-');
           press('lean0', 0.6);
           manualPlanned = t;
         }
       } else if (G && !pumpOnly && !trickPlanned && !busy() && (!railOllie || popOffRail) && r.airTime > 0.02 && goalAir() !== undefined) {
         // Handled by goalAir.
-      } else if (TURNS && r.bodyYaw && !pumpOnly && !trickPlanned && !busy() && !railOllie && r.vy > 2 && r.airTime > 0.05 && flight().time - REACTION - JITTER > 0.65) {
+      } else if (TURNS && r.backwards && !pumpOnly && !trickPlanned && !busy() && !railOllie && r.vy > 2 && r.airTime > 0.05 && flight().time - REACTION - JITTER > 0.65) {
         // Riding a scooter backwards: spin round to face forwards on the next decent air.
         press('spin');
         trickPlanned = true;
@@ -536,14 +543,14 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         } else if (skater && !SCOOT && pick >= 0.9 && flight().time - REACTION - JITTER > 0.6) {
           // Now and then on a big air while posing the skater, a 360 flip or hardflip, to check his legs through them.
           press(pick < 0.95 ? 'combo:left' : 'combo:right');
-        } else press(pick < 0.55 ? 'spin' : pick < 0.8 ? 'left' : 'down');
+        } else press(pick < (BIKE ? 0.3 : 0.55) ? 'spin' : pick < 0.8 ? 'left' : 'down');
         trickPlanned = true;
       }
     }
 
     // Still backwards and starting to wobble: hop a 180 where the ground is even, as a player
     // would, or anywhere not heading into a jump or a rail once the wobble gets bad.
-    if (TURNS && r.bodyYaw && r.grounded && !r.bailing && r.fakieT > SAFE - 0.5 && t - fakieSpun > 1 && clearAhead(Math.abs(r.v) * 1.2)
+    if (TURNS && r.backwards && r.grounded && !r.bailing && r.fakieT > SAFE - 0.5 && t - fakieSpun > 1 && clearAhead(Math.abs(r.v) * 1.2)
       && !track.spots.some((sp) => sp.tag === 'bouncer' && sp.x > r.x - 1 && sp.x - r.x < Math.abs(r.v) * 1.2 + 2)
       // An even slope all the way to where the hop lands, so it isn't cut short on a roller.
       && (r.fakieT > FALL - 2 || [...Array(Math.ceil(Math.abs(r.v) * (REACTION + JITTER + 0.6)) + 2).keys()].every((d) => Math.abs(track.slope(r.x + d * (Math.sign(r.v) || 1)) - track.slope(r.x)) < 0.08))) {

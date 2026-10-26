@@ -223,13 +223,22 @@ const MANUAL_SLOPE = 0.45;
  * so you can't just leave it. Reach 1 either way and you're off: over the bars or looped out.
  */
 const GARDEN_KICK = 0.22;
+/** Above this speed the rocks knock you no harder, or a fast garden would be hopeless. */
+const GARDEN_KICK_SPEED = 10;
 const GARDEN_RUNAWAY = 1.2;
 const GARDEN_BACK = 0.55;
 const GARDEN_LEAN = 2.2;
 /** Settling back to the middle once you're out of the rocks. */
 const GARDEN_SETTLE = 4;
 /** Rocks slow you down a little. */
-const GARDEN_DRAG = 0.5;
+const GARDEN_DRAG = 1.0;
+/**
+ * The downhill bike: big wheels and a tuck let it run away down the steep bits. Less drag
+ * (so it's quicker everywhere, most of all down steep hills, where drag is what holds you
+ * back) and a higher top speed.
+ */
+const BIKE_DRAG = 0.8;
+const BIKE_TOP_SPEED = 1.12;
 const GARDEN_POINTS = 150, GARDEN_POINTS_PER_M = 40;
 /** Where the front wheel is, ahead of the rider's point (see mtb.ts). */
 const FRONT_WHEEL = 0.65;
@@ -314,9 +323,18 @@ export class Rider {
   grab: GrabName | null = null;
   grabT = 0;
   /** Body spin in progress: direction (+1 frontside), size in degrees, and time. */
-  spin: { dir: 1 | -1; deg: 180 | 360; t: number } | null = null;
+  /**
+   * `turn`: the bike turning round on a pipe air (see pipeYaw), over `dur` seconds; `auto`
+   * while it's the bike's own turn (no trick), until a spin swipe makes it the player's 180.
+   */
+  spin: { dir: 1 | -1; deg: 180 | 360; t: number; turn?: boolean; auto?: boolean; dur?: number } | null = null;
   /** Facing from completed spins (0 or PI: riding fakie), for visuals. */
   bodyYaw = 0;
+  /**
+   * On a bike in a pipe: which way the bike faces, turned round on each air so it rides back
+   * down forwards. Only for looks; the game still reckons from bodyYaw.
+   */
+  pipeYaw = 0;
   /** Time spent riding backwards on a scooter (see FAKIE_SAFE). */
   fakieT = 0;
   /** Device tilt, and whether it has been back to level since take-off. */
@@ -362,6 +380,10 @@ export class Rider {
   opts: RiderOptions = { friction: 1, maxSpeed: MAX_SPEED };
   /** Gravity for this ride. */
   get g() { return this.opts.gravity ?? GRAVITY; }
+  /** Riding backwards (fakie): turned round with a spin. */
+  get backwards() { return this.bodyYaw !== 0; }
+  /** The downhill bike rolls faster than the rest, except in a pipe or on a mega ramp. */
+  private get fastBike() { return !!this.opts.mtb && !this.opts.pipe && !this.opts.mega; }
 
   constructor(public track: Track, private ev: RiderEvents) {
     this.reset();
@@ -539,6 +561,7 @@ export class Rider {
     this.balance = 0;
     this.spin = null;
     this.bodyYaw = 0;
+    this.pipeYaw = 0;
     this.fakieT = 0;
     this.flipping = false;
     this.flipT = 0;
@@ -549,6 +572,8 @@ export class Rider {
   /** Swipe across the bottom of the screen: spin the body, popping first if on the ground. */
   spinSwipe(dir: 'left' | 'right') {
     if (this.perched || this.dropT >= 0) return;
+    // On a bike's pipe air the turn is already under way: swiping makes it your 180.
+    if (this.spin?.auto && !this.bailing) { this.spin.auto = false; this.spin.dir = dir === 'right' ? 1 : -1; return; }
     if (this.bailing || this.spin) return;
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) this.pop();
@@ -558,7 +583,7 @@ export class Rider {
 
   /** The spin swipe kept going: make it a 360 if there's still time. */
   spinMore() {
-    if (this.spin && this.spin.deg === 180 && this.spin.t < SPIN_TIME * 0.7) this.spin.deg = 360;
+    if (this.spin && !this.spin.turn && this.spin.deg === 180 && this.spin.t < SPIN_TIME * 0.7) this.spin.deg = 360;
   }
 
   /** 0..1 progress of the body spin. */
@@ -567,13 +592,15 @@ export class Rider {
   }
 
   private get spinDuration() {
-    return this.spin && this.spin.deg === 360 ? SPIN_TIME * 1.7 : SPIN_TIME;
+    return this.spin?.dur ?? (this.spin && this.spin.deg === 360 ? SPIN_TIME * 1.7 : SPIN_TIME);
   }
 
   private finishSpin() {
     const sp = this.spin!;
-    if (sp.deg === 180) this.bodyYaw = this.bodyYaw ? 0 : Math.PI;
     this.spin = null;
+    if (sp.turn) this.pipeYaw = this.pipeYaw ? 0 : Math.PI;
+    else if (sp.deg === 180) this.bodyYaw = this.bodyYaw ? 0 : Math.PI;
+    if (sp.auto) return;
     this.tricksThisAir++;
     const name = `${sp.dir > 0 ? 'FS' : 'BS'} ${sp.deg}` as SpinName;
     this.ev.trick({ name, duration: SPIN_TIME, points: SPIN_POINTS[sp.deg], axis: 'body', dir: sp.dir });
@@ -775,6 +802,9 @@ export class Rider {
       this.vy = Math.min(this.vy, 8.5);
       // Going up past a lip: drift back over the ramp so you land on the wall.
       this.vx = -Math.sign(this.vx) * 0.35;
+      // A bike turns round in the air by itself, to ride back down facing forwards: done by
+      // the top of the air, so even a little air lands it.
+      if (this.opts.mtb && this.dropT < 0 && !this.spin && (this.v > 0 ? Math.PI : 0) !== this.pipeYaw) this.spin = { dir: this.pipeYaw ? -1 : 1, deg: 180, t: 0, turn: true, auto: true, dur: Math.max(0.15, Math.min(SPIN_TIME, this.vy / this.g * 0.9)) };
     }
     this.tricksThisAir = 0;
     this.airPump = 0;
@@ -793,6 +823,8 @@ export class Rider {
     const tr = this.track;
     if (this.perched) return;
     if (this.dropT >= 0) { this.stepDropIn(dt); return; }
+    // The bike's turn on a pipe air is always done by the time it's back on the wall.
+    if (this.spin?.turn && (this.grounded || this.grind)) this.finishSpin();
     this.pumpTimer = Math.max(0, this.pumpTimer - dt);
 
     if (this.bailTimer > 0) {
@@ -896,7 +928,7 @@ export class Rider {
       const dir = Math.sign(this.v) || 1;
 
       let a = -this.g * sin;
-      a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v);
+      a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * (this.fastBike ? BIKE_DRAG : 1) * this.v * this.v);
       if (tr.inMud(this.x)) a -= dir * (MUD_DRAG + MUD_DRAG_PER_SPEED * Math.abs(this.v));
       if (this.garden) a -= dir * GARDEN_DRAG;
       const belt = !this.inPipe ? tr.beltAt(this.x) : null;
@@ -924,7 +956,8 @@ export class Rider {
       }
 
       this.v += a * dt;
-      this.v = Math.max(-this.opts.maxSpeed, Math.min(this.opts.maxSpeed, this.v));
+      const top = this.opts.maxSpeed * (this.fastBike ? BIKE_TOP_SPEED : 1);
+      this.v = Math.max(-top, Math.min(top, this.v));
       if (braking && this.v < 0) this.v = 0;
 
       // The ground falls away faster than gravity can hold us: take off.
@@ -1081,7 +1114,7 @@ export class Rider {
     // Still holding the board when you touch down: you can't stand on it.
     const grabbing = this.grab !== null;
     this.grab = null;
-    const midSpin = this.spin !== null && this.spinProgress < 0.8;
+    const midSpin = this.spin !== null && !this.spin.turn && this.spinProgress < 0.8;
     // Upside down or partway round a flip: no way to land that.
     const midFlip = this.flipping && this.flipT > FLIP_SAFE && this.flipT < FLIP_LAND;
     if (this.flipping && this.flipT >= FLIP_LAND) {
@@ -1138,7 +1171,7 @@ export class Rider {
     const rise = (tr.rough(fx + 0.05) - tr.rough(fx - 0.05)) / 0.1;
     // (Climbing a rock stops the front wheel hard; dropping off one is gentler.)
     const kick = rise > 0 ? rise : rise * GARDEN_BACK;
-    this.balance += (GARDEN_KICK * kick * Math.abs(this.v) + GARDEN_RUNAWAY * this.balance - GARDEN_LEAN * this.lean) * dt;
+    this.balance += (GARDEN_KICK * kick * Math.min(Math.abs(this.v), GARDEN_KICK_SPEED) + GARDEN_RUNAWAY * this.balance - GARDEN_LEAN * this.lean) * dt;
     if (Math.abs(this.balance) >= 1) {
       // Over the bars, or looped out off the back.
       this.garden = null;

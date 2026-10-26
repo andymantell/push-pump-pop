@@ -61,7 +61,7 @@ const TRAVEL = 0.15, DROOP = 0.05;
 /** How fast a wheel drops back down to the ground (rebound), m/s. */
 const REBOUND = 3;
 /** Feet and hips: standing on the pedals, knees and elbows bent. */
-const HIP = new THREE.Vector2(-0.11, 1.02);
+const HIP = new THREE.Vector2(-0.27, 1.2);
 const HIP_Z = 0.08;
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -179,7 +179,7 @@ export class MtbRig {
   private crank = 0;
   private crouch = 0.2;
   private lift = 0;
-  private lean = 0.6;
+  private lean = 0.95;
   private holdW = 0;
   private lastHold: BikeHold = 'Superman';
   private manualPitch = 0;
@@ -358,8 +358,8 @@ export class MtbRig {
     const surface = (x: number) => rail ? railY(rail, Math.max(rail.x0, Math.min(rail.x1, x))) : groundY(x) + rough(x);
 
     // Pose targets.
-    let crouchT = 0.2, liftT = 0, leanT = 0.6;
-    if (r.pumpTimer > 0) { crouchT = 0.5; leanT = 0.7; }
+    let crouchT = 0.2, liftT = 0, leanT = 0.95;
+    if (r.pumpTimer > 0) { crouchT = 0.5; leanT = 1.05; }
     this.pumpAnim = Math.max(0, this.pumpAnim - dt * 3);
     if (air) { crouchT = 0.3; liftT = 0.1 * Math.min(1, r.airTime * 4); }
     if (r.grind) crouchT = 0.32;
@@ -400,7 +400,7 @@ export class MtbRig {
     const pitch = r.flipAngle + this.manualPitch + this.hopPitch;
     const pv = r.flipping ? v3(0, 0.75, 0) : this.manualPitch > 0.005 || this.hopPitch > 0.005 ? v3(AXLE_R.x - MID_X, 0, 0) : v3(AXLE_F.x - MID_X, 0, 0);
     const spin = r.spin ? r.spin.dir * r.spinProgress * (r.spin.deg === 360 ? Math.PI * 2 : Math.PI) : 0;
-    const yaw = r.bodyYaw + spin;
+    const yaw = r.bodyYaw + r.pipeYaw + spin;
     const ca = Math.cos(r.angle), sa = Math.sin(r.angle), cb = Math.cos(r.angle + pitch), sb = Math.sin(r.angle + pitch);
     const ox = (ca * pv.x - sa * pv.y) - (cb * pv.x - sb * pv.y);
     const oy = (sa * pv.x + ca * pv.y) - (sb * pv.x + cb * pv.y);
@@ -553,7 +553,7 @@ export class MtbRig {
     let hipY = HIP.y - crouch * 0.38 + bikeY + hold3.y + 0.05 * this.trickW + this.jolt;
     // In a rock garden the rider's weight goes where the balance is.
     this.weight += (r.balance - this.weight) * (1 - Math.exp(-dt * 10));
-    const hipX = HIP.x - MID_X + hold3.x - (this.lean - 0.6) * 0.06 + this.weight * 0.16;
+    const hipX = HIP.x - MID_X + hold3.x - (this.lean - 0.95) * 0.06 + this.weight * 0.16;
     // Never squat so deep the legs fold flat (the knees would flick about): stand up off a
     // pedal that comes up too close under the hips.
     const MIN_LEG = 0.5;

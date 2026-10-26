@@ -40,7 +40,7 @@ export const VOLCANO: TrackDef[] = [
       b.rollers(3, 12, 1.26).flat(3);
       b.kicker(4, 1.4).pit(7.1, -1.2).land(23).flat(10);
       b.sign('LOOP!').ease(14, -4).flat(4).loop(2.4).flat(6);
-      b.ease(6, -1.5).kicker(4, 1.6).pit(6, -1.3).land(27).flat(4);
+      b.ease(9, -1.5).kicker(4, 1.6).pit(6, -1.3).land(27).flat(4);
       // Lengthened: one more big lava leap before the last one.
       b.rollers(3, 13, 1.26).flat(4);
       b.sign('BIG LEAP').ease(12, -2).flat(3).kicker(5, 2.0).pit(7, -2).land(26).flat(8);

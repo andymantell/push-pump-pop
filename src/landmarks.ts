@@ -1611,6 +1611,64 @@ export const LANDMARKS: Record<string, Landmark> = {
     }
     return g;
   } },
+  // ---- Boulder Peak
+  mountainhut: { z: -14, r: 6, build: () => {
+    // A mountain refuge: stone ground floor, wooden top with a balcony, a steep roof and a flag.
+    const stone = 0xa09a90, wood = 0x9a6a3a, roof = 0x8a3a2a;
+    const g = group(box(8, 3, 5.5, stone, [0, 1.5, 0]), box(8, 2.6, 5.5, wood, [0, 4.3, 0]));
+    g.add(box(8.8, 0.3, 4, roof, [0, 6.8, 1.4], [0.75, 0, 0]), box(8.8, 0.3, 4, roof, [0, 6.8, -1.4], [-0.75, 0, 0]));
+    // Windows with red shutters, the door and the balcony.
+    for (const x of [-2.4, 2.4]) {
+      g.add(box(1.0, 1.0, 0.1, 0xffe8a8, [x, 4.4, 2.8]), box(0.4, 1.1, 0.1, 0xd84a3a, [x - 0.75, 4.4, 2.82]), box(0.4, 1.1, 0.1, 0xd84a3a, [x + 0.75, 4.4, 2.82]));
+    }
+    g.add(box(1.3, 2.2, 0.15, 0x5a3418, [0, 1.1, 2.8]));
+    g.add(box(8, 0.2, 1.2, wood, [0, 3.0, 3.3]), box(8, 0.8, 0.1, wood, [0, 3.5, 3.85]));
+    for (let x = -3.8; x <= 3.8; x += 0.95) g.add(box(0.1, 0.8, 0.1, wood, [x, 3.5, 3.85]));
+    g.add(box(0.8, 2, 0.8, stone, [2.6, 8, -1]));
+    // The flag pole, with a red-and-white flag.
+    g.add(cyl(0.06, 0.06, 6, 0xe8e8e8, [5.2, 3, 2], 6), box(1.4, 0.45, 0.04, 0xd84a3a, [5.95, 5.5, 2]), box(1.4, 0.45, 0.04, 0xf4f4f4, [5.95, 5.05, 2]));
+    // Firewood stacked against the wall.
+    g.add(box(2.4, 1.4, 0.8, 0x7a5030, [-5.4, 0.7, 1.5]));
+    return g;
+  } },
+  summitcross: { z: -22, r: 6, build: () => {
+    // The summit: a craggy top, a cairn and a tall cross with a little box for the summit book.
+    const rock = 0x8a8478, rock2 = 0x6e695e;
+    const g = group(mesh(new THREE.ConeGeometry(7, 9, 7), rock, [0, 4.5, 0]), mesh(new THREE.ConeGeometry(4, 6, 6), rock2, [-4.5, 3, 1], [0, 0.5, 0.15]));
+    g.add(mesh(new THREE.ConeGeometry(2.4, 3.05, 7), 0xf4f6fa, [0, 7.5, 0]));
+    g.add(box(0.5, 6, 0.5, 0xd8a83a, [0, 12, 0]), box(3, 0.5, 0.5, 0xd8a83a, [0, 13.4, 0]), box(0.5, 0.5, 0.5, 0x3a3a3a, [0, 10.5, 0.4]));
+    for (const [y, r] of [[0.4, 0.8], [1.1, 0.6], [1.7, 0.45], [2.2, 0.3]] as const) g.add(ball(r, 0x9a948a, [4.5, y, 2], 7));
+    return g;
+  } },
+  cablecar: { z: -20, r: 8, build: () => {
+    // A cable car up the mountain: two steel pylons, the cables, and a red cabin half way.
+    const steel = 0x7a8088, g = new THREE.Group();
+    const a: V3 = [-12, 8, 0], b: V3 = [12, 20, 0];
+    for (const [x, h] of [[-12, 8], [12, 20]] as const) {
+      g.add(beam([x - 1.2, 0, 0], [x, h, 0], 0.35, steel), beam([x + 1.2, 0, 0], [x, h, 0], 0.35, steel));
+      for (let y = 2; y < h - 1; y += 2.5) g.add(box(2.4 * (1 - y / h) + 0.3, 0.15, 0.15, steel, [x, y, 0]));
+      g.add(box(3, 0.4, 0.6, steel, [x, h, 0]));
+    }
+    for (const dz of [-0.3, 0.3]) g.add(beam([a[0], a[1], dz], [b[0], b[1], dz], 0.06, 0x2a2a2e));
+    const t = 0.45, cx = a[0] + (b[0] - a[0]) * t, cy = a[1] + (b[1] - a[1]) * t;
+    g.add(beam([cx, cy, 0], [cx, cy - 2.4, 0], 0.12, 0x2a2a2e));
+    g.add(box(2.6, 2.0, 2.0, 0xd84a3a, [cx, cy - 3.4, 0]), box(2.2, 0.8, 2.05, 0x34465a, [cx, cy - 3.1, 0]), box(2.8, 0.2, 2.2, 0xf4f4f4, [cx, cy - 2.35, 0]));
+    // The station at the bottom.
+    g.add(box(6, 3, 4, 0xe8e0d0, [-15, 1.5, 0]), box(6.6, 0.3, 4.6, 0x5a5a62, [-15, 3.15, 0]));
+    return g;
+  } },
+  eaglerock: { z: -16, r: 6, build: () => {
+    // A tall rock tower with an eagle's nest on top and the eagle perched beside it.
+    const rock = 0x8a8478, rock2 = 0xa49e92;
+    const g = group(cyl(2.2, 3.6, 12, rock, [0, 6, 0], 7), cyl(1.4, 2.4, 4, rock2, [0.4, 13.5, 0], 6));
+    g.add(cyl(3, 4.5, 3, rock2, [-3.6, 1.5, 1], 6), mesh(new THREE.TorusGeometry(1.1, 0.4, 6, 12), 0x7a5a3a, [0.4, 15.7, 0], [Math.PI / 2, 0, 0]));
+    // The eagle: brown body, white head, yellow beak, wings half open.
+    const eagle = group(ball(0.55, 0x5a3a24, [0, 0, 0], 8), ball(0.3, 0xf4f0e8, [0.45, 0.45, 0], 8), mesh(new THREE.ConeGeometry(0.1, 0.3, 5), 0xf2c040, [0.75, 0.42, 0], [0, 0, -Math.PI / 2]));
+    eagle.add(box(0.15, 0.4, 1.8, 0x4a2e1a, [-0.1, 0.2, 0], [0.3, 0, 0]));
+    eagle.position.set(1.6, 16.1, 0.6);
+    g.add(eagle);
+    return g;
+  } },
   startgate: { z: -6, r: 4, build: () => {
     // The race's inflatable arch and a timing screen.
     const g = new THREE.Group();
@@ -1688,4 +1746,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'dh-mud-1': ['startgate', 'logcabin'], 'dh-mud-2': ['bigoak'], 'dh-mud-3': ['treehouse', 'stonebridge'], 'dh-mud-4': ['logcabin', 'bigoak'],
   'dh-mud-5': ['stonebridge', 'treehouse'], 'dh-mud-6': ['waterfall', 'logcabin'], 'dh-mud-7': ['bigoak', 'stonebridge'], 'dh-mud-8': ['startgate', 'treehouse'],
   'dh-mud-9': ['stonebridge', 'bigoak'], 'dh-mud-10': ['startgate', 'stonebridge'],
+  'dh-rocky-1': ['startgate', 'mountainhut'], 'dh-rocky-2': ['eaglerock'], 'dh-rocky-3': ['cablecar', 'summitcross'], 'dh-rocky-4': ['mountainhut', 'eaglerock'],
+  'dh-rocky-5': ['summitcross', 'cablecar'], 'dh-rocky-6': ['eaglerock', 'summitcross'], 'dh-rocky-7': ['cablecar', 'mountainhut'], 'dh-rocky-8': ['startgate', 'summitcross'],
+  'dh-rocky-9': ['eaglerock', 'cablecar'], 'dh-rocky-10': ['startgate', 'summitcross'],
 };
