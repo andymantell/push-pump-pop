@@ -407,6 +407,8 @@ function start(d: TrackDef = def) {
   showCombo(null);
   // However the device is being held right now counts as level.
   tilt.calibrate();
+  // If the iPad has lost motion access, tilt tricks silently stop working: say so.
+  window.setTimeout(() => { if (state === 'playing' && tilt.missing) toast('Tilt is off. Tap to turn it back on, then tap <b>Allow</b>'); }, 2000);
   $('trackname').textContent = d.name;
   $('grabzone').textContent = ride === 'skate' ? 'GRAB' : 'HOLD';
   $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : ride === 'mtb' ? 'TRICK' : 'FLIP';

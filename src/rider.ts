@@ -871,7 +871,7 @@ export class Rider {
       // Once it drops, level out before the next one, so it can't flicker on and off.
       // On a bike the tilt is your balance in a rock garden, not a manual.
       if (this.opts.mtb) this.stepGarden(dt);
-      const want: ManualName | null = this.lean && !this.garden && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.7)
+      const want: ManualName | null = this.lean && !this.garden && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.8)
         ? (this.lean > 0 ? (this.opts.snow ? 'Tail Press' : 'Manual') : (this.opts.snow ? 'Nose Press' : this.opts.mtb ? 'Stoppie' : 'Nose Manual')) : null;
       if (want !== this.manual) {
         if (this.manual && this.lean) this.manualBlocked = true;

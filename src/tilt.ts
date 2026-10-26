@@ -1,8 +1,8 @@
 import { Lean } from './rider';
 
 /** Degrees of tilt from level to start a lean, and back within this to stop. */
-const ON_DEG = 9;
-const OFF_DEG = 5;
+const ON_DEG = 14;
+const OFF_DEG = 8;
 /** Below this share of gravity in the screen's plane (device lying flat), roll is unreliable. */
 const MIN_PLANE = 0.3;
 
@@ -20,7 +20,9 @@ export class Tilt {
   private flat = true;
   private level = 0;
   private lean: Lean = 0;
-  private asked = false;
+  private asking = false;
+  private granted = false;
+  private lastRead = -Infinity;
 
   constructor() {
     window.addEventListener('deviceorientation', (e) => this.read(e));
@@ -30,11 +32,23 @@ export class Tilt {
     window.addEventListener('touchend', ask);
   }
 
+  // Keep asking on later taps until it's granted: iOS can forget the permission,
+  // and a prompt that was dismissed or failed shouldn't leave tilt off for good.
   requestPermission() {
-    if (this.asked) return;
-    this.asked = true;
-    const req = (DeviceOrientationEvent as unknown as { requestPermission?: PermissionFn }).requestPermission;
-    if (req) req.call(DeviceOrientationEvent).catch(() => {});
+    if (this.asking || this.granted) return;
+    const req = permissionFn();
+    if (!req) { this.granted = true; return; }
+    this.asking = true;
+    req.call(DeviceOrientationEvent)
+      .then((r) => { this.granted = r === 'granted'; })
+      .catch(() => {})
+      .finally(() => { this.asking = false; });
+  }
+
+  /** A touch device whose tilt isn't reaching the game (no permission, or it was lost). */
+  get missing(): boolean {
+    const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+    return touch && 'DeviceOrientationEvent' in window && performance.now() - this.lastRead > 1500;
   }
 
   /** Take the current hold as level. */
@@ -46,6 +60,7 @@ export class Tilt {
   private read(e: DeviceOrientationEvent) {
     if (e.beta === null || e.gamma === null) return;
     this.available = true;
+    this.lastRead = performance.now();
     const b = (e.beta * Math.PI) / 180, g = (e.gamma * Math.PI) / 180;
     // Gravity in the device's own axes (x right, y up the screen in portrait).
     const dx = Math.cos(b) * Math.sin(g), dy = -Math.sin(b);
@@ -67,6 +82,11 @@ export class Tilt {
     this.lean = l;
     this.onLean(l);
   }
+}
+
+function permissionFn(): PermissionFn | undefined {
+  if (!('DeviceOrientationEvent' in window)) return undefined;
+  return (DeviceOrientationEvent as unknown as { requestPermission?: PermissionFn }).requestPermission;
 }
 
 function screenAngle(): number {
