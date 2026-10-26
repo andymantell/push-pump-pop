@@ -2614,11 +2614,13 @@ export class World {
       }
     }
     // The muddy woods: a wall of beeches behind the course, so it really is a wood.
-    if (b.id === 'dh-mud') {
+    // North Shore the same, with giant cedars and pines.
+    if (b.id === 'dh-mud' || b.id === 'dh-shore') {
+      const [main, other] = b.id === 'dh-mud' ? ['beech', 'tree'] : ['cedar', 'pine'];
       for (let x = -10; x < end; x += 2.8 + r() * 2.6) {
         const z = -13 - r() * 14;
         if (this.clearings.some((c) => Math.abs(x - c.x) < c.r + 2 && Math.abs(z - c.z) < c.r + 3)) continue;
-        this.placeProp(r() < 0.7 ? 'beech' : 'tree', x, z, 1 + r() * 0.5, r() * Math.PI * 2);
+        this.placeProp(r() < 0.7 ? main : other, x, z, 1 + r() * 0.5, r() * Math.PI * 2);
       }
     }
     for (let x = -10; x < end; x += 3 + r() * 4) {

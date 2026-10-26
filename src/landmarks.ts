@@ -1669,6 +1669,52 @@ export const LANDMARKS: Record<string, Landmark> = {
     g.add(eagle);
     return g;
   } },
+  // ---- North Shore
+  firelookout: { z: -18, r: 5, build: () => {
+    // A fire lookout: a little cabin with windows all round on a tall timber tower.
+    const wood = 0x7a5232, g = new THREE.Group(), h = 14;
+    for (const [x, z] of [[-2, -2], [2, -2], [-2, 2], [2, 2]] as const) g.add(beam([x * 1.4, 0, z * 1.4], [x * 0.8, h, z * 0.8], 0.3, wood));
+    for (let y = 3; y < h; y += 3.5) {
+      const k = 1.4 - (0.6 * y) / h;
+      g.add(beam([-2 * k, y, 2 * k], [2 * k, y + 3.5, 2 * k], 0.15, wood), beam([2 * k, y, 2 * k], [-2 * k, y + 3.5, 2 * k], 0.15, wood));
+    }
+    g.add(box(4.6, 0.3, 4.6, wood, [0, h, 0]), box(3.6, 2.4, 3.6, 0xd8c8a0, [0, h + 1.35, 0]), box(3.7, 1.0, 3.7, 0x34465a, [0, h + 1.7, 0]));
+    g.add(mesh(new THREE.ConeGeometry(3.2, 1.6, 4), 0x4a6a3a, [0, h + 3.3, 0], [0, Math.PI / 4, 0]));
+    // Stairs zig-zagging up one side.
+    for (let y = 0; y < h; y += 3.5) g.add(beam([y % 7 ? -2 : 2, y, 2.6], [y % 7 ? 2 : -2, y + 3.5, 2.6], 0.4, 0x9a7048));
+    return g;
+  } },
+  trestle: { z: -22, r: 10, build: () => {
+    // An old wooden logging-railway trestle across the valley, criss-crossed timbers.
+    const wood = 0x6a4a2e, g = new THREE.Group(), h = 12, n = 7, sp = 4;
+    for (let i = 0; i < n; i++) {
+      const x = (i - (n - 1) / 2) * sp;
+      g.add(beam([x - 1.2, 0, 0], [x - 0.6, h, 0], 0.3, wood), beam([x + 1.2, 0, 0], [x + 0.6, h, 0], 0.3, wood));
+      for (let y = 0; y < h; y += 4) g.add(beam([x - 1.1, y, 0.2], [x + 1.1, y + 4, 0.2], 0.12, wood), beam([x + 1.1, y, 0.2], [x - 1.1, y + 4, 0.2], 0.12, wood));
+      if (i < n - 1) for (let y = 4; y < h; y += 4) g.add(beam([x, y, -0.2], [x + sp, y, -0.2], 0.15, wood));
+    }
+    g.add(box(sp * n, 0.5, 2.4, wood, [0, h + 0.25, 0]), box(sp * n, 0.15, 0.15, 0x5a5a62, [0, h + 0.6, 0.6]), box(sp * n, 0.15, 0.15, 0x5a5a62, [0, h + 0.6, -0.6]));
+    // A little old locomotive parked on it.
+    g.add(box(4, 2, 2, 0x2a2a30, [6, h + 1.6, 0]), cyl(0.8, 0.8, 3.4, 0x2a2a30, [3.6, h + 1.4, 0], 12, [0, 0, Math.PI / 2]), cyl(0.3, 0.4, 1.2, 0x2a2a30, [2.4, h + 2.6, 0], 8), box(4.2, 0.2, 2.2, 0xc8402a, [6, h + 2.7, 0]));
+    return g;
+  } },
+  bigcedar: { z: -14, r: 6, build: () => {
+    // A giant old cedar, wider than a car, with a wooden ramp spiralling round it.
+    const bark = 0x7a4a32, leaf = 0x2e5a3a, leaf2 = 0x3a6a44, wood = 0x9a7048;
+    const g = group(cyl(1.6, 2.4, 22, bark, [0, 11, 0], 10));
+    for (let i = 0; i < 6; i++) {
+      const y = 9 + i * 2.6, r = 6 - i * 0.8;
+      g.add(mesh(new THREE.ConeGeometry(r, 4, 9), i % 2 ? leaf : leaf2, [0, y + 2, 0]));
+    }
+    for (let a = 0; a < 6; a++) g.add(beam([0, 0.6, 0], [Math.cos(a) * 3.4, 0, Math.sin(a) * 3.4], 0.8, bark));
+    // The spiral ramp of planks round the trunk, on brackets.
+    for (let k = 0; k < 18; k++) {
+      const a = k * 0.55, y = 0.6 + k * 0.32, r = 2.9;
+      const plank = box(1.6, 0.12, 0.9, wood, [Math.cos(a) * r, y, Math.sin(a) * r], [0, -a, 0]);
+      g.add(plank, beam([Math.cos(a) * 2.1, y - 0.6, Math.sin(a) * 2.1], [Math.cos(a) * r, y, Math.sin(a) * r], 0.1, wood));
+    }
+    return g;
+  } },
   startgate: { z: -6, r: 4, build: () => {
     // The race's inflatable arch and a timing screen.
     const g = new THREE.Group();
@@ -1749,4 +1795,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'dh-rocky-1': ['startgate', 'mountainhut'], 'dh-rocky-2': ['eaglerock'], 'dh-rocky-3': ['cablecar', 'summitcross'], 'dh-rocky-4': ['mountainhut', 'eaglerock'],
   'dh-rocky-5': ['summitcross', 'cablecar'], 'dh-rocky-6': ['eaglerock', 'summitcross'], 'dh-rocky-7': ['cablecar', 'mountainhut'], 'dh-rocky-8': ['startgate', 'summitcross'],
   'dh-rocky-9': ['eaglerock', 'cablecar'], 'dh-rocky-10': ['startgate', 'summitcross'],
+  'dh-shore-1': ['startgate', 'bigcedar'], 'dh-shore-2': ['firelookout'], 'dh-shore-3': ['trestle', 'logcabin'], 'dh-shore-4': ['bigcedar', 'waterfall'],
+  'dh-shore-5': ['logcabin', 'firelookout'], 'dh-shore-6': ['trestle', 'bigcedar'], 'dh-shore-7': ['firelookout', 'trestle'], 'dh-shore-8': ['startgate', 'waterfall'],
+  'dh-shore-9': ['bigcedar', 'trestle'], 'dh-shore-10': ['startgate', 'firelookout'],
 };
