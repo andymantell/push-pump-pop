@@ -39,7 +39,7 @@ Pick **SKATE** or **SCOOTER** above the world tabs on the level select. The scoo
 | Superman, No Footer, Can Can, X-Up | On the left half, swipe up, down, left or right and keep holding | Hold I / K / J / L |
 | Grinds | 50-50 by default; on a rail swipe left for a Boardslide, right for a Feeble, down for a Smith | Arrows |
 
-On the Snowy Mountain tracks the scooter is a snow scooter, on skis. A future ride (a downhill MTB) can add worlds only it reaches through `skipWorlds` in `src/ride.ts`.
+A 180 on a scooter leaves you riding backwards: landing like that adds **Fakie** to the combo, but after 3 s on the ground fakie the rider starts to wobble, more and more, and falls off at 10 s (`FAKIE_SAFE`, `FAKIE_FALL` in `src/rider.ts`) unless another 180 turns them forwards. On the Snowy Mountain tracks the scooter is a snow scooter, on skis. A future ride (a downhill MTB) can add worlds only it reaches through `skipWorlds` in `src/ride.ts`.
 
 You get three lives per track. Each bail or fall into a gap costs one, and losing the third means starting the track again: the game freezes behind the Out of Lives screen and ignores taps, swipes and tilt until you do. Half-pipe bonus levels are timed and have no lives.
 

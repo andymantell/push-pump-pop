@@ -565,6 +565,13 @@ def build_skater():
     head.scale = (1.08, 1.08, 1.08)
     apply_tf(head)
     parts.append(head)
+
+    # Scooter gear: a skate helmet.
+    sk = skull(skin)
+    head = join('head_skatehelmet', [sk, *face(sk, skin, eye, white, hair, mouth), *skate_helmet_parts()])
+    head.scale = (1.08, 1.08, 1.08)
+    apply_tf(head)
+    parts.append(head)
     export(os.path.join(OUT, 'skater.glb'), parts)
 
 
@@ -759,6 +766,31 @@ def helmet_parts():
     bits.append(cube(shell_m, (0.2, 0.06, 0.012), loc=(0, -0.175, 0.215), rot=(0.25, 0, 0), bevel=0.005))
     for s in (1, -1):
         bits.append(cube(strap, (0.008, 0.012, 0.11), loc=(s * 0.128, -0.02, 0.13), rot=(0.25, 0, 0)))
+    return bits
+
+
+def skate_helmet_parts():
+    """A skate helmet: a round, smooth shell that comes down low at the back and sides, no peak,
+    a few round vents, a sticker and a chin strap. The face is at -Y."""
+    shell_m = mat('skate_helmet', (226, 48, 52))
+    vent_m = mat('helmet_vent', (40, 40, 44))
+    sticker = mat('skate_helmet_sticker', (255, 214, 64))
+    strap = mat('helmet_strap', (34, 34, 38))
+    dome = sphere(shell_m, 0.166, loc=(0, 0.01, 0.17), scale=(1.0, 1.06, 1.0), segs=32, rings=18)
+    bm = bmesh.new()
+    bm.from_mesh(dome.data)
+    # Low over the ears and the back of the head, up above the eyebrows at the front.
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < 0.13 - 0.07 * max(0.0, -v.co.y) / 0.16 + 0.0 * v.co.y], context='VERTS')
+    bm.to_mesh(dome.data)
+    bm.free()
+    bits = [dome]
+    # Round vents: two over the forehead, two at the back.
+    for x in (-0.045, 0.045):
+        for y, z, a in ((-0.11, 0.29, -0.75), (0.12, 0.29, 0.75)):
+            bits.append(cyl(vent_m, 0.016, 0.02, loc=(x, y, z), rot=(a, 0, 0), verts=14))
+    bits.append(cube(sticker, (0.006, 0.07, 0.04), loc=(0.163, 0.02, 0.2), rot=(0, 0, 0), bevel=0.004))
+    for s in (1, -1):
+        bits.append(cube(strap, (0.008, 0.012, 0.11), loc=(s * 0.13, -0.01, 0.1), rot=(0.2, 0, 0)))
     return bits
 
 

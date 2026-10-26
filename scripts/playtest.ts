@@ -15,7 +15,7 @@
 import { TRACKS, PIPE_TIME, SCOOTER_TODO } from '../src/tracks';
 import { BIOMES, BIOME_ORDER } from '../src/biomes';
 import { requiredCount } from '../src/challenges';
-import { Rider, Swipe, TrickName, GRAVITY } from '../src/rider';
+import { Rider, Swipe, TrickName, GRAVITY, FAKIE_SAFE, FAKIE_FALL } from '../src/rider';
 import { Score } from '../src/score';
 import { MegaRun } from '../src/mega';
 import { ChallengeRun, Challenge, members } from '../src/challenges';
@@ -235,6 +235,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     land({ airTime, smooth, peakY }) {
       if (alive()) chal.land(r.x);
       // Scoring as in the game.
+      if (SCOOT && r.bodyYaw && !r.bailing) score.addBonus('Fakie', 100);
       if (isPipe) { const h = peakY - track.maxY; if (h > 0.5) score.addBonus('Air', Math.round(h * 150)); score.bank(); }
       else if (airTime > 0.7) score.addBonus('Air', Math.round(airTime * 120));
       if (smooth) score.addBonus('Smooth', 75);
@@ -246,7 +247,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     },
     bail() { if (TRACE) console.log(`  t=${t.toFixed(1)} x=${r.x.toFixed(1)} BAIL was: ${prevState}`); if (alive()) chal.bail(); score.lose(); res.bails++; res.livesLost++; },
     // On a mega ramp a fall ends the drop, with no life to lose.
-    fall() { if (alive()) chal.fall(r.x); score.lose(); if (!isMega) { respawnAt = t + 1.2; res.livesLost++; } },
+    fall() { if (TRACE) console.log(`  t=${t.toFixed(1)} x=${r.x.toFixed(1)} FALL was: ${prevState}`); if (alive()) chal.fall(r.x); score.lose(); if (!isMega) { respawnAt = t + 1.2; res.livesLost++; } },
   });
   const isPipe = def.kind === 'pipe', isMega = def.kind === 'mega';
   const skater: Figure | null = !legs ? null : SCOOT ? new ScooterRig() : new Skater();
@@ -263,6 +264,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   type Act = 'pump' | Swipe | 'spin' | 'grab' | 'let go' | 'lean+' | 'lean-' | 'lean0' | string;
   const queue: { at: number; act: Act }[] = [];
   let manualPlanned = -10;
+  let fakieSpun = -10;
   let grindStyled = false;
   const inputTimes: number[] = [];
   let lastPumpDecision = -1;
@@ -307,6 +309,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     }
     return { time: tt, x };
   }
+  /** On a scooter, still turning from a trick started off a jelly pad's last bounce (or a 180 back round). */
+  const busy = () => SCOOT && (!!r.spin || !!r.current || queue.some((q) => q.act === 'spin'));
   /** Goal mode in the air: undefined to fall back to the ordinary bot, else handled. */
   function goalAir(): true | undefined {
     const g = G!;
@@ -469,9 +473,13 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
           press('lean0', 0.6);
           manualPlanned = t;
         }
-      } else if (G && !pumpOnly && !trickPlanned && (!railOllie || popOffRail) && r.airTime > 0.02 && goalAir() !== undefined) {
+      } else if (G && !pumpOnly && !trickPlanned && !busy() && (!railOllie || popOffRail) && r.airTime > 0.02 && goalAir() !== undefined) {
         // Handled by goalAir.
-      } else if (!careful && !pumpOnly && !trickPlanned && !railOllie && r.vy > 3 && r.airTime > 0.05) {
+      } else if (SCOOT && r.bodyYaw && !pumpOnly && !trickPlanned && !busy() && !railOllie && r.vy > 2 && r.airTime > 0.05 && flight().time - REACTION - JITTER > 0.65) {
+        // Riding a scooter backwards: spin round to face forwards on the next decent air.
+        press('spin');
+        trickPlanned = true;
+      } else if (!careful && !pumpOnly && !trickPlanned && !busy() && !railOllie && r.vy > 3 && r.airTime > 0.05) {
         // Only trick on a big air, like a sensible player.
         const pick = rand();
         if (isPipe && r.vy > 6 && pick < 0.3) {
@@ -483,11 +491,24 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
           // A big air: grab with the other thumb, and let go well before landing.
           press('grab');
           press('let go', 0.3);
+        } else if (SCOOT && pick < 0.55 && flight().time - REACTION - JITTER < 0.65) {
+          // Not enough air to get round and back: a scooter rider would rather not end up backwards.
+          press('left');
         } else press(pick < 0.55 ? 'spin' : pick < 0.8 ? 'left' : 'down');
         trickPlanned = true;
       }
     }
 
+    // Still backwards and starting to wobble: hop a 180 where the ground is even, as a player
+    // would, or anywhere not heading into a jump or a rail once the wobble gets bad.
+    if (SCOOT && r.bodyYaw && r.grounded && !r.bailing && r.fakieT > FAKIE_SAFE - 0.5 && t - fakieSpun > 1 && clearAhead(Math.abs(r.v) * 1.2)
+      && !track.spots.some((sp) => sp.tag === 'bouncer' && sp.x > r.x - 1 && sp.x - r.x < Math.abs(r.v) * 1.2 + 2)
+      // An even slope all the way to where the hop lands, so it isn't cut short on a roller.
+      && (r.fakieT > FAKIE_FALL - 2 || [...Array(Math.ceil(Math.abs(r.v) * (REACTION + JITTER + 0.6)) + 2).keys()].every((d) => Math.abs(track.slope(r.x + d * (Math.sign(r.v) || 1)) - track.slope(r.x)) < 0.08))) {
+      press('spin');
+      fakieSpun = t;
+      if (TRACE) console.log(`  t=${t.toFixed(1)} x=${r.x.toFixed(1)} ground 180 to face forwards`);
+    }
     if (TRACE) prevState = `${state(r)} lean=${r.lean} flipT=${r.flipT.toFixed(2)} air=${r.airTime.toFixed(2)} v=${r.vx.toFixed(1)},${r.vy.toFixed(1)}`;
     const before = r.x;
     const slopeBefore = track.slope(r.x) * (Math.sign(r.v) || 1);

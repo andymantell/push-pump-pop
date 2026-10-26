@@ -285,7 +285,7 @@ export class ChallengeRun {
       }
       if (c.across) {
         const [a, b] = c.across.map((tag: string) => this.track.spots.find((s) => s.tag === tag)?.x ?? NaN);
-        if (!(this.combo[0].x <= a + 1 && this.combo[this.combo.length - 1].x >= b - 1)) return;
+        if (!this.combo.length || !(this.combo[0].x <= a + 1 && this.combo[this.combo.length - 1].x >= b - 1)) return;
       }
       return true;
     });

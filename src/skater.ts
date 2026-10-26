@@ -19,6 +19,8 @@ export type SnowPartName = (typeof SNOW_PART_NAMES)[number];
 /** Swapped in on the farm: a mountain board with big tyres and bindings, and a helmet. */
 export const MTB_PART_NAMES = ['mountainboard', 'head_helmet'] as const;
 export type MtbPartName = (typeof MTB_PART_NAMES)[number];
+/** Worn on the scooter: a skate helmet. */
+export const SCOOTER_HEAD_NAMES = ['head_skatehelmet'] as const;
 export type BoardKind = 'skate' | 'snow' | 'mountain';
 
 const THIGH = 0.44;

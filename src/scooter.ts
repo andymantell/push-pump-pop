@@ -145,6 +145,8 @@ export class ScooterRig {
   private landT = -1;
   private landW = 0;
   private absorb = 0;
+  private wobT = 0;
+  private wob = 0;
 
   /** The shadow can be shared with the skater, as only one of them rides at a time. */
   constructor(parts: Partial<Record<string, THREE.Object3D>> = {}, shadow?: THREE.Mesh) {
@@ -154,7 +156,7 @@ export class ScooterRig {
     const own = (o: THREE.Object3D) => { const c = o.clone(false); if (o.children[0]) c.add(o.children[0].clone()); return c; };
     this.p = Object.fromEntries(PART_NAMES.map((n) => [n, parts[n] ? own(parts[n]) : ph[n]])) as Record<PartName, THREE.Object3D>;
     const p = this.p;
-    this.helmet = parts.head_helmet?.clone() ?? p.head;
+    this.helmet = parts.head_skatehelmet?.clone() ?? p.head;
     this.snowHead = parts.head_snow?.clone() ?? p.head;
     const [dk, bk] = placeholderScooter('scooter'), [ds, bs] = placeholderScooter('snow');
     this.decks = { scooter: parts.scooter_deck?.clone() ?? dk, snow: parts.snowscoot_deck?.clone() ?? ds };
@@ -284,7 +286,7 @@ export class ScooterRig {
     const barTarget = barTurns ? -r.barsT * Math.PI * 2 : H.bars * hw;
     this.barsAngle = barTurns ? barTarget : this.barsAngle + (H.bars * hw - this.barsAngle) * (1 - Math.exp(-dt * 25));
     this.deckPivot.rotation.y = this.deckAngle;
-    this.barsPivot.rotation.y = this.barsAngle;
+    this.barsPivot.rotation.y = this.barsAngle + this.wob * 0.3 * Math.sin(this.wobT * 1.3);
     if (hw > 0.01) { crouchT += (0.45 - crouchT) * hw; liftT += (0.3 - liftT) * hw; }
     leanT += (H.lean - leanT) * hw;
 
@@ -416,6 +418,8 @@ export class ScooterRig {
       this.bailT += dt;
       const t = this.bailT;
       this.body.rotation.z = -Math.min(1, t * 2.5) * 1.35;
+      this.body.rotation.x = 0;
+      this.wob = 0;
       this.body.position.set(-Math.min(1, t * 2.5) * 0.6, 0.2 * Math.sin(Math.min(1, t * 2.5) * Math.PI), 0);
       this.scoot.position.x += t * 1.6;
       this.scoot.position.y += Math.max(0, Math.sin(t * 4) * 0.6);
@@ -425,6 +429,12 @@ export class ScooterRig {
       this.bailT = 0;
       this.body.rotation.z = 0;
       this.body.position.set(0, 0, 0);
+      // Riding backwards too long: tipping from side to side, faster and wider as it goes on.
+      // Eased, so spinning round to face forwards settles the wobble rather than snapping it straight.
+      this.wob += Math.max(-dt * 2, Math.min(dt * 2, r.wobble - this.wob));
+      const wob = this.wob;
+      this.wobT += dt * (5 + 5 * wob);
+      this.body.rotation.x = wob * 0.3 * Math.sin(this.wobT);
       this.body.visible = true;
     }
 

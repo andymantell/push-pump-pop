@@ -174,6 +174,8 @@ const SPIN_POINTS = { 180: 400, 360: 900 };
 /** Body flips from tilting in the air: one full turn takes this long. */
 const FLIP_TIME = 0.75;
 const FLIP_POINTS = 1200;
+/** On a scooter, riding backwards (after a 180) starts to wobble after this long on the ground, and you fall off at FAKIE_FALL. */
+export const FAKIE_SAFE = 3, FAKIE_FALL = 10;
 /** Landing this far into a flip still counts; less than FLIP_SAFE is just a wobble. */
 const FLIP_LAND = 0.85;
 const FLIP_SAFE = 0.12;
@@ -261,6 +263,8 @@ export class Rider {
   spin: { dir: 1 | -1; deg: 180 | 360; t: number } | null = null;
   /** Facing from completed spins (0 or PI: riding fakie), for visuals. */
   bodyYaw = 0;
+  /** Time spent riding backwards on a scooter (see FAKIE_SAFE). */
+  fakieT = 0;
   /** Device tilt, and whether it has been back to level since take-off. */
   lean: Lean = 0;
   private leanArmed = false;
@@ -374,6 +378,8 @@ export class Rider {
   }
 
   get bailing() { return this.bailTimer > 0; }
+  /** 0 to 1: how wobbly riding backwards on a scooter has got. */
+  get wobble() { return Math.max(0, Math.min(1, (this.fakieT - FAKIE_SAFE) / (FAKIE_FALL - FAKIE_SAFE))); }
   get speed() { return this.grounded || this.grind || this.loop ? Math.abs(this.v) : Math.hypot(this.vx, this.vy); }
 
   pump() {
@@ -458,6 +464,7 @@ export class Rider {
   private clearBody() {
     this.spin = null;
     this.bodyYaw = 0;
+    this.fakieT = 0;
     this.flipping = false;
     this.flipT = 0;
     this.manual = null;
@@ -718,6 +725,21 @@ export class Rider {
       if (this.bailTimer <= 0) {
         this.bailTimer = 0;
         this.boardYaw = 0;
+      }
+    }
+
+    // A scooter only really goes forwards: ride it backwards and it gets wobblier and wobblier
+    // until you fall off, unless you spin a 180 to face forwards again.
+    if (!this.bodyYaw || !this.opts.scooter) this.fakieT = 0;
+    else if (!this.bailing && (this.grounded || this.grind)) {
+      this.fakieT += dt;
+      if (this.fakieT >= FAKIE_FALL && this.grounded && !this.loop) {
+        this.bodyYaw = 0;
+        this.fakieT = 0;
+        this.manual = null;
+        this.v *= 0.35;
+        this.bailTimer = BAIL_TIME;
+        this.ev.bail();
       }
     }
 

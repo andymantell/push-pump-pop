@@ -129,6 +129,8 @@ const rider = new Rider(track, {
   land({ airTime, smooth, peakY }) {
     sound.land(airTime);
     chal.land(rider.x);
+    // Coming down backwards on a scooter.
+    if (ride === 'scooter' && rider.bodyYaw && !rider.bailing) score.addBonus('Fakie', 100);
     if (def.kind === 'pipe') {
       const h = peakY - track.maxY;
       if (h > 0.5) score.addBonus(`Air ${h.toFixed(1)}m`, Math.round(h * 150));
