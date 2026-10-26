@@ -4,6 +4,7 @@ import { toon } from './toon';
 import { spaceKit } from './spacesuit';
 import { railY } from './track';
 import { PartName, PART_NAMES } from './skater';
+import { Look, Wardrobe, bodyPieces, headPieces, dress, markModels, paint } from './look';
 
 // The downhill bike and its rider: the same kid as the skater, in a full-face helmet and
 // goggles, stood up on the pedals in the attack position, hands on the grips. Posed like the
@@ -212,6 +213,7 @@ export class MtbRig {
     this.p = Object.fromEntries(PART_NAMES.map((n) => [n, parts[n] ? own(parts[n]) : ph[n]])) as Record<PartName, THREE.Object3D>;
     const p = this.p;
     this.helmet = parts.head_fullface?.clone() ?? p.head;
+    markModels([...Object.values(p), this.helmet]);
     const pb = placeholderBike();
     const part = (n: Exclude<BikePartName, 'head_fullface'>) => parts[n]?.clone() ?? pb[n].clone();
 
@@ -304,6 +306,15 @@ export class MtbRig {
 
   /** Studded tyres for the snow. */
   setSnow(on: boolean) { for (const s of this.studs) s.visible = on; }
+
+  /** Dress in a look from the customiser, in the full-face helmet, on a bike in their colour. */
+  wear(look: Look, w: Wardrobe) {
+    if (w.loaded) {
+      for (const [n, names] of Object.entries(bodyPieces(look))) dress(this.p[n as PartName], names, w);
+      dress(this.helmet, headPieces(look, 'fullface'), w, look);
+    }
+    paint(this.root);
+  }
 
   /** World positions of the points that should never go below the ground: knees, heels and toes. */
   legPoints(): THREE.Vector3[] {

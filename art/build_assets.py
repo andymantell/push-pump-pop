@@ -1288,10 +1288,12 @@ def ff_shell(material, grow=0.0, cuts=(), thick=0.0, keep=None, segs=96, rings=6
     return o
 
 
-def fullface_parts():
+def fullface_parts(res=(96, 64)):
     """A downhill full-face helmet: a shell down over the ears with a chin bar jutting forward,
     a peak over the eye port, goggles sitting in the port with their strap round the shell,
     vents in the chin bar and a stripe over the crown. The face is at -Y."""
+    def ff(*a, **k):
+        return ff_shell(*a, segs=res[0], rings=res[1], **k)
     shell_m = mat('fullface', (255, 214, 64))
     accent = mat('fullface_stripe', (232, 64, 42))
     trim = mat('helmet_vent', (40, 40, 44))
@@ -1299,27 +1301,27 @@ def fullface_parts():
     frame_m = mat('goggle_frame', (250, 250, 246))
     lens = mat('goggle_lens_dh', (255, 150, 40))
     bottom = ff_z_above(ff_bottom)
-    shell = ff_shell(shell_m, cuts=(bottom, ff_port_cut(1.0, False)), thick=0.012, name='ff_shell')
+    shell = ff(shell_m, cuts=(bottom, ff_port_cut(1.0, False)), thick=0.012, name='ff_shell')
     bits = [shell]
     # A red stripe over the crown, and a red rim round the bottom edge.
-    bits.append(ff_shell(accent, 0.002, (ff_x_within(0.024), ff_z_above(lambda y: 0.12)), 0.004, keep=lambda x, y, z: y > -0.12))
-    bits.append(ff_shell(accent, 0.002, (bottom, ff_z_below(lambda y: ff_bottom(y) + 0.022)), 0.004))
+    bits.append(ff(accent, 0.002, (ff_x_within(0.024), ff_z_above(lambda y: 0.12)), 0.004, keep=lambda x, y, z: y > -0.12))
+    bits.append(ff(accent, 0.002, (bottom, ff_z_below(lambda y: ff_bottom(y) + 0.022)), 0.004))
     # The chin bar in red, from under the port to the bottom edge, back to the cheeks.
     # Its back edge sweeps back lower down, along the cheek.
-    bits.append(ff_shell(accent, 0.002, (bottom, ff_z_below(lambda y: 0.1), (lambda v: -0.095 + 0.75 * (0.1 - v.z) - v.y, None)), 0.004))
+    bits.append(ff(accent, 0.002, (bottom, ff_z_below(lambda y: 0.1), (lambda v: -0.095 + 0.75 * (0.1 - v.z) - v.y, None)), 0.004))
     # Slit vents running back over the top, and exhausts low at the back.
     for xc in (-0.062, -0.022, 0.022, 0.062):
-        bits.append(ff_shell(trim, 0.0015, (ff_slot(xc, 0.007), ff_y_above(-0.07 + abs(xc) * 0.4), ff_y_below(0.035 - abs(xc) * 0.3), ff_z_above(lambda y: 0.22)), 0.004))
+        bits.append(ff(trim, 0.0015, (ff_slot(xc, 0.007), ff_y_above(-0.07 + abs(xc) * 0.4), ff_y_below(0.035 - abs(xc) * 0.3), ff_z_above(lambda y: 0.22)), 0.004))
     for xc in (-0.05, 0.05):
-        bits.append(ff_shell(trim, 0.0015, (ff_slot(xc, 0.022), ff_y_above(0.08), ff_z_above(lambda y: 0.1), ff_z_below(lambda y: 0.125)), 0.004))
+        bits.append(ff(trim, 0.0015, (ff_slot(xc, 0.022), ff_y_above(0.08), ff_z_above(lambda y: 0.1), ff_z_below(lambda y: 0.125)), 0.004))
     # Rubber trim round the eye port.
-    bits.append(ff_shell(trim, 0.002, (ff_port_cut(1.14, True), ff_port_cut(0.96, False)), 0.016))
+    bits.append(ff(trim, 0.002, (ff_port_cut(1.14, True), ff_port_cut(0.96, False)), 0.016))
     # Goggles: a white frame filling the port, standing proud of it, with a mirrored lens, and the
     # strap round the outside of the shell.
-    bits.append(ff_shell(frame_m, 0.008, (ff_port_cut(1.06, True),), 0.022))
-    bits.append(ff_shell(lens, 0.012, (ff_port_cut(0.8, True),), 0.006))
+    bits.append(ff(frame_m, 0.008, (ff_port_cut(1.06, True),), 0.022))
+    bits.append(ff(lens, 0.012, (ff_port_cut(0.8, True),), 0.006))
     band = 0.02
-    bits.append(ff_shell(strap_m, 0.006, (ff_z_above(lambda y: FF_PORT[2] - band), ff_z_below(lambda y: FF_PORT[2] + band), ff_port_cut(1.08, False)), 0.006))
+    bits.append(ff(strap_m, 0.006, (ff_z_above(lambda y: FF_PORT[2] - band), ff_z_below(lambda y: FF_PORT[2] + band), ff_port_cut(1.08, False)), 0.006))
     # Vents across the chin bar, and a mouth vent under them.
     for x, z, w, h, rz in ((-0.036, 0.074, 0.042, 0.012, 0.3), (0.036, 0.074, 0.042, 0.012, -0.3), (-0.038, 0.05, 0.036, 0.011, 0.3), (0.038, 0.05, 0.036, 0.011, -0.3), (0.0, 0.058, 0.024, 0.03, 0.0)):
         y = surface_y(shell, x, z)

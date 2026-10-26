@@ -293,6 +293,7 @@ setColours(look);
 function dressRiders() {
   skater.wear(look, wardrobe);
   scooter.wear(look, wardrobe);
+  mtb.wear(look, wardrobe);
   for (const f of [skater, scooter, mtb]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
 }
 dressRiders();

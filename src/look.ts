@@ -23,7 +23,7 @@ export type Bottom = (typeof BOTTOMS)[number];
 export const SHOES = ['low', 'high'] as const;
 export type Shoes = (typeof SHOES)[number];
 /** What's on the rider's head: their own hat, or the helmet a ride puts on them. */
-export type Headgear = 'own' | 'skate' | 'farm' | 'snow';
+export type Headgear = 'own' | 'skate' | 'farm' | 'snow' | 'fullface';
 
 export interface Look {
   skin: number;
@@ -67,6 +67,8 @@ export interface Look {
   scooterWheelColour: number;
   snowboardColour: number;
   mountainboardColour: number;
+  /** The downhill bike's frame. */
+  bikeColour: number;
 }
 
 /** The kid as he was before the customiser: blue hoodie, jeans, red cap. */
@@ -79,7 +81,7 @@ export const DEFAULT_LOOK: Look = {
   shoes: 'low', shoeColour: 0xf5f5f0, soleColour: 0xece6d6, laceColour: 0xe8402a,
   deck: 'none', deckColour: 0xe8402a, deckArtColour: 0xffd23f, gripColour: 0x222226, wheelColour: 0xf5e6a8, truckColour: 0xb8bec6,
   scooterColour: 0x7a4fd8, barsColour: 0xc4cad4, scooterWheelColour: 0xffd23f,
-  snowboardColour: 0x2a7fd4, mountainboardColour: 0x3c9646,
+  snowboardColour: 0x2a7fd4, mountainboardColour: 0x3c9646, bikeColour: 0x18b6b0,
 };
 
 // ---------------------------------------------------------------- palettes
@@ -154,7 +156,8 @@ export function headPieces(look: Look, gear: Headgear): string[] {
   if (look.freckles) out.push('face__freckles');
   if (look.cheeks) out.push('face__cheeks');
   if (look.lashes) out.push('face__lashes');
-  if (look.glasses !== 'none') out.push(`glasses__${look.glasses}`);
+  // (Goggles go over a full-face helmet instead.)
+  if (look.glasses !== 'none' && gear !== 'fullface') out.push(`glasses__${look.glasses}`);
   const covered = gear !== 'own' || COVERS[look.hat];
   out.push(`hair__${look.hair}${covered ? '__under' : ''}`);
   if (gear !== 'own') out.push(`helmet__${gear}`);
@@ -274,6 +277,8 @@ const SLOTS: Record<string, (l: Look) => number> = {
   helmet: (l) => l.helmetColour,
   beanie: (l) => l.helmetColour,
   beanie_cuff: (l) => darker(l.helmetColour),
+  fullface: (l) => l.helmetColour,
+  fullface_stripe: (l) => darker(l.helmetColour, 0.6),
   top: (l) => l.topColour,
   top_dark: (l) => l.trimColour,
   top_inner: (l) => (l.top === 'jacket' ? l.trimColour : 0xf4f4f0),
@@ -296,6 +301,8 @@ const SLOTS: Record<string, (l: Look) => number> = {
   snowscoot_ski: (l) => l.scooterColour,
   snowboard_top: (l) => l.snowboardColour,
   mtb_deck: (l) => l.mountainboardColour,
+  mtb_frame: (l) => l.bikeColour,
+  mtb_frame_dark: (l) => darker(l.bikeColour),
 };
 
 const textures = new Map<string, THREE.CanvasTexture>();
@@ -358,6 +365,6 @@ export function randomLook(old: Look): Look {
     bottom: pick(BOTTOMS), bottomColour: bright(), legsColour: bright(), sockColour: bright(),
     shoes: pick(SHOES), shoeColour: bright(), laceColour: bright(), soleColour: Math.random() < 0.6 ? 0xf4f4f0 : bright(),
     deck: pick(DECK_ARTS), deckColour: bright(), deckArtColour: bright(), wheelColour: bright(),
-    scooterColour: bright(), barsColour: bright(), scooterWheelColour: bright(), snowboardColour: bright(), mountainboardColour: bright(),
+    scooterColour: bright(), barsColour: bright(), scooterWheelColour: bright(), snowboardColour: bright(), mountainboardColour: bright(), bikeColour: bright(),
   };
 }

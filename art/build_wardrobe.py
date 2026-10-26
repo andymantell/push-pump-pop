@@ -21,7 +21,7 @@ import bmesh  # noqa: E402
 from mathutils import Vector, Matrix  # noqa: E402
 from build_assets import (  # noqa: E402
     OUT, mat, reset, finish, apply_tf, cube, sphere, cyl, capsule, join, loft, surface_y,
-    skull, hand, cap_parts, beanie_parts, build_board, helmet_parts, skate_helmet_parts,
+    skull, hand, cap_parts, beanie_parts, build_board, helmet_parts, skate_helmet_parts, fullface_parts,
 )
 
 HEAD_SCALE = 1.08
@@ -929,6 +929,7 @@ def build_heads(parts):
     parts.append(head_piece('helmet__skate', skate_helmet_parts()))
     parts.append(head_piece('helmet__farm', helmet_parts()))
     parts.append(head_piece('helmet__snow', beanie_parts()))
+    parts.append(head_piece('helmet__fullface', fullface_parts(res=(64, 44))))
 
 
 def export_parts(path, parts):
