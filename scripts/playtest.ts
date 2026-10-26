@@ -314,7 +314,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : biome.maxSpeed, pipe: isPipe, mega: isMega, snow: def.biome === 'snow' && !BIKE, mountain: def.biome === 'farm' && (RIDE === 'skate' || ROLL), scooter: SCOOT, roller: ROLL, mtb: BIKE, kayak: BOAT, gravity: biome.gravity };
   if (skater instanceof KayakRig) skater.setBoat(isPipe ? 'play' : 'river');
   if (skater instanceof Skater) skater.setBoard(def.biome === 'snow' ? 'snow' : def.biome === 'farm' ? 'mountain' : 'skate');
-  if (skater instanceof ScooterRig) skater.setKind(def.biome === 'snow' ? 'snow' : 'scooter');
+  if (skater instanceof ScooterRig) skater.setKind(def.biome === 'snow' ? 'snow' : def.biome === 'farm' ? 'dirt' : 'scooter');
   if (skater instanceof RollerRig) skater.setKind(def.biome === 'snow' ? 'blades' : def.biome === 'farm' ? 'offroad' : 'skates');
   if (skater instanceof MtbRig) skater.setSnow(def.biome === 'snow');
   const onWave = track.holes.some((h) => h.wave);

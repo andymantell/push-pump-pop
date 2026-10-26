@@ -15,9 +15,10 @@ import { Look, Wardrobe, bodyPieces, headPieces, dress, markModels, paint } from
 // axle: the deck (with the back wheel) whips round it, the bars (with the fork and front
 // wheel) spin round it. Both are modelled with their origin on the ground under the front axle.
 
-export const SCOOTER_PART_NAMES = ['scooter_deck', 'scooter_bars', 'snowscoot_deck', 'snowscoot_bars'] as const;
+export const SCOOTER_PART_NAMES = ['scooter_deck', 'scooter_bars', 'snowscoot_deck', 'snowscoot_bars', 'dirtscoot_deck', 'dirtscoot_bars'] as const;
 export type ScooterPartName = (typeof SCOOTER_PART_NAMES)[number];
-export type ScooterKind = 'scooter' | 'snow';
+export type ScooterKind = 'scooter' | 'snow' | 'dirt';
+const KINDS = ['scooter', 'snow', 'dirt'] as const;
 
 const THIGH = 0.44;
 const SHIN = 0.44;
@@ -29,8 +30,11 @@ export const AXLE_F = 0.31, AXLE_B = -0.29;
 export const WHEEL_R = 0.06;
 /** Top of the deck, and its underside (what slides on a rail). */
 const DECK_TOP = 0.105, DECK_BASE = 0.075;
-/** The snow scooter stands a little taller, on its skis. */
-const SNOW_LIFT = 0.03;
+/** The snow scooter stands a little taller, on its skis; the dirt scooter taller still, over its big tyres. */
+const LIFT: Record<ScooterKind, number> = { scooter: 0, snow: 0.03, dirt: 0.05 };
+/** The dirt scooter's back wheel sits further back, clear of the back foot. */
+const AXLE_BACK: Record<ScooterKind, number> = { scooter: AXLE_B, snow: AXLE_B, dirt: AXLE_F - 0.72 };
+const DIRT_R = 0.1;
 /** Grips: height above the ground and how far out each side. */
 export const GRIP_Y = 0.88, GRIP_Z = 0.22;
 /** Feet on the deck: the front (left) foot ahead, the back foot angled out a little. */
@@ -80,7 +84,7 @@ const GRINDS: Record<string, { yaw: number; pitch: number; at: number }> = {
 function placeholderScooter(kind: ScooterKind): [THREE.Object3D, THREE.Object3D] {
   const deck = new THREE.Group(), bars = new THREE.Group();
   const metal = toon(0x3a7bd5), grip = toon(0x222222), wheel = toon(0xf2f2f2), ski = toon(0xe8402a);
-  const lift = kind === 'snow' ? SNOW_LIFT : 0;
+  const lift = LIFT[kind], wr = kind === 'dirt' ? DIRT_R : WHEEL_R, back = AXLE_BACK[kind] - AXLE_F;
   const plate = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.03, 0.115), metal);
   plate.position.set(-0.02 - AXLE_F, (DECK_TOP + DECK_BASE) / 2 + lift, 0);
   const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.16, 10), metal);
@@ -88,9 +92,9 @@ function placeholderScooter(kind: ScooterKind): [THREE.Object3D, THREE.Object3D]
   deck.add(plate, tube);
   const rear = kind === 'snow'
     ? new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.14), ski)
-    : new THREE.Mesh(new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 0.024, 16), wheel);
-  if (kind === 'snow') rear.position.set(AXLE_B - AXLE_F, 0.01, 0);
-  else { rear.rotation.x = Math.PI / 2; rear.position.set(AXLE_B - AXLE_F, WHEEL_R, 0); }
+    : new THREE.Mesh(new THREE.CylinderGeometry(wr, wr, 0.024, 16), wheel);
+  if (kind === 'snow') rear.position.set(back, 0.01, 0);
+  else { rear.rotation.x = Math.PI / 2; rear.position.set(back, wr, 0); }
   deck.add(rear);
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, GRIP_Y - 0.2, 8), metal);
   stem.position.set(0, (GRIP_Y + 0.2) / 2 + lift, 0);
@@ -99,9 +103,9 @@ function placeholderScooter(kind: ScooterKind): [THREE.Object3D, THREE.Object3D]
   cross.position.set(0, GRIP_Y + lift, 0);
   const front = kind === 'snow'
     ? new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.02, 0.14), ski)
-    : new THREE.Mesh(new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 0.024, 16), wheel);
+    : new THREE.Mesh(new THREE.CylinderGeometry(wr, wr, 0.024, 16), wheel);
   if (kind === 'snow') front.position.set(0.05, 0.01, 0);
-  else { front.rotation.x = Math.PI / 2; front.position.set(0, WHEEL_R, 0); }
+  else { front.rotation.x = Math.PI / 2; front.position.set(0, wr, 0); }
   bars.add(stem, cross, front);
   return [deck, bars];
 }
@@ -167,9 +171,9 @@ export class ScooterRig {
     const p = this.p;
     this.helmet = parts.head_skatehelmet?.clone() ?? p.head;
     this.snowHead = parts.head_snow?.clone() ?? p.head;
-    const [dk, bk] = placeholderScooter('scooter'), [ds, bs] = placeholderScooter('snow');
-    this.decks = { scooter: parts.scooter_deck?.clone() ?? dk, snow: parts.snowscoot_deck?.clone() ?? ds };
-    this.barsParts = { scooter: parts.scooter_bars?.clone() ?? bk, snow: parts.snowscoot_bars?.clone() ?? bs };
+    const [dk, bk] = placeholderScooter('scooter'), [ds, bs] = placeholderScooter('snow'), [dd, bd] = placeholderScooter('dirt');
+    this.decks = { scooter: parts.scooter_deck?.clone() ?? dk, snow: parts.snowscoot_deck?.clone() ?? ds, dirt: parts.dirtscoot_deck?.clone() ?? dd };
+    this.barsParts = { scooter: parts.scooter_bars?.clone() ?? bk, snow: parts.snowscoot_bars?.clone() ?? bs, dirt: parts.dirtscoot_bars?.clone() ?? bd };
     markModels([...Object.values(p), this.helmet, this.snowHead]);
 
     this.root.add(this.body);
@@ -179,7 +183,7 @@ export class ScooterRig {
     this.scoot.add(this.steer);
     this.steer.position.x = AXLE_F;
     this.steer.add(this.deckPivot, this.barsPivot);
-    for (const k of ['scooter', 'snow'] as const) {
+    for (const k of KINDS) {
       this.deckPivot.add(this.decks[k]);
       this.barsPivot.add(this.barsParts[k]);
     }
@@ -225,14 +229,14 @@ export class ScooterRig {
     paint(this.root);
   }
 
-  /** A snow scooter, beanie and goggles on the snow; a scooter and helmet everywhere else. */
+  /** A snow scooter, beanie and goggles on the snow; a dirt scooter on the farm; a scooter and helmet everywhere else. */
   setKind(kind: ScooterKind) {
     this.kind = kind;
-    for (const k of ['scooter', 'snow'] as const) {
+    for (const k of KINDS) {
       this.decks[k].visible = k === kind;
       this.barsParts[k].visible = k === kind;
     }
-    this.helmet.visible = kind === 'scooter';
+    this.helmet.visible = kind !== 'snow';
     this.snowHead.visible = kind === 'snow';
   }
 
@@ -266,7 +270,7 @@ export class ScooterRig {
     const p = this.p;
     const k = 1 - Math.exp(-dt * 14);
     const cap = (d: number, rate: number) => Math.max(-rate * dt, Math.min(rate * dt, d));
-    const lift0 = this.kind === 'snow' ? SNOW_LIFT : 0;
+    const lift0 = LIFT[this.kind], axleB = AXLE_BACK[this.kind];
 
     // Pose targets, as for the skater.
     let crouchT = 0.2, liftT = 0, leanT = 0.3;
@@ -349,7 +353,7 @@ export class ScooterRig {
     const noseUp = r.manual === 'Manual' || r.manual === 'Tail Press', noseDown = r.manual === 'Nose Manual' || r.manual === 'Nose Press';
     this.manualPitch += ((noseUp ? 0.32 : noseDown ? -0.3 : 0) - this.manualPitch) * k;
     const pitch = r.flipAngle + this.manualPitch;
-    const pv = r.flipping ? v3(0, 0.75, 0) : v3(this.manualPitch > 0 ? AXLE_B : AXLE_F, 0.02, 0);
+    const pv = r.flipping ? v3(0, 0.75, 0) : v3(this.manualPitch > 0 ? axleB : AXLE_F, 0.02, 0);
     const spin = r.spin ? r.spin.dir * r.spinProgress * (r.spin.deg === 360 ? Math.PI * 2 : Math.PI) : 0;
     const yaw = r.bodyYaw + spin;
     const ca = Math.cos(r.angle), sa = Math.sin(r.angle), cb = Math.cos(r.angle + pitch), sb = Math.sin(r.angle + pitch);
@@ -370,7 +374,7 @@ export class ScooterRig {
     const scootY = this.lift + lift0;
     // The hop tips it about the back wheel.
     const hc = Math.cos(this.hopPitch), hs = Math.sin(this.hopPitch);
-    this.scoot.position.set(AXLE_B - AXLE_B * hc, this.lift - AXLE_B * hs, 0);
+    this.scoot.position.set(axleB - axleB * hc, this.lift - axleB * hs, 0);
     this.scoot.rotation.set(0, 0, this.hopPitch);
     this.scoot.updateMatrix();
 
@@ -402,7 +406,8 @@ export class ScooterRig {
 
     // Body: hips over the back of the deck, leaning in to the bars.
     const hold3 = H.hip.clone().multiplyScalar(hw);
-    const hipY = STAND_HIP + lift0 - crouch * 0.42 + this.lift * 0.45 + hold3.y + this.feetUp * 0.06;
+    // A taller deck means sinking further on the standing leg to reach the ground with the push.
+    const hipY = STAND_HIP + lift0 * (1 - this.pushW) - crouch * 0.42 + this.lift * 0.45 + hold3.y + this.feetUp * 0.06;
     const hipX = -0.04 + hold3.x - this.lean * 0.05;
     p.pelvis.position.set(hipX, hipY, 0);
     p.torso.rotation.set(this.lean + crouch * 0.35, 0, 0);

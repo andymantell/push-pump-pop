@@ -176,6 +176,8 @@ export class Sound {
   private scooter = false;
   /** On inline skates: eight small hard wheels, plastic boots and frames, skating strides. */
   private skates = false;
+  /** The dirt scooter on the farm: fat pneumatic tyres instead of urethane wheels. */
+  private fat = false;
   /** On a downhill bike: knobbly tyres, a ticking freewheel, a chain that slaps and shocks that soak up landings. */
   private bike = false;
   /** In a kayak: paddle strokes, splashes and the river. */
@@ -364,6 +366,7 @@ export class Sound {
   setScene(b: Biome, snow: boolean, bound = snow, scooter = false, bike = false, kayak = false, skates = false) {
     this.scooter = scooter;
     this.skates = skates;
+    this.fat = scooter && b.id === 'farm';
     this.bike = bike;
     this.kayak = kayak;
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
@@ -407,8 +410,8 @@ export class Sound {
     const lvl = rolling ? Math.pow(Math.min(1, speed / 9), 0.8) * (r.manual ? 0.6 : 1) * 0.22 * duck : 0;
     const roll = this.roll!;
     roll.gain.gain.setTargetAtTime(lvl, t, lvl > 0 ? (duck < 1 ? 0.01 : 0.07) : 0.015);
-    // Little inline wheels hum higher than a skateboard's.
-    const hum = this.skates && !this.snow ? 1.35 : 1;
+    // Little inline wheels hum higher than a skateboard's; big air-filled tyres lower.
+    const hum = this.skates && !this.snow ? 1.35 : this.fat ? 0.75 : 1;
     roll.rumble.frequency.setTargetAtTime((p.rumble.f + p.rumble.fSpeed * speed) * hum, t, 0.1);
     roll.hiss.frequency.setTargetAtTime(p.hiss.f + p.hiss.fSpeed * speed, t, 0.1);
     roll.gritSrc.playbackRate.setTargetAtTime(0.3 + speed / 10, t, 0.1);
@@ -704,6 +707,13 @@ export class Sound {
       this.tone(t, { f: 70, fEnd: 38, gain: 0.5 * s, attack: 0.02, decay: 0.25 });
       this.burst(t + 0.02, { buf: this.pink, type: 'bandpass', f: 500, q: 1.2, gain: 0.25 * s, attack: 0.03, decay: 0.18, fEnd: 250 });
       for (let i = 0; i < 2 + Math.round(s * 2); i++) this.clack(t + 0.06 + i * 0.04, 1600 + Math.random() * 900, 3, 0.1 * s);
+    } else if (this.fat) {
+      // Fat tyres squashing down, back then front: a soft rubbery thud, and the fender rattling.
+      for (const [dt, g] of [[0, 1], [0.04, 0.8]]) {
+        this.tone(t + dt, { f: 110, fEnd: 50, gain: 0.4 * g * s, attack: 0.004, decay: 0.09 });
+        this.burst(t + dt, { type: 'bandpass', f: 380, q: 1, gain: 0.5 * g * s, attack: 0.003, decay: 0.06 });
+      }
+      if (s > 0.5) this.clack(t + 0.06, 1900 + Math.random() * 600, 4, 0.1 * s);
     } else if (this.skates && !this.snow) {
       // Both skates touching down, one just after the other: little wheels and a plastic knock.
       for (const [dt, g] of [[0, 0.8], [0.025, 0.7]]) this.burst(t + dt, { type: 'bandpass', f: 1500, q: 1.4, gain: 0.35 * g * s, decay: 0.04 });

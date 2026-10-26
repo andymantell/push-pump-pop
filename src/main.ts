@@ -278,7 +278,7 @@ function loadTrack(d: TrackDef) {
   rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow: snow && !bike, mountain, scooter: scoot, roller: skates, mtb: bike, kayak: boat, gravity: b.gravity };
   kayak.setBoat(isPipe ? 'play' : 'river');
   skater.setBoard(snow ? 'snow' : mountain ? 'mountain' : 'skate');
-  scooter.setKind(snow ? 'snow' : 'scooter');
+  scooter.setKind(snow ? 'snow' : d.biome === 'farm' ? 'dirt' : 'scooter');
   roller.setKind(snow ? 'blades' : mountain ? 'offroad' : 'skates');
   roller.setSpace(d.biome === 'moon');
   skater.setSpace(d.biome === 'moon');

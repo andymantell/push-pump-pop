@@ -916,7 +916,8 @@ def build_scooter():
 
     The steering axis is straight up through the front axle. `*_deck` (deck, back wheel or rear
     ski, head tube) whips round it; `*_bars` (bars, fork, front wheel or front ski) spins round it.
-    The deck runs back along -X; its top is at 0.105 (0.135 on the snow scooter), grips at 0.88.
+    The deck runs back along -X; its top is at 0.105 (0.135 on the snow scooter, 0.155 on the
+    dirt scooter), grips at 0.88 (plus the same lift).
     """
     reset()
     frame_m = mat('scooter_frame', (122, 79, 216))
@@ -1029,6 +1030,7 @@ def build_scooter():
     bars.append(cube(frame_dk, (0.08, 0.07, 0.04), loc=(0.0, 0, 0.045), bevel=0.01))
     bars.append(board(ski_m, -0.16, 0.26, 0.17, 1))
     parts.append(join('snowscoot_bars', bars))
+    parts += dirt_scooter(frame_m, frame_dk, grip_tape, graphic, bar_m, grip_m, tyre_m, bolt_m)
     # Every part turns about the front axle, so put its origin there rather than at its first piece.
     bpy.context.scene.cursor.location = (0, 0, 0)
     for o in parts:
@@ -1037,6 +1039,106 @@ def build_scooter():
         bpy.context.view_layer.objects.active = o
         bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
     export(os.path.join(OUT, 'scooter.glb'), parts)
+
+
+# The dirt scooter, ridden down the farm's tracks. Like real ones (Razor RDS, Oxelo MF Dirt):
+# 200 mm pneumatic tyres with a knobbly tread on nylon hubs, a deck lifted to clear them, a
+# longer wheelbase, a BMX-style fork, tall Y-shaped riser bars and a fender brake at the back.
+DIRT_R, DIRT_LIFT, DIRT_XB = 0.1, 0.05, -0.72
+
+
+def dirt_wheel(tyre_m, hub_m, bolt_m):
+    """A 200 mm pneumatic wheel at the origin, axle along Y: knobbly tyre on a five-spoke hub."""
+    R = DIRT_R
+    bits = []
+    bpy.ops.mesh.primitive_torus_add(major_radius=R - 0.03, minor_radius=0.03, rotation=(math.pi / 2, 0, 0), major_segments=40, minor_segments=10)
+    t = bpy.context.object
+    t.scale = (1, 1, 0.85)  # local Z is across the wheel once it's stood up
+    apply_tf(t)
+    bits.append(finish(t, tyre_m))
+    # Blocky knobs: a staggered centre row and a shoulder row each side.
+    n = 20
+    for k in range(n):
+        a = 2 * math.pi * k / n
+        c, s = math.cos(a), math.sin(a)
+        bits.append(cube(tyre_m, (0.02, 0.022, 0.014), loc=(c * (R - 0.005), 0, s * (R - 0.005)), rot=(0, -a + math.pi / 2, 0), bevel=0.003))
+        a2 = a + math.pi / n
+        c2, s2 = math.cos(a2), math.sin(a2)
+        for y in (-0.019, 0.019):
+            bits.append(cube(tyre_m, (0.016, 0.014, 0.013), loc=(c2 * (R - 0.011), y, s2 * (R - 0.011)), rot=(0, -a2 + math.pi / 2, 0), bevel=0.003))
+    # Hub: a coloured rim, dark between the spokes, a steel axle bolt in the middle.
+    bits.append(cyl(hub_m, 0.05, 0.04, rot=(math.pi / 2, 0, 0), verts=24, bevel=0.004))
+    for side in (1, -1):
+        bits.append(cyl(tyre_m, 0.039, 0.003, loc=(0, side * 0.021, 0), rot=(math.pi / 2, 0, 0), verts=20))
+        for k in range(5):
+            a = 2 * math.pi * k / 5
+            bits.append(cube(hub_m, (0.04, 0.006, 0.011), loc=(0.02 * math.cos(a), side * 0.022, 0.02 * math.sin(a)), rot=(0, -a, 0)))
+    bits.append(cyl(hub_m, 0.017, 0.05, rot=(math.pi / 2, 0, 0), verts=14))
+    bits.append(cyl(bolt_m, 0.009, 0.076, rot=(math.pi / 2, 0, 0), verts=10))
+    # The valve, so it reads as a tyre with air in it.
+    bits.append(cyl(bolt_m, 0.004, 0.012, loc=(0.04, 0.012, 0.03), rot=(0, 0.93, 0), verts=6))
+    return bits
+
+
+def dirt_scooter(frame_m, frame_dk, grip_tape, graphic, bar_m, grip_m, hub_m, bolt_m):
+    """`dirtscoot_deck` and `dirtscoot_bars`, set out like the stunt scooter's."""
+    R, lift, xb = DIRT_R, DIRT_LIFT, DIRT_XB
+    tyre_m = mat('dirt_tyre', (46, 42, 40))
+    z0 = 0.075 + lift
+    d = []
+    # A wider, longer deck with three ribs underneath and the graphic along its sides.
+    d.append(cube(frame_m, (0.5, 0.128, 0.032), loc=(-0.32, 0, z0 + 0.016), bevel=0.012, segs=3))
+    d.append(cube(grip_tape, (0.46, 0.11, 0.003), loc=(-0.32, 0, z0 + 0.0325)))
+    d.append(cube(graphic, (0.38, 0.132, 0.01), loc=(-0.33, 0, z0 + 0.014)))
+    for y in (-0.038, 0, 0.038):
+        d.append(cube(frame_dk, (0.44, 0.014, 0.014), loc=(-0.32, y, z0 - 0.004), bevel=0.004))
+    # Neck rising forward to a tall head tube over the big front tyre.
+    d.append(cube(frame_m, (0.17, 0.075, 0.04), loc=(-0.075, 0, z0 + 0.07), rot=(0, -0.72, 0), bevel=0.012))
+    d.append(cyl(frame_m, 0.03, 0.16, loc=(0, 0, 0.335), verts=20, bevel=0.004))
+    for z in (0.26, 0.41):
+        d.append(cyl(frame_dk, 0.033, 0.014, loc=(0, 0, z), verts=20))
+    # Dropouts wide enough for the fat tyre, and the axle bolt through them.
+    for s in (1, -1):
+        d.append(cube(frame_m, (0.2, 0.01, 0.05), loc=(xb + 0.08, s * 0.036, R + 0.025), rot=(0, -0.12, 0), bevel=0.004))
+        d.append(cyl(bolt_m, 0.013, 0.006, loc=(xb, s * 0.043, R), rot=(math.pi / 2, 0, 0), verts=6))
+    # A steel fender brake curving over the back tyre, with a rubber pad underneath to stamp on.
+    for k in range(9):
+        a = math.radians(30 + k * 15)
+        r = R + 0.016
+        d.append(cube(bar_m, (0.032, 0.07, 0.005), loc=(xb + r * math.cos(a), 0, R + r * math.sin(a)), rot=(0, math.pi / 2 - a, 0), bevel=0.002))
+    d.append(cube(frame_dk, (0.05, 0.04, 0.006), loc=(xb + 0.035, 0, 2 * R + 0.006), rot=(0, 0.3, 0), bevel=0.002))
+    for b in dirt_wheel(tyre_m, hub_m, bolt_m):
+        b.location.x += xb
+        b.location.z += R
+        d.append(b)
+    parts = [join('dirtscoot_deck', d)]
+
+    top = SCOOTER_GRIP + lift
+    b = []
+    # BMX-style fork: a wide crown and two legs either side of the tyre.
+    b.append(cube(frame_m, (0.06, 0.115, 0.03), loc=(0, 0, 0.24), bevel=0.01))
+    for s in (1, -1):
+        b.append(limb(frame_m, (0.0, s * 0.045, R), (0.0, s * 0.045, 0.235), 0.011, 0.015, verts=10))
+        b.append(cyl(bolt_m, 0.013, 0.006, loc=(0, s * 0.052, R), rot=(math.pi / 2, 0, 0), verts=6))
+    # Clamp on top of the head tube, then Y bars: one tube up, splitting into two risers.
+    b.append(cyl(frame_dk, 0.033, 0.07, loc=(0, 0, 0.452), verts=20, bevel=0.006))
+    for z in (0.432, 0.472):
+        b.append(cube(bolt_m, (0.016, 0.03, 0.012), loc=(-0.036, 0, z), bevel=0.003))
+    split = top - 0.24
+    b.append(cyl(bar_m, 0.019, split - 0.48, loc=(0, 0, (split + 0.48) / 2), verts=16))
+    for s in (1, -1):
+        b.append(limb(bar_m, (0, 0, split - 0.01), (0, s * 0.13, top), 0.016, 0.016, verts=12))
+    b.append(cyl(bar_m, 0.011, 0.2, loc=(0, 0, top - 0.11), rot=(math.pi / 2, 0, 0), verts=10))
+    b.append(cyl(bar_m, 0.016, 0.6, loc=(0, 0, top), rot=(math.pi / 2, 0, 0), verts=16))
+    for s in (1, -1):
+        b.append(cyl(grip_m, 0.022, 0.13, loc=(0, s * GRIP_Z_M, top), rot=(math.pi / 2, 0, 0), verts=18, bevel=0.006))
+        b.append(cyl(grip_m, 0.028, 0.012, loc=(0, s * (GRIP_Z_M - 0.07), top), rot=(math.pi / 2, 0, 0), verts=18, bevel=0.003))
+        b.append(cyl(frame_m, 0.019, 0.008, loc=(0, s * (GRIP_Z_M + 0.067), top), rot=(math.pi / 2, 0, 0), verts=14))
+    for w in dirt_wheel(tyre_m, hub_m, bolt_m):
+        w.location.z += R
+        b.append(w)
+    parts.append(join('dirtscoot_bars', b))
+    return parts
 
 
 # ---------------------------------------------------------------- inline skates

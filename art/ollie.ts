@@ -3,7 +3,7 @@
 // a 360 flip or hardflip, ?grab=up etc.
 // a held grab, ?spin=right a body spin, ?snow=1 the snowboard; ?at=0,0.03,... the frame times
 // in seconds after the pop, ?rail=1 a hop onto a rail, and ?views=side,three-quarter,back the camera angles.
-// ?ride=scooter rides the scooter instead, ?ride=roller inline skates (?kind=offroad on the farm's); ?then=left a second swipe 0.12 s after the first
+// ?ride=scooter rides the scooter instead (?kind=dirt the farm's dirt scooter), ?ride=roller inline skates (?kind=offroad on the farm's); ?then=left a second swipe 0.12 s after the first
 // (a double whip, or a grind style once on the rail). ?v=0&swipe=none starts from a standstill,
 // pushing off: ?at= is then seconds from the start.
 import * as THREE from 'three';
@@ -47,7 +47,7 @@ const mtb = q.get('ride') === 'mtb';
 const roller = q.get('ride') === 'roller';
 const skater = mtb ? new MtbRig(assets.parts) : scoot ? new ScooterRig(assets.parts) : roller ? new RollerRig(assets.parts) : new Skater(assets.parts);
 if (skater instanceof RollerRig) skater.setKind(snow ? 'blades' : q.get('kind') === 'offroad' ? 'offroad' : 'skates');
-else if (skater instanceof ScooterRig) skater.setKind(snow ? 'snow' : 'scooter');
+else if (skater instanceof ScooterRig) skater.setKind(snow ? 'snow' : q.get('kind') === 'dirt' ? 'dirt' : 'scooter');
 else if (skater instanceof MtbRig) skater.setSnow(snow);
 else skater.setBoard(snow ? 'snow' : 'skate');
 scene.add(skater.root);
