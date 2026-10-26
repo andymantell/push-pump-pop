@@ -281,20 +281,30 @@ player.onClose = () => {
   replayFrom = null;
   $('hud').classList.remove('hidden');
   if (state === 'finished') show('results');
-  else {
-    $('menu').classList.remove('hidden');
-    // Anything held when the replay opened has been let go of by now.
-    if (rider.grab) rider.release();
-    keyLean = 0;
-    applyLean();
-    resumeTimer = 0.8;
-    popup('GO!', 'big');
-  }
+  else backToRiding();
 };
+/** Back into the run after a replay or the pause menu, with a moment to get ready. */
+function backToRiding() {
+  show(null);
+  state = 'playing';
+  // Anything held when the run stopped has been let go of by now.
+  if (rider.grab) rider.release();
+  keyLean = 0;
+  applyLean();
+  resumeTimer = 0.8;
+  popup('GO!', 'big');
+}
+/** The menu button mid-run: stop everything and offer Retry, Keep riding or All tracks. */
+function pause() {
+  if (state !== 'playing') return;
+  state = 'paused';
+  $('p-track').textContent = def.name;
+  show('pause');
+}
 chip.addEventListener('click', () => watchReplay(chipClip ?? replays.clips[0]));
 $('watch').addEventListener('click', () => { replays.flush(); watchReplay(replays.clips[0]); });
 
-type State = 'title' | 'select' | 'playing' | 'finished' | 'replay';
+type State = 'title' | 'select' | 'playing' | 'paused' | 'finished' | 'replay';
 let state: State = 'title';
 let time = 0;
 let finishTimer = 0;
@@ -315,7 +325,7 @@ input.onLean = (l) => { keyLean = l; applyLean(); };
 const tilt = new Tilt();
 tilt.onLean = (l) => { tiltLean = l; applyLean(); };
 
-const panels = ['title', 'select', 'card', 'results', 'guide', 'move'];
+const panels = ['title', 'select', 'card', 'results', 'guide', 'move', 'pause'];
 function show(panel: string | null) {
   for (const p of panels) $(p).classList.toggle('hidden', p !== panel);
   $('menu').classList.toggle('hidden', panel !== null);
@@ -537,18 +547,23 @@ title.addEventListener('pointerdown', () => {
 });
 for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) title.addEventListener(ev, () => clearTimeout(holdTimer));
 $('tracks').addEventListener('click', () => openSelect());
-$('menu').addEventListener('click', () => openSelect());
+$('menu').addEventListener('click', pause);
+// Retry starts the same track again on the same ride, lives and all.
+$('retry').addEventListener('click', () => start(def));
+$('resume').addEventListener('click', backToRiding);
+$('ptracks').addEventListener('click', () => openSelect());
 $('back').addEventListener('click', () => { show('title'); state = 'title'; });
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' && (state === 'playing' && chipClip || state === 'finished')) { replays.flush(); watchReplay(chipClip ?? replays.clips[0]); }
-  else if (e.code === 'Escape' && state === 'playing') openSelect();
+  else if (e.code === 'Escape' && state === 'playing') pause();
+  else if (e.code === 'Escape' && state === 'paused') backToRiding();
   else if (e.code === 'KeyM') { sound.enabled = !sound.enabled; drawSound(); toast(sound.enabled ? 'Sound on' : 'Sound off'); }
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'title') { e.preventDefault(); openSelect(); }
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'finished') { e.preventDefault(); start(def); }
   else if ((e.code === 'Enter' || e.code === 'Space') && !$('card').classList.contains('hidden') && cardDef) { e.preventDefault(); start(cardDef); }
 });
 
-watchForUpdates(() => state === 'playing' || replayFrom === 'playing', () => openSelect());
+watchForUpdates(() => state === 'playing' || state === 'paused' || replayFrom === 'playing', () => openSelect());
 registerOffline();
 keepSaves();
 
@@ -628,6 +643,13 @@ function frame(now: number) {
     world.update(r.dt, r.follow.x, r.follow.y);
     lampLights.update(r.follow.x + 4);
     sound.update(dt, rider, false, 1);
+    effect.render(scene, camera);
+    requestAnimationFrame(frame);
+    return;
+  }
+  if (state === 'paused') {
+    // The pause menu holds the run still, timer and all.
+    sound.update(dt, rider, false, 0.5);
     effect.render(scene, camera);
     requestAnimationFrame(frame);
     return;

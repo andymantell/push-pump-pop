@@ -24,6 +24,8 @@ Land a spin or flip before it's nearly round and you bail too. A manual keeps yo
 On the Snowy Mountain tracks the skater rides a snowboard: no pushing, and since your feet are strapped in, the flip-side swipes become snowboard tricks (left BS Shifty, right FS Shifty, down Tuck Knee) and manuals become tail and nose presses. On Autumn Farm he rides a mountain board with big tyres and a helmet: feet strapped in again, so no pushing and the same swipe tricks as the snowboard (manuals stay manuals, on wheels).
 Tilt is measured from however the device was held when the run started. On iPhone and iPad the game asks for motion access on your first tap.
 
+Tap the ☰ button at the top during a run to pause. The pause menu has a big **RETRY** button at the top that starts the same track again on the same ride, plus Keep riding and All tracks. Keyboard: Escape pauses and resumes.
+
 Land a combo worth 1,500 points or more and a **REPLAY** button pops up for a few seconds: tap it to watch the combo back in slow motion (the run, and the half-pipe timer, wait for you). Drag along the bar to scrub, tap the picture or the play button to pause, and pick 1×, ½× or ¼× speed. The results screen keeps your five best combos from the run to watch. Keyboard: R to open, Space to pause, left/right arrows to step, up/down for speed, Escape to close.
 
 Sound starts on your first tap (iPhone and iPad need one). Every surface sounds different, and each world has its own ambience. Turn sound off with the SOUND button on the title screen, or M on a keyboard. On iPhone and iPad the ring/silent switch or the mute setting silences it too. All sound is synthesised in `src/audio.ts`; credits and the rules for adding recorded sounds are in `SOUNDS.md`.

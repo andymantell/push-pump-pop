@@ -99,6 +99,9 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 .panel > :first-child { margin-top: auto; }
 .panel > :last-child { margin-bottom: auto; }
 .panel button.small { font-size: 16px; padding: 10px 28px; }
+.panel button.big { font-size: 34px; padding: 22px 64px; min-width: min(80vw, 340px); }
+.panel button.big:active { box-shadow: 0 2px 0 #b84a17; }
+#p-track { font-size: 18px; font-weight: 900; margin-top: -10px; }
 .panel button.alt { background: #2f8fd8; box-shadow: 0 6px 0 #1e5f94; }
 .panel .buttons { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
 #r-track { font-size: 18px; font-weight: 900; margin-top: -10px; }
