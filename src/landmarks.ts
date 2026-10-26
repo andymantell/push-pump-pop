@@ -1520,6 +1520,97 @@ export const LANDMARKS: Record<string, Landmark> = {
     g.add(mesh(new THREE.PlaneGeometry(12.4, 6), toon(0xffffff, { map: tex }), [0, 3.1, 0.41]));
     return g;
   } },
+  // ---- Muddy Woods
+  treehouse: { z: -14, r: 6, build: () => {
+    // A big beech with a plank treehouse in its arms, a rope ladder and a little flag.
+    const bark = 0x6a5a48, leaf = 0x4e8a3a, leaf2 = 0x6aa04a, plank = 0xa8743e;
+    const g = group(cyl(1.0, 1.6, 12, bark, [0, 6, 0], 9));
+    for (const [x, y, r, c] of [[0, 13.5, 4.2, leaf], [-3, 12, 3, leaf2], [3.2, 12.4, 3.1, leaf2], [0.5, 16, 3, leaf2], [-1.8, 15, 2.6, leaf]] as const) g.add(ball(r, c, [x, y, 0], 9));
+    // The platform and hut.
+    g.add(box(7, 0.35, 5, plank, [0, 7.2, 1.2]), box(4.2, 3, 3.4, 0xc08a50, [0.6, 8.9, 1.6]));
+    g.add(mesh(new THREE.ConeGeometry(3.4, 1.8, 4), 0x8a3a2a, [0.6, 11.3, 1.6], [0, Math.PI / 4, 0]));
+    g.add(box(1.0, 1.0, 0.1, 0x2a2018, [-0.2, 9.1, 3.32]), box(1.0, 1.7, 0.1, 0x5a3a20, [1.6, 8.25, 3.32]));
+    for (const x of [-3.3, 3.3]) g.add(box(0.12, 1.0, 5, plank, [x, 7.9, 1.2]));
+    for (const x of [-3.3, -2.2, -1.1, 2.6, 3.3]) g.add(box(0.12, 1.0, 0.12, plank, [x, 7.9, 3.65]));
+    g.add(box(6.8, 0.12, 0.12, plank, [0, 8.4, 3.65]));
+    // Struts down to the trunk.
+    g.add(beam([-3, 7.0, 3.5], [-0.8, 4.2, 0.6], 0.25, plank), beam([3, 7.0, 3.5], [0.8, 4.2, 0.6], 0.25, plank));
+    // Rope ladder.
+    for (const x of [-2.7, -2.1]) g.add(beam([x, 7.0, 3.6], [x, 0.3, 3.8], 0.06, 0xd8c08a));
+    for (let y = 1; y < 7; y += 0.7) g.add(box(0.7, 0.08, 0.12, plank, [-2.4, y, 3.7]));
+    g.add(cyl(0.05, 0.05, 2.4, 0x3a3a3a, [2.4, 11.6, 1.6], 4), box(1.1, 0.6, 0.04, 0xf2c040, [2.95, 12.4, 1.6]));
+    return g;
+  } },
+  logcabin: { z: -12, r: 6, build: () => {
+    // A woodcutter's cabin of round logs, a stone chimney, a log pile and a chopping block.
+    const log = 0x8a5a32, end = 0xd8a868, stone = 0x8a8a84;
+    const g = new THREE.Group();
+    for (let i = 0; i < 9; i++) {
+      const y = 0.3 + i * 0.55;
+      g.add(cyl(0.3, 0.3, 8.4, log, [0, y, 2.2], 8, [0, 0, Math.PI / 2]), cyl(0.3, 0.3, 8.4, log, [0, y, -2.2], 8, [0, 0, Math.PI / 2]));
+      g.add(cyl(0.3, 0.3, 5, log, [-3.8, y + 0.27, 0], 8, [Math.PI / 2, 0, 0]), cyl(0.3, 0.3, 5, log, [3.8, y + 0.27, 0], 8, [Math.PI / 2, 0, 0]));
+    }
+    // Roof: two sloped planes.
+    g.add(box(9.4, 0.3, 3.6, 0x4a3a2e, [0, 6.0, 1.3], [0.62, 0, 0]), box(9.4, 0.3, 3.6, 0x4a3a2e, [0, 6.0, -1.3], [-0.62, 0, 0]));
+    g.add(box(4, 3.2, 1, 0x4a3a2e, [-3.8, 6, 0], [0, Math.PI / 2, 0]));
+    g.add(box(1.4, 2.6, 0.2, 0x5a3418, [1.2, 1.3, 2.55]), box(1.4, 1.1, 0.2, 0xffd88a, [-2, 2.6, 2.55]), box(1.6, 0.15, 0.3, log, [-2, 2.0, 2.6]));
+    // Chimney with a puff of smoke.
+    g.add(box(1.2, 8, 1.2, stone, [3.2, 4, -1]));
+    for (const [y, r, x] of [[8.6, 0.6, 3.3], [9.6, 0.8, 3.6], [10.8, 1.0, 4.1]] as const) g.add(ball(r, 0xe8e8ec, [x, y, -1], 8));
+    // Log pile, each log end showing its rings.
+    for (let row = 0; row < 3; row++) for (let k = 0; k < 4 - row; k++) {
+      const x = -7.2 + k * 0.7 + row * 0.35, y = 0.32 + row * 0.6;
+      g.add(cyl(0.32, 0.32, 2.4, log, [x, y, 1.6], 8, [Math.PI / 2, 0, 0]), cyl(0.26, 0.26, 0.02, end, [x, y, 2.81], 8, [Math.PI / 2, 0, 0]));
+    }
+    g.add(cyl(0.55, 0.6, 0.9, log, [6.2, 0.45, 2.5], 10), cyl(0.5, 0.5, 0.02, end, [6.2, 0.91, 2.5], 10));
+    g.add(beam([6.1, 0.9, 2.5], [6.6, 1.8, 2.7], 0.08, 0x7a5a3a), box(0.4, 0.3, 0.08, 0xb8b8c0, [6.65, 1.85, 2.7]));
+    return g;
+  } },
+  bigoak: { z: -18, r: 8, build: (rand) => {
+    // An ancient oak, wider than a house, with a tyre swing.
+    const bark = 0x5a4a3a, leaf = 0x3e7a34, leaf2 = 0x5a943e;
+    const g = group(cyl(2.0, 3.0, 8, bark, [0, 4, 0], 10));
+    for (let a = 0; a < 5; a++) {
+      const ang = (a / 5) * Math.PI * 2 + 0.4;
+      g.add(beam([0, 0.8, 0], [Math.cos(ang) * 4, 0, Math.sin(ang) * 4], 0.9, bark));
+    }
+    for (const [x, up, len] of [[-1, 7.5, 7], [1, 7, 7.5], [0, 8, 4], [-1, 6, 5.5]] as const) g.add(beam([0, up - 1, 0], [x * len, up + 3.5, 0.5], 0.9, bark));
+    for (let i = 0; i < 9; i++) {
+      const x = (rand() - 0.5) * 16, y = 12 + rand() * 4.5, r = 3 + rand() * 1.8;
+      g.add(ball(r, i % 2 ? leaf : leaf2, [x, y, (rand() - 0.5) * 2], 9));
+    }
+    // A branch for the swing.
+    g.add(beam([1, 7.5, 0.4], [6.8, 8.3, 1.2], 0.5, bark));
+    g.add(beam([5.6, 8.1, 1.1], [5.6, 2.2, 1.6], 0.05, 0xd8c08a));
+    g.add(mesh(new THREE.TorusGeometry(0.75, 0.28, 8, 16), 0x2a2a2e, [5.6, 1.6, 1.6]));
+    return g;
+  } },
+  stonebridge: { z: -16, r: 9, build: () => {
+    // An old mossy stone railway viaduct striding across the valley on round arches.
+    const stone = 0x9a948a, moss = 0x5e8a44;
+    const span = 6, n = 4, h = 11, pier = 1.4, w = span * n + pier;
+    const face = new THREE.Shape();
+    face.moveTo(-w / 2, 0); face.lineTo(w / 2, 0); face.lineTo(w / 2, h); face.lineTo(-w / 2, h); face.lineTo(-w / 2, 0);
+    const rad = (span - pier) / 2, spring = h - 2.2 - rad;
+    for (let i = 0; i < n; i++) {
+      const cx = -w / 2 + pier + rad + i * span;
+      const hole = new THREE.Path();
+      hole.moveTo(cx - rad, 0); hole.lineTo(cx + rad, 0); hole.lineTo(cx + rad, spring);
+      hole.absarc(cx, spring, rad, 0, Math.PI, false);
+      hole.lineTo(cx - rad, 0);
+      face.holes.push(hole);
+    }
+    const geo = new THREE.ExtrudeGeometry(face, { depth: 3, bevelEnabled: false, curveSegments: 10 });
+    const g = group(mesh(geo, stone, [0, 0, -1.5]));
+    g.add(box(w + 0.6, 0.5, 3.4, 0x7e786e, [0, h + 0.25, 0]), box(w + 0.6, 0.18, 3.5, moss, [0, h + 0.55, 0]));
+    // Parapet posts, moss at the pier feet and ivy hanging down the face.
+    for (let x = -w / 2; x <= w / 2; x += 1.5) g.add(box(0.3, 0.8, 0.3, stone, [x, h + 0.9, 1.4]));
+    for (let i = 0; i <= n; i++) g.add(box(pier + 0.4, 0.7, 3.4, moss, [-w / 2 + pier / 2 + i * span, 0.35, 0]));
+    for (const [x, len] of [[-9.4, 4], [-3.4, 2.5], [2.6, 5], [8.6, 3]] as const) {
+      g.add(box(1.0, len, 0.2, moss, [x, h - len / 2, 1.55]), ball(0.5, moss, [x, h - len, 1.6], 7));
+    }
+    return g;
+  } },
   startgate: { z: -6, r: 4, build: () => {
     // The race's inflatable arch and a timing screen.
     const g = new THREE.Group();
@@ -1594,4 +1685,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'dh-urban-1': ['startgate', 'belltower'], 'dh-urban-2': ['funicular'], 'dh-urban-3': ['mural', 'belltower'], 'dh-urban-4': ['funicular', 'mural'],
   'dh-urban-5': ['belltower', 'crane'], 'dh-urban-6': ['mural', 'startgate'], 'dh-urban-7': ['funicular', 'belltower'], 'dh-urban-8': ['startgate', 'mural'],
   'dh-urban-9': ['lighthouse', 'crane'], 'dh-urban-10': ['startgate', 'funicular'],
+  'dh-mud-1': ['startgate', 'logcabin'], 'dh-mud-2': ['bigoak'], 'dh-mud-3': ['treehouse', 'stonebridge'], 'dh-mud-4': ['logcabin', 'bigoak'],
+  'dh-mud-5': ['stonebridge', 'treehouse'], 'dh-mud-6': ['waterfall', 'logcabin'], 'dh-mud-7': ['bigoak', 'stonebridge'], 'dh-mud-8': ['startgate', 'treehouse'],
+  'dh-mud-9': ['stonebridge', 'bigoak'], 'dh-mud-10': ['startgate', 'stonebridge'],
 };

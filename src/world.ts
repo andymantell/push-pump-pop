@@ -2613,6 +2613,14 @@ export class World {
         this.placeProp(houses[k], x, z, 0.9 + r() * 0.15, (r() - 0.5) * 0.06);
       }
     }
+    // The muddy woods: a wall of beeches behind the course, so it really is a wood.
+    if (b.id === 'dh-mud') {
+      for (let x = -10; x < end; x += 2.8 + r() * 2.6) {
+        const z = -13 - r() * 14;
+        if (this.clearings.some((c) => Math.abs(x - c.x) < c.r + 2 && Math.abs(z - c.z) < c.r + 3)) continue;
+        this.placeProp(r() < 0.7 ? 'beech' : 'tree', x, z, 1 + r() * 0.5, r() * Math.PI * 2);
+      }
+    }
     for (let x = -10; x < end; x += 3 + r() * 4) {
       const z = b.backZ[0] + r() * (b.backZ[1] - b.backZ[0]);
       const kind = this.pickBack(), scale = 0.8 + r() * 0.6;
@@ -2641,7 +2649,7 @@ export class World {
 
   /** After dark, worlds without street lamps get lamps (towns) or burning torches (the wild). */
   private buildNightLights(end: number) {
-    const wild = ['desert', 'jungle', 'volcano', 'snow', 'farm', 'pirate'].includes(this.biome.id);
+    const wild = ['desert', 'jungle', 'volcano', 'snow', 'farm', 'pirate', 'dh-mud', 'dh-rocky', 'dh-shore'].includes(this.biome.id);
     if (!wild) {
       for (let x = 9; x < end; x += 18) this.placeProp('lamp', x, -2.6);
       return;

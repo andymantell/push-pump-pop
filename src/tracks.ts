@@ -21,11 +21,12 @@ import { DINO, DINO_MEGA } from './levels/dino';
 import { MOON, MOON_PIPE } from './levels/moon';
 import { SKY, SKY_MEGA } from './levels/sky';
 import { DH_URBAN } from './levels/dh-urban';
+import { DH_MUD } from './levels/dh-mud';
 
 export { PIPE_TIME, STOP_AFTER_FINISH } from './levels/common';
 export type { TrackDef } from './levels/common';
 
-export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA, ...DINO, DINO_MEGA, ...MOON, MOON_PIPE, ...SKY, SKY_MEGA, ...DH_URBAN];
+export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA, ...DINO, DINO_MEGA, ...MOON, MOON_PIPE, ...SKY, SKY_MEGA, ...DH_URBAN, ...DH_MUD];
 
 // Every track's scooter challenges. New tracks get their skateboard ones with scooter tricks
 // swapped in until they have their own (the scooter playtest lists them).
