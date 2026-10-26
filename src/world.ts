@@ -2890,7 +2890,7 @@ export class World {
   }
 
   update(dt: number, camX: number, camY: number) {
-    this.river?.update(dt);
+    this.river?.update(dt, camX);
     for (const b of this.belts) b.tex.offset.x -= (b.speed * dt) / 3;
     if (this.beacons.length) {
       // Warning beacons flash.

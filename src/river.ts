@@ -122,7 +122,7 @@ export function foamAlong(tr: Track): Float32Array {
         const x = (i0 + k) * DX, { crest, trough } = hl.wave;
         f[i0 + k] = x < crest ? 0.55 + 0.45 * (x - hl.x0) / (crest - hl.x0)
           : x < trough ? Math.max(0.12, 1 - ((x - crest) / (trough - crest)) * 1.6)
-          : x < trough + 1.6 ? 0.4 : 0.06;
+          : x < trough + 2.4 ? 0.12 + 0.3 * Math.sin(Math.PI * (x - trough) / 2.4) : 0.06;
         continue;
       }
       // White from the trough up the pile, a sticky one boiling hardest.
@@ -145,6 +145,13 @@ export class River {
   private time = 0;
   /** Which way the water runs: downstream is +x, except on a standing wave, surfed facing upstream. */
   private dir = 1;
+  private wy!: Float32Array;
+  private width = 8;
+  /** Where the water breaks, throwing spray and shedding foam all the time. */
+  private emitters: Emitter[] = [];
+  private flecks!: Flecks;
+  private mist: Splashes;
+  private acc = 0;
 
   constructor(private track: Track, private biome: Biome) {
     if (track.holes.some((h) => h.wave)) this.dir = -1;
@@ -256,6 +263,14 @@ export class River {
 
     this.splashes = new Splashes(white);
     this.group.add(this.splashes.points);
+    // Soft clouds of mist rising off the biggest white water.
+    this.mist = new Splashes(white, 1.4, -0.6, 0.35);
+    this.group.add(this.mist.points);
+    this.wy = wy;
+    this.width = rv.width;
+    this.emitters = emittersAlong(tr, wy);
+    this.flecks = new Flecks(white, wy, this.dir, -z0 - rv.width * 0.5);
+    this.group.add(this.flecks.points);
   }
 
   /** The river bed under sample i, seen through the front: deeper under big water and drops. */
@@ -278,14 +293,36 @@ export class River {
     this.splashes.throw(x, y, n, up, along);
   }
 
-  update(dt: number) {
+  update(dt: number, focusX = 0) {
     this.time += dt;
+    // White water near the camera: a steady fizz of spray, and foam flecks floating off downstream.
+    this.acc += dt;
+    if (this.acc >= 1 / 30) {
+      const step = this.acc;
+      this.acc = 0;
+      for (const e of this.emitters) {
+        if (Math.abs(e.x - focusX) > 22) continue;
+        const n = e.spray * step * this.splashes.share;
+        for (let k = Math.floor(n + Math.random()); k > 0; k--) {
+          const z = 1.2 - Math.random() * (this.width + 2.4);
+          this.splashes.one(e.x + (Math.random() - 0.5) * e.len, this.wy[Math.max(0, Math.round(e.x / DX))] + 0.05, z, e.vx, e.up);
+        }
+        const m = e.mist * step * this.splashes.share;
+        for (let k = Math.floor(m + Math.random()); k > 0; k--) {
+          this.mist.one(e.x + (Math.random() - 0.5) * e.len, this.wy[Math.max(0, Math.round(e.x / DX))] + 0.2, 1 - Math.random() * (this.width + 1.5), e.vx * 0.3, 0.5, 1.2 + Math.random());
+        }
+        const f = e.foam * step * this.splashes.share;
+        for (let k = Math.floor(f + Math.random()); k > 0; k--) this.flecks.spawn(e.x + (Math.random() - 0.5) * e.len, 1.2 - Math.random() * (this.width + 2.4));
+      }
+    }
+    this.flecks.update(dt);
+    this.mist.update(dt);
     for (const t of this.flow) t.offset.x = -(this.time * FLOW * this.dir) / 4;
     for (const t of this.foam) { t.offset.x = -(this.time * FLOW * 1.25 * this.dir) / 3; t.offset.y = Math.sin(this.time * 1.7) * 0.02; }
     this.splashes.update(dt);
   }
 
-  setParticles(share: number) { this.splashes.share = share; }
+  setParticles(share: number) { this.splashes.share = share; this.flecks.share = share; }
 }
 
 /** A pool of spray drops: flung up, falling back, fading out. */
@@ -297,9 +334,9 @@ class Splashes {
   private next = 0;
   /** Share of drops to throw, from the quality setting. */
   share = 1;
-  private static readonly N = 400;
+  private static readonly N = 1400;
 
-  constructor(color: THREE.Color) {
+  constructor(color: THREE.Color, size = 0.24, private gravity = 14, opacity = 1) {
     const N = Splashes.N;
     this.pos = new Float32Array(N * 3).fill(-9999);
     this.vel = new Float32Array(N * 3);
@@ -314,7 +351,7 @@ class Splashes {
       c.fillStyle = gr;
       c.fillRect(0, 0, 32, 32);
     });
-    const m = new THREE.PointsMaterial({ color, size: 0.16, map: tex, transparent: true, depthWrite: false, sizeAttenuation: true });
+    const m = new THREE.PointsMaterial({ color, size, map: tex, transparent: true, depthWrite: false, sizeAttenuation: true, opacity });
     m.userData.outlineParameters = { visible: false };
     this.points = new THREE.Points(g, m);
     this.points.frustumCulled = false;
@@ -333,16 +370,118 @@ class Splashes {
     }
   }
 
+  /** One drop at (x, y, z), flung along at about `vx` and up at about `up`. */
+  one(x: number, y: number, z: number, vx: number, up: number, life = 0.35 + Math.random() * 0.45) {
+    const i = this.next;
+    this.next = (this.next + 1) % Splashes.N;
+    this.pos.set([x, y, z], i * 3);
+    this.vel.set([vx + (Math.random() - 0.5) * 1.5, up * (0.4 + Math.random() * 0.8), (Math.random() - 0.5) * 1.2], i * 3);
+    this.life[i] = life;
+  }
+
   update(dt: number) {
     const N = Splashes.N;
     for (let i = 0; i < N; i++) {
       if (this.life[i] <= 0) continue;
       this.life[i] -= dt;
       if (this.life[i] <= 0) { this.pos[i * 3 + 1] = -9999; continue; }
-      this.vel[i * 3 + 1] -= 14 * dt;
+      this.vel[i * 3 + 1] -= this.gravity * dt;
       this.pos[i * 3] += this.vel[i * 3] * dt;
       this.pos[i * 3 + 1] += this.vel[i * 3 + 1] * dt;
       this.pos[i * 3 + 2] += this.vel[i * 3 + 2] * dt;
+    }
+    (this.points.geometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+  }
+}
+
+/** A spot where the water breaks: how much spray and foam it sheds each second, and how. */
+interface Emitter { x: number; len: number; spray: number; foam: number; mist: number; up: number; vx: number }
+
+/** Every spot along a river where the water breaks: drops, holes, waves, rocks and wave crests. */
+function emittersAlong(tr: Track, wy: Float32Array): Emitter[] {
+  const out: Emitter[] = [];
+  const n = wy.length;
+  // The foot of each drop: a curtain of spray and lots of foam.
+  for (let i = 1; i < n; i++) {
+    const fall = tr.heights[i - 1] - tr.heights[i];
+    if (fall < 0.3) continue;
+    const foot = i * DX + 0.6 + Math.sqrt(fall) * 0.9;
+    out.push({ x: foot, len: 1.6, spray: 120 + fall * 80, foam: 40 + fall * 20, mist: 3 + fall * 3, up: 3 + fall * 1.5, vx: -0.5 });
+  }
+  // Holes boil, the water folding back upstream; sticky ones hardest.
+  for (const h of tr.holes) {
+    if (h.wave) {
+      // A standing wave breaks over its crest and tumbles back down the face (upstream, +x).
+      out.push({ x: h.wave.crest + 0.4, len: 1.2, spray: 110, foam: 12, mist: 3, up: 2.6, vx: 1.6 });
+      out.push({ x: h.wave.crest - 2, len: 2.5, spray: 0, foam: 30, mist: 0, up: 0, vx: 0 });
+      continue;
+    }
+    const mid = h.x0 + (h.x1 - h.x0) * 0.4;
+    out.push({ x: mid, len: (h.x1 - h.x0) * 0.5, spray: h.sticky ? 140 : 90, foam: h.sticky ? 40 : 28, mist: h.sticky ? 3 : 1.5, up: 2.6, vx: -1.2 });
+  }
+  // The pillow of water piling up against each rock.
+  for (const r of tr.splats) out.push({ x: r.x - 0.4, len: 0.8, spray: 40, foam: 10, mist: 0, up: 2.8, vx: -0.6 });
+  // Breaking crests of waves in the wave trains.
+  for (let i = 2; i < n - 2; i += 2) {
+    const x = i * DX;
+    if (tr.holeAt(x)) continue;
+    const c = -tr.curvature(x);
+    if (c > 0.35 && wy[i] >= wy[i - 2] && wy[i] >= wy[i + 2]) out.push({ x, len: 1, spray: 20 * Math.min(2, c), foam: 6, mist: 0, up: 1.8, vx: 0.5 });
+  }
+  return out;
+}
+
+/** Flecks of foam floating on the water, carried along with it and slowly fading. */
+class Flecks {
+  readonly points: THREE.Points;
+  private pos: Float32Array;
+  private life: Float32Array;
+  private speed: Float32Array;
+  private next = 0;
+  share = 1;
+  private static readonly N = 1200;
+
+  constructor(color: THREE.Color, private wy: Float32Array, private dir: number, _mid: number) {
+    const N = Flecks.N;
+    this.pos = new Float32Array(N * 3).fill(-9999);
+    this.life = new Float32Array(N);
+    this.speed = new Float32Array(N);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    const tex = canvasTexture(32, 32, (c) => {
+      // A squashed blob of bubbles, wider than tall, like foam seen low across the water.
+      c.fillStyle = 'rgba(255,255,255,0.95)';
+      for (const [x, y, r] of [[16, 18, 7], [9, 19, 5], [23, 19, 5], [13, 15, 4], [20, 15, 4]]) { c.beginPath(); c.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2); c.fill(); }
+    });
+    const m = new THREE.PointsMaterial({ color, size: 0.6, map: tex, transparent: true, depthWrite: false, sizeAttenuation: true, opacity: 0.9 });
+    m.userData.outlineParameters = { visible: false };
+    this.points = new THREE.Points(g, m);
+    this.points.frustumCulled = false;
+    this.points.renderOrder = 2;
+  }
+
+  spawn(x: number, z: number) {
+    const i = this.next;
+    this.next = (this.next + 1) % Flecks.N;
+    this.pos.set([x, this.at(x) + 0.03, z], i * 3);
+    this.life[i] = 2.5 + Math.random() * 2.5;
+    this.speed[i] = FLOW * (0.8 + Math.random() * 0.5) * this.dir;
+  }
+
+  private at(x: number) {
+    const i = Math.max(0, Math.min(this.wy.length - 1, Math.round(x / DX)));
+    return this.wy[i];
+  }
+
+  update(dt: number) {
+    const N = Flecks.N;
+    for (let i = 0; i < N; i++) {
+      if (this.life[i] <= 0) continue;
+      this.life[i] -= dt;
+      if (this.life[i] <= 0) { this.pos[i * 3 + 1] = -9999; continue; }
+      const x = this.pos[i * 3] + this.speed[i] * dt;
+      this.pos[i * 3] = x;
+      this.pos[i * 3 + 1] = this.at(x) + 0.03;
     }
     (this.points.geometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
   }

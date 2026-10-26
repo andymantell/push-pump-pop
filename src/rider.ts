@@ -346,6 +346,8 @@ const HOLE_DRAG = 1.2;
  * STICKY_TIME, when it flips you over.
  */
 /** On a standing wave: how hard the current pulls you back to the trough (per metre away), and how fast the rocking dies away. */
+/** How fast a capsized boat drifts with the current. */
+const ROLL_DRIFT = 3.5;
 const WAVE_PULL = 1.6, WAVE_DAMP = 0.35, WAVE_TOP = 6.5;
 export const STICKY_SPEED = 7, STICKY_TAPS = 3, STICKY_TIME = 4;
 const SPLAT_POINTS = 600;
@@ -1370,6 +1372,8 @@ export class Rider {
   private stepRoll(dt: number) {
     const roll = this.roll!;
     roll.t += dt;
+    // Upside down you just drift with the current, no faster than it flows.
+    if (this.v > ROLL_DRIFT) this.v = Math.max(ROLL_DRIFT, this.v - 6 * dt);
     if (roll.taps >= ROLL_TAPS) {
       // Back up! You keep going, a bit slower.
       this.roll = null;
