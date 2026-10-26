@@ -48,6 +48,7 @@ const PLANT_SHARE = 0.5;
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const DOWN = v3(0, -1, 0);
+const UP = v3(0, 1, 0);
 const smooth = (a: number, b: number, t: number) => {
   const u = Math.max(0, Math.min(1, (t - a) / (b - a)));
   return u * u * (3 - 2 * u);
@@ -220,6 +221,8 @@ export class Skater {
   private pushW = 0;
   /** A stride under way: once planted, the foot always drives right back. */
   private pushOn = false;
+  /** 0..1 how far the front foot has swivelled from across the board to pointing ahead. */
+  private frontTurn = 0;
   private bailT = 0;
   private bailBoard = new THREE.Vector3();
   /** 0..1 blend into the grab pose, and the last grab for easing out. */
@@ -513,7 +516,10 @@ export class Skater {
     // Ease in and out of pushing so the foot never snaps between the ground and the board.
     // No pushing on a snowboard or mountain board: both feet are strapped in.
     // Capped too: starting to push the moment you land, after a big crouch, mustn't fling the foot down.
-    const pushTo = (this.pushOn ? 1 : 0) - this.pushW;
+    // The front foot swivels to point ahead first, then the back foot steps off. Done
+    // pushing, the back foot goes back on across the board and the front swivels to match.
+    this.frontTurn += Math.max(-dt * 5, Math.min(dt * 5, ((this.pushOn || this.pushW > 0.1 ? 1 : 0) - this.frontTurn) * (1 - Math.exp(-dt * 14))));
+    const pushTo = (this.pushOn && this.frontTurn > 0.6 ? 1 : 0) - this.pushW;
     this.pushW += Math.max(-dt * 6, Math.min(dt * 6, pushTo * (1 - Math.exp(-dt * 12))));
     // The hips sit back over the board as the push leg reaches out behind.
     const hipBack = 0.1 * this.pushW * drive;
@@ -541,8 +547,10 @@ export class Skater {
     const hipR = v3(-0.06 - hipBack, hipY, 0);
     // Knees point forward, splaying apart for a grab between the legs.
     const splay = grab.splay * gw;
-    this.leg(p.thigh_L, p.shin_L, p.shoe_L, hipL, front, v3(splay, 0, 1));
-    this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, backFoot, v3(-splay, 0, 1));
+    // Feet pointing ahead to push, the knees point ahead with them.
+    const ft = smooth(0, 1, this.frontTurn), bt = smooth(0, 1, this.pushW);
+    this.leg(p.thigh_L, p.shin_L, p.shoe_L, hipL, front, v3(splay + ft * 0.8, 0, 1), ft * Math.PI / 2);
+    this.leg(p.thigh_R, p.shin_R, p.shoe_R, hipR, backFoot, v3(-splay + bt * 1.2, 0, 1 - bt * 0.6), bt * Math.PI / 2);
 
     // Arms out for balance, higher in the air, swinging when pushing.
     const swing = Math.sin(this.pushT * Math.PI * 2) * 0.75 * this.pushW;
@@ -718,7 +726,8 @@ export class Skater {
     return t < PLANT_SHARE ? t / PLANT_SHARE : 1 - (t - PLANT_SHARE) / (1 - PLANT_SHARE);
   }
 
-  private leg(thigh: THREE.Object3D, shin: THREE.Object3D, shoe: THREE.Object3D, hip: THREE.Vector3, foot: THREE.Vector3, pole: THREE.Vector3) {
+  /** turn: the shoe swivelled from pointing across the board towards pointing ahead. */
+  private leg(thigh: THREE.Object3D, shin: THREE.Object3D, shoe: THREE.Object3D, hip: THREE.Vector3, foot: THREE.Vector3, pole: THREE.Vector3, turn = 0) {
     const d = foot.clone().sub(hip);
     let len = d.length();
     const max = THIGH + SHIN - 0.002;
@@ -735,6 +744,6 @@ export class Skater {
     shin.position.copy(knee);
     shin.quaternion.setFromUnitVectors(DOWN, end.clone().sub(knee).normalize());
     shoe.position.copy(end);
-    shoe.quaternion.identity();
+    shoe.quaternion.setFromAxisAngle(UP, turn);
   }
 }
