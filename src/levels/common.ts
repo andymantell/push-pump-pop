@@ -21,6 +21,8 @@ export interface TrackDef {
   challenges?: Challenge[];
   /** The scooter career's par and challenges (src/levels/scooter.ts, joined on in tracks.ts). */
   scooter?: { par: number; challenges: Challenge[] };
+  /** The downhill bike career's (src/levels/mtb.ts, joined on in tracks.ts). */
+  mtb?: { par: number; challenges: Challenge[] };
   build: () => Track;
 }
 

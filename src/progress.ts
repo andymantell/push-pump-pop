@@ -23,15 +23,17 @@ export interface Level {
   challenges?: unknown[];
   /** The scooter career's par and challenges for this track. */
   scooter?: { par?: number; challenges?: unknown[] };
+  /** The downhill bike career's. */
+  mtb?: { par?: number; challenges?: unknown[] };
 }
 
 /** A track's challenges on a ride. */
-export function challengesOf<T>(l: { challenges?: T[]; scooter?: { challenges?: T[] } }, ride: RideId): T[] {
-  return (ride === 'scooter' ? l.scooter?.challenges : l.challenges) ?? [];
+export function challengesOf<T>(l: { challenges?: T[]; scooter?: { challenges?: T[] }; mtb?: { challenges?: T[] } }, ride: RideId): T[] {
+  return (ride === 'skate' ? l.challenges : l[ride]?.challenges) ?? [];
 }
 /** A track's par on a ride. */
 export function parOf(l: Level, ride: RideId): number | undefined {
-  return ride === 'scooter' ? l.scooter?.par : l.par;
+  return ride === 'skate' ? l.par : l[ride]?.par;
 }
 
 export interface Store {
@@ -64,7 +66,11 @@ export class Progress {
   /** The ride whose stars and scores the methods below read and write, unless given another. */
   ride: RideId = 'skate';
 
-  constructor(private levels: Level[], private biomes: string[], private store: Store | null) {}
+  /**
+   * `firstOpen`: worlds whose first track is always open, rather than opening after the world
+   * before (the MTB's own world, which other rides can't reach).
+   */
+  constructor(private levels: Level[], private biomes: string[], private store: Store | null, private firstOpen: string[] = []) {}
 
   private get(k: string): string | null {
     try { if (this.store) return this.store.getItem(k); } catch { /* fall through */ }
@@ -105,7 +111,7 @@ export class Progress {
   }
   /** Required challenges for a track. */
   required(l: Level, ride = this.ride): number {
-    return challengesOf(l, ride).length ? requiredCount(this.biomes.indexOf(l.biome), l.kind ?? 'run') : 0;
+    return challengesOf(l, ride).length ? requiredCount(this.biomes.indexOf(l.biome), l.kind ?? 'run', l.biome) : 0;
   }
   /** Finished, with the required challenges done, on this ride. */
   completeOn(l: Level, ride = this.ride): boolean {
@@ -144,7 +150,7 @@ export class Progress {
     const i = runs.findIndex((r) => r.id === l.id);
     if (i > 0) return this.complete(runs[i - 1]);
     const b = this.biomes.indexOf(l.biome);
-    if (b <= 0) return true;
+    if (b <= 0 || this.firstOpen.includes(l.biome)) return true;
     // While a world is still being built it may have fewer than five tracks: its last one opens the next.
     const prev = this.runs(this.biomes[b - 1]);
     return prev.length > 0 && this.complete(prev[Math.min(4, prev.length - 1)]);

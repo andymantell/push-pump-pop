@@ -22,7 +22,8 @@ export interface Rail {
   x1: number;
   y1: number;
   z: number;
-  kind: 'rail' | 'ledge' | 'handrail';
+  /** A 'skinny' is a narrow wooden plank on legs, for the bike to ride along. */
+  kind: 'rail' | 'ledge' | 'handrail' | 'skinny';
 }
 
 /** A flight of steps going down from (x0, y0); the ground under it is a straight slope. */
@@ -97,6 +98,42 @@ export interface Belt {
   speed: number;
 }
 
+/**
+ * A rock garden from x0 to x1: rough ground strewn with rocks up to `size` high. The track's
+ * height profile stays smooth (it's the line through the rocks); the rocks themselves are
+ * `Track.rough(x)` on top of it, which the bike's wheels and suspension ride over and which
+ * knock a bike rider's balance forwards and back (see rider.ts).
+ */
+export interface Garden {
+  x0: number;
+  x1: number;
+  size: number;
+}
+
+/** One rock in a garden: a smooth hump at x, `w` wide and `h` high. */
+export interface GardenRock {
+  x: number;
+  w: number;
+  h: number;
+}
+
+/** Same rocks every time for a garden: a small hash of its position. */
+function gardenRocks(g: Garden): GardenRock[] {
+  const out: GardenRock[] = [];
+  let seed = Math.floor(g.x0 * 97 + g.x1 * 13) >>> 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  let x = g.x0 + 0.4;
+  while (x < g.x1 - 0.4) {
+    // Bigger towards the middle of the garden, smaller at its edges.
+    const edge = Math.min(1, (x - g.x0) / 2, (g.x1 - x) / 2);
+    const h = g.size * (0.35 + 0.65 * rnd()) * edge;
+    const w = 0.35 + h * 2.2 + rnd() * 0.3;
+    out.push({ x, w, h });
+    x += w * (0.75 + rnd() * 0.5);
+  }
+  return out;
+}
+
 export interface Prop {
   kind: PropKind;
   x: number;
@@ -126,8 +163,12 @@ export class Track {
   /** Stepping stones: where the track rides over rock standing out of the water. */
   readonly rocks: { x0: number; x1: number }[];
   readonly belts: Belt[];
+  readonly gardens: Garden[];
+  readonly gardenRocks: GardenRock[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = [], stacks: Stack[] = [], rocks: { x0: number; x1: number }[] = [], belts: Belt[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = [], stacks: Stack[] = [], rocks: { x0: number; x1: number }[] = [], belts: Belt[] = [], gardens: Garden[] = []) {
+    this.gardens = gardens;
+    this.gardenRocks = gardens.flatMap(gardenRocks).sort((a, b) => a.x - b.x);
     this.mud = mud;
     this.rocks = rocks;
     this.belts = belts;
@@ -176,6 +217,26 @@ export class Track {
   railAt(x: number): Rail | null {
     for (const r of this.rails) if (x >= r.x0 && x <= r.x1) return r;
     return null;
+  }
+
+  /** The rock garden at x, if any. */
+  gardenAt(x: number): Garden | null {
+    for (const g of this.gardens) if (x >= g.x0 && x <= g.x1) return g;
+    return null;
+  }
+
+  /** Height of the rocks above the smooth profile at x (0 outside rock gardens). */
+  rough(x: number): number {
+    const rocks = this.gardenRocks;
+    if (!rocks.length || !this.gardenAt(x)) return 0;
+    let lo = 0, hi = rocks.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (rocks[m].x < x - 1.2) lo = m + 1; else hi = m; }
+    let y = 0;
+    for (let i = lo; i < rocks.length && rocks[i].x < x + 1.2; i++) {
+      const r = rocks[i], u = (x - r.x) / (r.w / 2);
+      if (Math.abs(u) < 1) y = Math.max(y, r.h * (1 - u * u) * (1 - u * u) * (1 + 0.3 * u * u));
+    }
+    return y;
   }
 
   inMud(x: number): boolean {
@@ -227,6 +288,7 @@ export class TrackBuilder {
   stacks: Stack[] = [];
   rocks: { x0: number; x1: number }[] = [];
   belts: Belt[] = [];
+  gardens: Garden[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -298,6 +360,18 @@ export class TrackBuilder {
   /** A flat muddy patch `len` long. */
   mud(len: number): this {
     return this.muddy((b) => b.flat(len));
+  }
+
+  /**
+   * Whatever `fn` lays down is a rock garden, with rocks up to `size` high, e.g.
+   * `rocky((b) => b.ramp(20, -3))`. Only for the bike's courses. Tagged 'rocks'.
+   */
+  rocky(fn: (b: this) => void, size = 0.2): this {
+    const x0 = this.x;
+    this.spot('rocks');
+    fn(this);
+    this.gardens.push({ x0, x1: this.x, size });
+    return this.spot('rocksend');
   }
 
   /** Whatever `fn` lays down is muddy, e.g. `muddy((b) => b.rollers(2, 14, 1))`. */
@@ -421,6 +495,62 @@ export class TrackBuilder {
   /** A straight slope. */
   ramp(len: number, dy: number): this { return this.run(len, (t) => dy * t); }
 
+  /** How steeply the ground falls away where the track has got to (positive going down). */
+  get grade(): number {
+    const n = this.h.length;
+    return n < 2 ? 0 : (this.h[n - 2] - this.h[n - 1]) / DX;
+  }
+
+  /**
+   * Downhill: `len` metres falling at `grade` (0.1 is 1 in 10), easing in from however steep
+   * the ground is now over the first `blend` metres so there's no kink. The bike's courses are
+   * chains of these with features on them.
+   */
+  descend(len: number, grade: number, blend = Math.min(len, 8)): this {
+    const g0 = this.grade, b = Math.min(1, blend / len);
+    // Slope eases from g0 to grade over the first b of the way (smoothstep), then holds.
+    const steps = 64, cum: number[] = [0];
+    for (let i = 1; i <= steps; i++) {
+      const t = (i - 0.5) / steps, u = Math.min(1, t / b), g = g0 + (grade - g0) * u * u * (3 - 2 * u);
+      cum.push(cum[i - 1] + g * len / steps);
+    }
+    return this.run(len, (t) => {
+      const k = t * steps, i = Math.floor(k);
+      return -(i >= steps ? cum[steps] : cum[i] + (cum[i + 1] - cum[i]) * (k - i));
+    });
+  }
+
+  /** `count` whoops (rollers) `len` apart riding down a slope of `grade`, `amp` high. */
+  whoops(count: number, len: number, amp: number, grade: number): this {
+    this.descend(4, grade);
+    for (let i = 0; i < count; i++) {
+      this.spots.push({ x: this.x + len / 2, tag: 'crest' });
+      this.run(len, (t) => -grade * len * t + amp * (1 - Math.cos(2 * Math.PI * t)) / 2);
+    }
+    return this;
+  }
+
+  /**
+   * A North Shore skinny: a plank `len` long on legs, `height` above the ground, running down
+   * `dy` (negative) with the ground under it. Ride onto it off a little ramp (it's a grind, so
+   * the bike stays on), or roll past underneath. Tagged 'skinny'.
+   */
+  skinny(len: number, dy = 0, height = 0.6): this {
+    this.spot('skinny');
+    this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + len, y1: this.y + dy + height, z: RAIL_Z, kind: 'skinny' });
+    return dy ? this.ramp(len, dy) : this.flat(len);
+  }
+
+  /**
+   * A ladder bridge: a skinny across a gap `len` wide, starting `lead` before it at `height`.
+   * Hop on and ride it over; miss it and you're in the gap. Tagged 'bridge'.
+   */
+  gapSkinny(len: number, height = 0.6, lead = 5): this {
+    this.spot('bridge');
+    this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + lead + len + 2, y1: this.y + height, z: RAIL_Z, kind: 'skinny' });
+    return this.flat(lead).pit(len).flat(2);
+  }
+
   /** A mega ramp roll-in: steepest at the top, curving out flat at the bottom. */
   rollIn(len: number, drop: number): this {
     return this.run(len, (t) => -drop * (1 - (1 - t) * (1 - t)));
@@ -521,6 +651,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers, this.stacks, this.rocks, this.belts);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers, this.stacks, this.rocks, this.belts, this.gardens);
   }
 }

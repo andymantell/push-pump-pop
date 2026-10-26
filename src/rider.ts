@@ -58,19 +58,25 @@ const RAIL_REACH = 0.7;
 const RAIL_ROOM = 1.2;
 
 /** Held tricks from the left-hand swipes: board grabs on a skateboard, body tricks on a scooter. */
-export type GrabName = BoardGrab | ScooterHold;
+export type GrabName = BoardGrab | ScooterHold | BikeHold;
 export type BoardGrab = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
 export type ScooterHold = 'Superman' | 'No Footer' | 'Can Can' | 'X-Up';
+/** On a downhill bike: the same body tricks, but hands off the bars instead of an X-Up. */
+export type BikeHold = 'Superman' | 'No Footer' | 'Can Can' | 'No Hander';
 export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
 export type FlipName = 'Backflip' | 'Frontflip';
 /** Manuals on a skateboard, presses on a snowboard: nose up first. */
-export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press';
-export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind' | 'Feeble' | 'Smith';
+export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press' | 'Stoppie';
+export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind' | 'Feeble' | 'Smith' | 'Skinny' | 'Skinny Manual' | 'Skinny Stoppie';
 export type LoopName = 'Loop';
-type BoardTrick = 'Ollie' | 'Bunny Hop' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | '360 Flip' | 'Hardflip' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee';
+/** Riding a whole rock garden on a bike without falling off. */
+export type GardenName = 'Rock Garden';
+type BoardTrick = 'Ollie' | 'Bunny Hop' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | '360 Flip' | 'Hardflip' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee' | BikeTrick;
+/** Downhill bike: the bike thrown sideways (whip), laid flat (tabletop), or bars twisted down with the bike tucked under them (turndown). */
+export type BikeTrick = 'Whip' | 'Tabletop' | 'Turndown';
 /** Scooter tricks: the deck whipped round the bars, the bars spun round, or both at once. */
 export type WhipName = 'Tailwhip' | 'Double Whip' | 'Heelwhip' | 'Double Heelwhip' | 'Barspin' | 'Double Barspin' | 'Tailwhip Barspin' | 'Heelwhip Barspin';
-export type TrickName = BoardTrick | WhipName | GrabName | SpinName | FlipName | ManualName | GrindName | LoopName;
+export type TrickName = BoardTrick | WhipName | GrabName | SpinName | FlipName | ManualName | GrindName | LoopName | GardenName;
 /** Tilt of the device: +1 nose up (manual, backflip), -1 nose down (nose manual, frontflip). */
 export type Lean = -1 | 0 | 1;
 export type Swipe = 'up' | 'down' | 'left' | 'right';
@@ -80,7 +86,7 @@ export interface Trick {
   duration: number;
   points: number;
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
-  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop' | 'whip';
+  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop' | 'whip' | 'bike' | 'garden';
   dir: 1 | -1;
   /** Shove-its: half turns the board spins round flat (+ backside, - frontside), on its own or in a flip. */
   shove?: number;
@@ -103,6 +109,10 @@ export const TRICKS: Record<BoardTrick, Trick> = {
   'BS Shifty': { name: 'BS Shifty', duration: 0.42, points: 450, axis: 'shifty', dir: -1 },
   'FS Shifty': { name: 'FS Shifty', duration: 0.42, points: 450, axis: 'shifty', dir: 1 },
   'Tuck Knee': { name: 'Tuck Knee', duration: 0.45, points: 400, axis: 'tuck', dir: 1 },
+  // Downhill bike: a triple crown fork stops the bars going round, so the bike is thrown about instead.
+  'Whip': { name: 'Whip', duration: 0.5, points: 450, axis: 'bike', dir: 1 },
+  'Tabletop': { name: 'Tabletop', duration: 0.55, points: 500, axis: 'bike', dir: 1 },
+  'Turndown': { name: 'Turndown', duration: 0.5, points: 500, axis: 'bike', dir: -1 },
 };
 
 /** Flip-side swipes while grinding: change grind. */
@@ -118,7 +128,7 @@ const SWIPE_GRIND_SCOOTER: Record<Exclude<Swipe, 'up'>, GrindName> = {
   down: 'Smith',
 };
 /** The fancier grinds are worth more than a plain 50-50. */
-const GRIND_STYLE_POINTS: Record<GrindName, number> = { '50-50': 1, 'Boardslide': 1.2, '5-0': 1.3, 'Nosegrind': 1.4, 'Smith': 1.3, 'Feeble': 1.4 };
+const GRIND_STYLE_POINTS: Record<GrindName, number> = { '50-50': 1, 'Boardslide': 1.2, '5-0': 1.3, 'Nosegrind': 1.4, 'Smith': 1.3, 'Feeble': 1.4, 'Skinny': 1, 'Skinny Manual': 1.6, 'Skinny Stoppie': 1.8 };
 
 /** Scooter: one turn of a whip, or of a barspin, takes this long. */
 const WHIP_TIME = 0.45;
@@ -154,6 +164,14 @@ const SWIPE_TRICK_SNOW: Record<Swipe, BoardTrick> = {
   down: 'Tuck Knee',
 };
 
+/** Flip-side swipes on a downhill bike. */
+const SWIPE_TRICK_BIKE: Record<Swipe, BoardTrick> = {
+  up: 'Bunny Hop',
+  left: 'Whip',
+  right: 'Tabletop',
+  down: 'Turndown',
+};
+
 /** Swipe and keep holding: grab the board until you let go. */
 const SWIPE_GRAB: Record<Swipe, GrabName> = {
   up: 'Indy',
@@ -168,6 +186,13 @@ const SWIPE_HOLD: Record<Swipe, GrabName> = {
   left: 'Can Can',
   right: 'X-Up',
 };
+/** On a downhill bike: as on a scooter, but arms out wide, hands off the bars, for the right swipe. */
+const SWIPE_HOLD_BIKE: Record<Swipe, GrabName> = {
+  up: 'Superman',
+  down: 'No Footer',
+  left: 'Can Can',
+  right: 'No Hander',
+};
 /** Hold this long after a grab swipe before the grab starts, so a quick flick is just an ollie. */
 const GRAB_HOLD = 0.08;
 const GRAB_POINTS = 250;
@@ -181,6 +206,8 @@ const FLIP_TIME = 0.75;
 const FLIP_POINTS = 1200;
 /** On a scooter, riding backwards (after a 180) starts to wobble after this long on the ground, and you fall off at FAKIE_FALL. */
 export const FAKIE_SAFE = 3, FAKIE_FALL = 10;
+/** A downhill bike is even harder to ride backwards. */
+export const BIKE_FAKIE_SAFE = 1.5, BIKE_FAKIE_FALL = 5;
 /** Landing this far into a flip still counts; less than FLIP_SAFE is just a wobble. */
 const FLIP_LAND = 0.85;
 const FLIP_SAFE = 0.12;
@@ -188,6 +215,24 @@ const MANUAL_POINTS = 100;
 const MANUAL_POINTS_PER_SEC = 450;
 /** Manuals only hold on gentle ground. */
 const MANUAL_SLOPE = 0.45;
+
+/**
+ * Rock gardens, on a bike: each rock the front wheel rides up throws your weight forward, and
+ * each one it drops off pitches you back, harder the faster you go; leaning tips the balance
+ * back (tilt nose up) or forward (nose down). The balance also runs away by itself a little,
+ * so you can't just leave it. Reach 1 either way and you're off: over the bars or looped out.
+ */
+const GARDEN_KICK = 0.22;
+const GARDEN_RUNAWAY = 1.2;
+const GARDEN_BACK = 0.55;
+const GARDEN_LEAN = 2.2;
+/** Settling back to the middle once you're out of the rocks. */
+const GARDEN_SETTLE = 4;
+/** Rocks slow you down a little. */
+const GARDEN_DRAG = 0.5;
+const GARDEN_POINTS = 150, GARDEN_POINTS_PER_M = 40;
+/** Where the front wheel is, ahead of the rider's point (see mtb.ts). */
+const FRONT_WHEEL = 0.65;
 
 const SWIPE_TRICK: Record<Swipe, keyof typeof TRICKS | null> = {
   up: 'Ollie',
@@ -223,6 +268,8 @@ export interface RiderOptions {
   mega?: boolean;
   /** Scooter: whips and barspins on the right, body tricks on the left, scooter grinds. */
   scooter?: boolean;
+  /** Downhill bike: whips, tabletops and turndowns on the right, body tricks on the left, rails ridden as skinnies. */
+  mtb?: boolean;
   /** Gravity, if not the usual (lower on the moon). */
   gravity?: number;
 }
@@ -280,6 +327,10 @@ export class Rider {
   flipDir: 1 | -1 = 1;
   flipT = 0;
   flipping = false;
+  /** On a bike in a rock garden: your weight, -1 (looped out) to +1 (over the bars). */
+  balance = 0;
+  /** The rock garden being ridden, and where you came into it. */
+  garden: { x0: number; g: { x0: number; x1: number } } | null = null;
   /** Manual in progress and how long it has been held. */
   manual: ManualName | null = null;
   manualT = 0;
@@ -388,7 +439,9 @@ export class Rider {
 
   get bailing() { return this.bailTimer > 0; }
   /** 0 to 1: how wobbly riding backwards on a scooter has got. */
-  get wobble() { return Math.max(0, Math.min(1, (this.fakieT - FAKIE_SAFE) / (FAKIE_FALL - FAKIE_SAFE))); }
+  get wobble() { const [safe, fall] = this.fakieTimes; return Math.max(0, Math.min(1, (this.fakieT - safe) / (fall - safe))); }
+  /** How long you can ride backwards before wobbling, and before falling off. */
+  private get fakieTimes() { return this.opts.mtb ? [BIKE_FAKIE_SAFE, BIKE_FAKIE_FALL] : [FAKIE_SAFE, FAKIE_FALL]; }
   get speed() { return this.grounded || this.grind || this.loop ? Math.abs(this.v) : Math.hypot(this.vx, this.vy); }
 
   pump() {
@@ -410,7 +463,7 @@ export class Rider {
    * or a board you're strapped into, it's just a swipe down.
    */
   comboSwipe(dir: 'left' | 'right') {
-    if (this.grind || this.opts.scooter || this.opts.snow || this.opts.mountain) { this.swipe('down'); return; }
+    if (this.grind || this.opts.scooter || this.opts.mtb || this.opts.snow || this.opts.mountain) { this.swipe('down'); return; }
     this.swipe('down', dir === 'left' ? '360 Flip' : 'Hardflip');
   }
 
@@ -418,6 +471,8 @@ export class Rider {
     if (this.perched || this.dropT >= 0) return;
     if (this.bailing || this.grab) return;
     // On a rail the flip-side swipes change how you grind it (up still ollies off).
+    // A bike on a skinny just rolls along it: only a hop takes it off.
+    if (this.grind && dir !== 'up' && this.opts.mtb) return;
     if (this.grind && dir !== 'up') {
       const style = (this.opts.scooter ? SWIPE_GRIND_SCOOTER : SWIPE_GRIND)[dir];
       if (style === this.grind.style) return;
@@ -427,7 +482,7 @@ export class Rider {
       return;
     }
     if (this.opts.scooter && dir !== 'up') { this.whipSwipe(dir); return; }
-    const name = combo ?? (this.opts.scooter ? 'Bunny Hop' : (this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir]);
+    const name = combo ?? (this.opts.scooter ? 'Bunny Hop' : (this.opts.mtb ? SWIPE_TRICK_BIKE : this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir]);
     if (!name) return;
     const hop = TRICKS[name].axis === 'none';
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
@@ -480,6 +535,8 @@ export class Rider {
   }
 
   private clearBody() {
+    this.garden = null;
+    this.balance = 0;
     this.spin = null;
     this.bodyYaw = 0;
     this.fakieT = 0;
@@ -621,7 +678,7 @@ export class Rider {
     this.angle = th;
     this.held = null;
     this.ollied = false;
-    this.grind = { rail, t: 0, style: '50-50' };
+    this.grind = { rail, t: 0, style: this.opts.mtb ? 'Skinny' : '50-50' };
     this.ev.grind?.(rail);
   }
 
@@ -748,10 +805,10 @@ export class Rider {
 
     // A scooter only really goes forwards: ride it backwards and it gets wobblier and wobblier
     // until you fall off, unless you spin a 180 to face forwards again.
-    if (!this.bodyYaw || !this.opts.scooter) this.fakieT = 0;
+    if (!this.bodyYaw || !(this.opts.scooter || this.opts.mtb)) this.fakieT = 0;
     else if (!this.bailing && (this.grounded || this.grind)) {
       this.fakieT += dt;
-      if (this.fakieT >= FAKIE_FALL && this.grounded && !this.loop) {
+      if (this.fakieT >= this.fakieTimes[1] && this.grounded && !this.loop) {
         this.bodyYaw = 0;
         this.fakieT = 0;
         this.manual = null;
@@ -784,6 +841,8 @@ export class Rider {
       this.v += (-this.g * Math.sin(th) - dir * (GRIND_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v)) * dt;
       this.x += this.v * Math.cos(th) * dt;
       this.grind.t += dt;
+      // A manual or stoppie along a skinny is worth more, for the whole of it.
+      if (this.opts.mtb && this.lean && this.grind.style === 'Skinny') this.grind.style = this.lean > 0 ? 'Skinny Manual' : 'Skinny Stoppie';
       this.angle = th;
       this.advanceTrick(dt);
       if (this.spin) {
@@ -810,8 +869,10 @@ export class Rider {
       // Tilted on gentle ground: balance on two wheels.
       // Too slow and you'd stall without pushing, so it drops back onto four wheels.
       // Once it drops, level out before the next one, so it can't flicker on and off.
-      const want: ManualName | null = this.lean && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.7)
-        ? (this.lean > 0 ? (this.opts.snow ? 'Tail Press' : 'Manual') : (this.opts.snow ? 'Nose Press' : 'Nose Manual')) : null;
+      // On a bike the tilt is your balance in a rock garden, not a manual.
+      if (this.opts.mtb) this.stepGarden(dt);
+      const want: ManualName | null = this.lean && !this.garden && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.7)
+        ? (this.lean > 0 ? (this.opts.snow ? 'Tail Press' : 'Manual') : (this.opts.snow ? 'Nose Press' : this.opts.mtb ? 'Stoppie' : 'Nose Manual')) : null;
       if (want !== this.manual) {
         if (this.manual && this.lean) this.manualBlocked = true;
         this.endManual();
@@ -837,6 +898,7 @@ export class Rider {
       let a = -this.g * sin;
       a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v);
       if (tr.inMud(this.x)) a -= dir * (MUD_DRAG + MUD_DRAG_PER_SPEED * Math.abs(this.v));
+      if (this.garden) a -= dir * GARDEN_DRAG;
       const belt = !this.inPipe ? tr.beltAt(this.x) : null;
       if (belt && belt.speed > this.v) a += Math.min(BELT_PUSH, BELT_GRIP * (belt.speed - this.v));
       else if (belt && belt.speed < 0 && this.v > BELT_CRAWL) a -= BELT_DRAG;
@@ -922,7 +984,7 @@ export class Rider {
         this.heldT += dt;
         // Grab once the board is free of any flip and the finger has stayed down.
         if (!this.grab && !this.current && this.heldT >= GRAB_HOLD) {
-          this.grab = (this.opts.scooter ? SWIPE_HOLD : SWIPE_GRAB)[this.held];
+          this.grab = (this.opts.mtb ? SWIPE_HOLD_BIKE : this.opts.scooter ? SWIPE_HOLD : SWIPE_GRAB)[this.held];
           this.grabT = 0;
           this.ev.grab?.(this.grab);
         }
@@ -1054,6 +1116,37 @@ export class Rider {
     this.v = dir * kept * (smooth ? 1.04 : 1);
     this.ev.land({ airTime: this.airTime, smooth, hadTricks: this.tricksThisAir > 0 || this.ollied, peakY: this.peakY });
     this.ollied = false;
+  }
+
+  /** A rock garden on a bike: rocks knock your balance about, tilting puts it back. */
+  private stepGarden(dt: number) {
+    const tr = this.track;
+    const g = this.bailing ? null : tr.gardenAt(this.x);
+    if (g && !this.garden) { this.garden = { x0: this.x, g }; this.balance = 0; }
+    if (!g) {
+      if (this.garden && !this.bailing) {
+        // Out the other side: points for every metre ridden.
+        const m = Math.max(0, this.x - this.garden.x0);
+        if (m > 2) this.ev.trick({ name: 'Rock Garden', duration: m / Math.max(1, Math.abs(this.v)), points: Math.round((GARDEN_POINTS + GARDEN_POINTS_PER_M * m) / 10) * 10, axis: 'garden', dir: 1 });
+      }
+      this.garden = null;
+      this.balance *= Math.exp(-dt * GARDEN_SETTLE);
+      return;
+    }
+    // The front wheel climbing a rock face throws you forward, dropping off one pitches you back.
+    const fx = this.x + FRONT_WHEEL * Math.sign(this.v || 1);
+    const rise = (tr.rough(fx + 0.05) - tr.rough(fx - 0.05)) / 0.1;
+    // (Climbing a rock stops the front wheel hard; dropping off one is gentler.)
+    const kick = rise > 0 ? rise : rise * GARDEN_BACK;
+    this.balance += (GARDEN_KICK * kick * Math.abs(this.v) + GARDEN_RUNAWAY * this.balance - GARDEN_LEAN * this.lean) * dt;
+    if (Math.abs(this.balance) >= 1) {
+      // Over the bars, or looped out off the back.
+      this.garden = null;
+      this.manual = null;
+      this.v *= 0.3;
+      this.bailTimer = BAIL_TIME;
+      this.ev.bail();
+    }
   }
 
   /** Tip the nose down onto the wall, then roll away down it. */

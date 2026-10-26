@@ -11,6 +11,7 @@ import { FARM } from './levels/farm';
 import { CANDY, CANDY_PIPE } from './levels/candy';
 import { DOCKS } from './levels/docks';
 import { SCOOTER, scooterFallback } from './levels/scooter';
+import { MTB, mtbFallback } from './levels/mtb';
 import { PIRATE, PIRATE_PIPE } from './levels/pirate';
 import { HAUNTED, HAUNTED_PIPE } from './levels/haunted';
 import { FUNFAIR, FUNFAIR_PIPE } from './levels/funfair';
@@ -19,13 +20,18 @@ import { MINE, MINE_MEGA } from './levels/mine';
 import { DINO, DINO_MEGA } from './levels/dino';
 import { MOON, MOON_PIPE } from './levels/moon';
 import { SKY, SKY_MEGA } from './levels/sky';
+import { DH_URBAN } from './levels/dh-urban';
 
 export { PIPE_TIME, STOP_AFTER_FINISH } from './levels/common';
 export type { TrackDef } from './levels/common';
 
-export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA, ...DINO, DINO_MEGA, ...MOON, MOON_PIPE, ...SKY, SKY_MEGA];
+export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA, ...DINO, DINO_MEGA, ...MOON, MOON_PIPE, ...SKY, SKY_MEGA, ...DH_URBAN];
 
 // Every track's scooter challenges. New tracks get their skateboard ones with scooter tricks
 // swapped in until they have their own (the scooter playtest lists them).
 for (const t of TRACKS) t.scooter = SCOOTER[t.id] ?? scooterFallback(t);
 export const SCOOTER_TODO = TRACKS.filter((t) => !SCOOTER[t.id]).map((t) => t.id);
+// And the downhill bike's, the same way.
+// The bike's own downhill courses are written for it: their challenges are the MTB ones.
+for (const t of TRACKS) t.mtb = MTB[t.id] ?? (t.biome.startsWith('dh-') ? { par: t.par ?? 0, challenges: t.challenges ?? [] } : mtbFallback(t));
+export const MTB_TODO = TRACKS.filter((t) => !MTB[t.id] && !t.biome.startsWith('dh-')).map((t) => t.id);

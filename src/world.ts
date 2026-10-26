@@ -448,6 +448,53 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
         }
         break;
       }
+      case 'singletrack': {
+        // A worn trail: a darker line ridden in along the middle, roots across it, stones and
+        // leaves at the edges.
+        speckle(c, 1500, 0.08, 0.05);
+        c.fillStyle = s.seam;
+        c.globalAlpha = 0.4;
+        c.fillRect(0, 96, 256, 64);
+        c.globalAlpha = 0.25;
+        c.fillRect(0, 80, 256, 96);
+        c.globalAlpha = 1;
+        c.strokeStyle = s.seam;
+        c.lineWidth = 4;
+        for (let i = 0; i < 3; i++) {
+          c.beginPath();
+          let x = r() * 256, y = 0;
+          c.moveTo(x, y);
+          for (let k = 0; k < 6; k++) { x += (r() - 0.5) * 30; y += 44; c.lineTo(x, y); }
+          c.stroke();
+        }
+        for (let i = 0; i < 60; i++) {
+          const y = r() > 0.5 ? r() * 70 : 256 - r() * 70;
+          c.fillStyle = r() > 0.4 ? s.accent ?? '#9a9488' : '#8a8478';
+          c.beginPath();
+          c.ellipse(r() * 256, y, 2 + r() * 5, 1.5 + r() * 3, r() * 3, 0, Math.PI * 2);
+          c.fill();
+        }
+        break;
+      }
+      case 'plaster': {
+        // Painted walls holding up the hill: blocks of colour, plaster flaking to brick, a drain.
+        speckle(c, 700, 0.08, 0.06);
+        // Damp creeping up from the bottom.
+        c.fillStyle = 'rgba(60,40,30,0.18)';
+        for (let x = 0; x < 256; x += 8) c.fillRect(x, 200 + Math.sin(x * 0.2) * 8, 8, 56);
+        for (let i = 0; i < 7; i++) {
+          const x = r() * 220, y = r() * 220, w = 18 + r() * 30, h = 12 + r() * 20;
+          c.fillStyle = s.seam;
+          c.fillRect(x, y, w, h);
+          c.fillStyle = 'rgba(0,0,0,0.25)';
+          for (let by = y + 5; by < y + h; by += 6) c.fillRect(x, by, w, 1.5);
+        }
+        c.fillStyle = 'rgba(0,0,0,0.3)';
+        c.fillRect(0, 0, 256, 6);
+        c.fillStyle = s.accent ?? '#444';
+        c.fillRect(196, 0, 6, 256);
+        break;
+      }
       case 'quaywall': {
         // Granite blocks in courses, weed and wet stain low down, iron rungs here and there.
         c.fillStyle = s.seam;
@@ -673,6 +720,7 @@ export class World {
     this.buildBouncers();
     this.buildStacks();
     this.buildRocks();
+    this.buildGardens();
     this.buildBelts();
     this.buildPitFills();
     this.buildStairs();
@@ -700,6 +748,8 @@ export class World {
           if (!t.emissive) continue;
           if (t.name === 'lava' || t.name === 'ember' || t.name === 'pumpkin_glow' || t.name === 'goo_glow' || t.name.startsWith('crystal_glow') || t.name === 'amber_glow' || t.name === 'visor_glow' || t.name === 'beacon_glow') t.emissive.copy(t.color).multiplyScalar(0.8);
           else if (t.name === 'lamp_light' || t.name === 'window_glow') t.emissive.copy(t.color).multiplyScalar(on ? 1 : 0);
+          // The town's windows are dark glass by day and lit warm at night.
+          else if (t.name === 'dh_window') t.emissive.setHex(on ? 0xb88038 : 0);
         }
       });
     }
@@ -1149,6 +1199,65 @@ export class World {
     }
   }
 
+  /**
+   * Rock gardens (bike courses): the rocks the wheels ride over along the riding line, sized to
+   * match Track.rough, with more strewn across the rest of the track and spilling off the edge.
+   */
+  private buildGardens() {
+    const tr = this.track;
+    if (!tr.gardens.length) return;
+    const tex = canvasTexture(128, 128, (c) => {
+      c.fillStyle = '#9a948a';
+      c.fillRect(0, 0, 128, 128);
+      const r = rng(57);
+      for (let i = 0; i < 50; i++) {
+        c.fillStyle = r() > 0.5 ? 'rgba(60,54,48,0.3)' : 'rgba(210,204,190,0.35)';
+        c.beginPath(); c.ellipse(r() * 128, r() * 128, 5 + r() * 14, 3 + r() * 8, r() * 3, 0, Math.PI * 2); c.fill();
+      }
+      for (let i = 0; i < 10; i++) {
+        c.fillStyle = 'rgba(120,150,80,0.4)';
+        c.beginPath(); c.ellipse(r() * 128, r() * 128, 3 + r() * 6, 2 + r() * 4, 0, 0, Math.PI * 2); c.fill();
+      }
+    });
+    const mats = [toon(0xffffff, { map: tex }), toon(0xd8d0c4, { map: tex }), toon(0xb4aca0, { map: tex })];
+    const r = rng(91);
+    const geo = [0, 1, 2].map((k) => {
+      const g = new THREE.IcosahedronGeometry(1, 1);
+      const p = g.attributes.position as THREE.BufferAttribute;
+      const rr = rng(13 + k);
+      // Knock the corners about so no two rocks look the same, and flatten the bottoms.
+      const seen = new Map<string, number>();
+      for (let i = 0; i < p.count; i++) {
+        const key = `${p.getX(i).toFixed(3)},${p.getY(i).toFixed(3)},${p.getZ(i).toFixed(3)}`;
+        const f = seen.get(key) ?? 0.8 + rr() * 0.35;
+        seen.set(key, f);
+        p.setXYZ(i, p.getX(i) * f, Math.max(-0.3, p.getY(i)) * f, p.getZ(i) * f);
+      }
+      g.computeVertexNormals();
+      return g;
+    });
+    const half = TRACK_W / 2;
+    const rock = (x: number, z: number, w: number, h: number, d: number) => {
+      const m = new THREE.Mesh(geo[Math.floor(r() * 3)], mats[Math.floor(r() * 3)]);
+      m.position.set(x, tr.height(x) - 0.02, z);
+      m.scale.set(w / 2, h, d);
+      m.rotation.y = (r() - 0.5) * 0.8;
+      m.castShadow = true;
+      m.receiveShadow = true;
+      this.group.add(m);
+    };
+    // The ones the wheels hit, then smaller ones across the track and along its front edge.
+    for (const k of tr.gardenRocks) rock(k.x, (r() - 0.5) * 0.2, k.w, k.h, 0.3 + r() * 0.2);
+    for (const g of tr.gardens) {
+      for (let x = g.x0 + 0.2; x < g.x1; x += 0.35 + r() * 0.5) {
+        const zs = [-half + 0.2 + r() * 0.4, -0.55 + r() * 0.2, 0.45 + r() * 0.25, half - 0.05 - r() * 0.2];
+        const z = zs[Math.floor(r() * zs.length)];
+        const h = g.size * (0.3 + r() * 0.9);
+        rock(x, z, 0.25 + h * 2 + r() * 0.3, h, 0.2 + r() * 0.25);
+      }
+    }
+  }
+
   /** Conveyor belts: a ribbed rubber belt with arrows that runs, drums at each end, a steel frame. */
   private belts: { tex: THREE.Texture; speed: number }[] = [];
   private beacons: THREE.Sprite[] = [];
@@ -1307,6 +1416,41 @@ export class World {
         const coping = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.08), barMat);
         coping.position.set((r.x0 + r.x1) / 2, r.y0 - 0.02, r.z + 0.12);
         this.group.add(shadows(box), shadows(coping));
+        continue;
+      }
+      if (r.kind === 'skinny') {
+        // A North Shore skinny: a narrow deck of planks on trestle legs, braced across.
+        const deck = toon(0xb8854e), legM = toon(0x7a5432), slat = toon(0x9a6a3e);
+        const top = new THREE.Mesh(new THREE.BoxGeometry(len, 0.07, 0.36), deck);
+        top.position.set((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2 - 0.035, r.z);
+        top.rotation.z = ang;
+        this.group.add(shadows(top));
+        // Cross slats along it, so it reads as wood.
+        for (let d = 0.3; d < len; d += 0.6) {
+          const t = d / len;
+          const s = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.38), slat);
+          s.position.set(r.x0 + (r.x1 - r.x0) * t, r.y0 + (r.y1 - r.y0) * t + 0.005, r.z);
+          s.rotation.z = ang;
+          this.group.add(s);
+        }
+        const n = Math.max(2, Math.round(len / 1.6) + 1);
+        for (let i = 0; i < n; i++) {
+          const t = (i + 0.5) / n;
+          const x = r.x0 + (r.x1 - r.x0) * t;
+          const top2 = r.y0 + (r.y1 - r.y0) * t - 0.07;
+          const foot = this.track.height(x) - 0.1;
+          for (const dz of [-0.15, 0.15]) {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, top2 - foot, 0.09), legM);
+            leg.position.set(x, (top2 + foot) / 2, r.z + dz);
+            this.group.add(shadows(leg));
+          }
+          // A brace across the legs on tall trestles.
+          for (let y = top2 - 0.5; y > foot + 0.3; y -= 1.4) {
+            const br = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.42), legM);
+            br.position.set(x, y, r.z);
+            this.group.add(br);
+          }
+        }
         continue;
       }
       const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, len, 12), barMat);
@@ -1628,6 +1772,14 @@ export class World {
       for (const m of ([] as THREE.Material[]).concat(mesh.material)) m.userData.outlineParameters = { visible: false };
     });
     return o;
+  }
+
+  /** Track height smoothed over 60 m, for far scenery that follows a downhill course down. */
+  private farY(x: number) {
+    const tr = this.track;
+    let sum = 0;
+    for (let k = -6; k <= 6; k++) sum += tr.height(Math.max(0, Math.min(tr.length, x + k * 5)));
+    return sum / 13;
   }
 
   private buildFar() {
@@ -2009,17 +2161,79 @@ export class World {
         }
         break;
       }
+      case 'hilltown': {
+        // The town climbing the hills across the valley: painted houses packed on the slopes,
+        // and the sea at the bottom of it all.
+        const paints = [0xe8768f, 0x5ca4e8, 0xf8c446, 0x6ec482, 0xf0a060, 0xf4f0e8, 0xb07ad8];
+        const sea = new THREE.Mesh(new THREE.PlaneGeometry(len + 800, 400), hazed(0x3a8ad0, 0.25));
+        sea.rotation.x = -Math.PI / 2;
+        sea.position.set(len / 2, tr.minY - 6, -260);
+        far.add(sea);
+        const hillM = [hazed(b.farColors[0], 0.25), hazed(b.farColors[1], 0.3)];
+        const houseM = paints.map((c) => hazed(c, 0.3));
+        const roofM = hazed(0x9a5a3a, 0.3);
+        for (let i = 0; i * 30 < len + 160; i++) {
+          const x0 = i * 30 - 60, z = -110 - (i % 3) * 22, y0 = this.farY(x0) - 18;
+          const rad = 34 + (i * 37) % 22, sy = 0.55;
+          const hill = new THREE.Mesh(new THREE.SphereGeometry(rad, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), hillM[i % 2]);
+          hill.scale.y = sy;
+          hill.position.set(x0, y0, z);
+          far.add(hill);
+          // Houses on the face of the hill towards us.
+          for (let k = 0; k < 26; k++) {
+            const a = (r() - 0.5) * 2.4, e = 0.15 + r() * 0.8;
+            const hx = x0 + Math.sin(a) * rad * Math.cos(e), hz = z + Math.cos(a) * rad * Math.cos(e);
+            const hy = y0 + Math.sin(e) * rad * sy;
+            const w = 2.5 + r() * 2, h = 2.5 + r() * 3;
+            const hb = new THREE.Mesh(new THREE.BoxGeometry(w, h, 2.5), houseM[k % houseM.length]);
+            hb.position.set(hx, hy + h / 2 - 0.5, hz);
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.3, 2.9), roofM);
+            roof.position.set(hx, hy + h - 0.35, hz);
+            far.add(hb, roof);
+          }
+        }
+        break;
+      }
+      case 'woods':
+      case 'conifers': {
+        // Forest on the hills across the valley, in layers that fade into the haze: round
+        // broadleaf trees, or tall dark conifers.
+        const tall = b.far === 'conifers';
+        for (let layer = 0; layer < 3; layer++) {
+          const z = -45 - layer * 35, haze = 0.15 + layer * 0.2;
+          const m = [hazed(b.farColors[layer % b.farColors.length], haze), hazed(b.farColors[(layer + 1) % b.farColors.length], haze)];
+          const hill = hazed(b.farColors[0], haze + 0.05);
+          for (let x = -60; x < len + 120; x += 26) {
+            const y0 = this.farY(x) - 6 - layer * 5;
+            const s = new THREE.Mesh(new THREE.SphereGeometry(22, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2), hill);
+            s.scale.set(1, 0.35, 0.5);
+            s.position.set(x, y0, z - 6);
+            far.add(s);
+          }
+          for (let x = -60; x < len + 120; x += (tall ? 2.6 : 4) + r() * (tall ? 2.5 : 4)) {
+            const y0 = this.farY(x) - 4 - layer * 5 + r() * 3;
+            const sc = (1 + layer * 0.35) * (0.8 + r() * 0.5);
+            const t = tall ? new THREE.Mesh(new THREE.ConeGeometry(1.6 * sc, 9 * sc, 6), m[Math.floor(r() * 2)])
+              : new THREE.Mesh(new THREE.SphereGeometry(2.6 * sc, 8, 6), m[Math.floor(r() * 2)]);
+            t.position.set(x, y0 + (tall ? 4.5 * sc : 2.2 * sc), z + (r() - 0.5) * 8);
+            far.add(t);
+          }
+        }
+        break;
+      }
       case 'mountains':
         // Closer and unfogged (tinted by hand instead), so the peaks read against the sky.
         for (let x = -100; x < len + 200; x += 40 + r() * 35) {
           const h = 45 + r() * 35, rad = 35 + r() * 22;
           const z = -170 - r() * 60;
           const rock = b.farColors[r() > 0.5 ? 0 : 2];
+          // On a downhill course they follow you down the valley.
+          const foot = b.id.startsWith('dh-') ? this.farY(x) - 35 : tr.minY - 10;
           const base = new THREE.Mesh(new THREE.ConeGeometry(rad, h, 7), hazed(rock, 0.2));
-          base.position.set(x, tr.minY + h / 2 - 10, z);
+          base.position.set(x, foot + h / 2, z);
           base.rotation.y = r() * Math.PI;
           const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.42, h * 0.42, 7), hazed(b.farColors[1], 0.1));
-          cap.position.set(x, tr.minY + h - 10 - h * 0.21 + 0.3, z);
+          cap.position.set(x, foot + h - h * 0.21 + 0.3, z);
           cap.rotation.y = base.rotation.y;
           far.add(base, cap);
         }
@@ -2380,14 +2594,37 @@ export class World {
   private buildProps() {
     const b = this.biome, r = this.rand;
     const end = this.track.length + 10;
+    // The hillside town: a terrace of painted houses along the street behind the course.
+    if (b.id === 'dh-urban') {
+      const houses = ['townhouse_a', 'townhouse_b', 'townhouse_c', 'townhouse_d'];
+      let last = -1;
+      for (let x = -10; x < end; x += 4.2 + r() * 0.8) {
+        const z = -12.5 - r() * 3;
+        if (this.clearings.some((c) => Math.abs(x - c.x) < c.r + 2.5 && Math.abs(z - c.z) < c.r + 3)) continue;
+        // Now and then a garden between the houses: a palm, bougainvillea, a telegraph pole.
+        if (r() < 0.22) {
+          this.placeProp(r() < 0.5 ? 'palm' : 'flowerbush', x, z + 1, 1, r() * 6);
+          if (r() < 0.5) this.placeProp('powerpole', x + 1.5, z + 2, 1, 0);
+          continue;
+        }
+        let k = Math.floor(r() * houses.length);
+        if (k === last) k = (k + 1) % houses.length;
+        last = k;
+        this.placeProp(houses[k], x, z, 0.9 + r() * 0.15, (r() - 0.5) * 0.06);
+      }
+    }
     for (let x = -10; x < end; x += 3 + r() * 4) {
       const z = b.backZ[0] + r() * (b.backZ[1] - b.backZ[0]);
-      const kind = this.pickBack(), scale = 0.8 + r() * 0.6, rot = r() * Math.PI * 2;
+      const kind = this.pickBack(), scale = 0.8 + r() * 0.6;
+      // Houses, people and signs face the street; everything else can turn any way.
+      const rot = /^(townhouse|spectators|trailsign)/.test(kind) ? (r() - 0.5) * 0.7 : r() * Math.PI * 2;
       // Keep clear of the landmarks.
       if (this.clearings.some((c) => Math.abs(x - c.x) < c.r + 1.5 && Math.abs(z - c.z) < c.r + 2)) continue;
       this.placeProp(kind, x, z, scale, rot);
     }
     if (b.fence) for (let x = -6; x < end; x += b.fence.spacing) this.placeProp(b.fence.kind, x, b.fence.z);
+    // Downhill race: fans behind the tape, cheering you on.
+    if (b.id.startsWith('dh-')) for (let x = 20 + r() * 10; x < end; x += 24 + r() * 30) this.placeProp('spectators', x, -4.4, 0.95 + r() * 0.1, (r() - 0.5) * 0.5);
     if (b.posts) {
       const tops: THREE.Vector3[] = [];
       for (let x = 4; x < end; x += b.posts.spacing) {

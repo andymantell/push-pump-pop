@@ -1,6 +1,6 @@
 // A biome sets the look, scenery and feel of a track. Track layouts live in src/tracks.
 
-export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall' | 'covesand' | 'cobbles' | 'fairboards' | 'lattice' | 'grating' | 'hazard' | 'cartrock' | 'timber' | 'footprints' | 'fossil' | 'regolith' | 'craterrock' | 'skypath' | 'islandrock';
+export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall' | 'covesand' | 'cobbles' | 'fairboards' | 'lattice' | 'grating' | 'hazard' | 'cartrock' | 'timber' | 'footprints' | 'fossil' | 'regolith' | 'craterrock' | 'skypath' | 'islandrock' | 'singletrack' | 'plaster';
 
 export interface Surface {
   kind: SurfaceKind;
@@ -23,7 +23,7 @@ export interface Biome {
   ground: [number, number, number];
   /** How the ground behind the track rises or falls away. */
   groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat' | 'quay' | 'islands';
-  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour' | 'hollow' | 'fair' | 'factory' | 'cave' | 'skyislands';
+  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour' | 'hollow' | 'fair' | 'factory' | 'cave' | 'skyislands' | 'hilltown' | 'woods' | 'conifers';
   farColors: number[];
   clouds: number | null;
   particles: Particles | null;
@@ -353,12 +353,80 @@ export const BIOMES: Record<string, Biome> = {
     pitFill: 'sky', fallText: 'WHEEE!', sign: '#3a6a9a',
     friction: 1, maxSpeed: 17, swatch: '#5ab0e8',
   },
+  // --- The downhill world: the bike's own courses, every one of them running downhill.
+  'dh-urban': {
+    id: 'dh-urban', name: 'Hillside Town', blurb: 'Race down steps, walls and alleys through a town of painted houses.',
+    sky: ['#3f8fe0', '#94ccf0', '#fff0d8'], fog: [0xe8eef0, 70, 230],
+    hemi: [0xfff4e4, 0x8a8070, 1.45], sun: [0xfff0d4, 2.3],
+    top: { kind: 'cobbles', base: '#b4aca0', seam: '#6e665c', accent: '#7a9050' },
+    front: { kind: 'plaster', base: '#e8a070', seam: '#a85a40', accent: '#5a5a62' },
+    band: 0xf2c230,
+    ground: [0x8aa860, 0x7a9a54, 0xa0b46c], groundShape: 'hills',
+    far: 'hilltown', farColors: [0x8aa070, 0x9aa47a], clouds: 0xffffff, particles: null,
+    back: [['townhouse_a', 2], ['townhouse_b', 2], ['townhouse_c', 2], ['townhouse_d', 2], ['powerpole', 0.6], ['flowerbush', 1],
+      ['palm', 0.5]], backZ: [-19, -32],
+    fence: { kind: 'tapefence', z: -3.2, spacing: 2.4 },
+    posts: { kind: 'raceflag', z: -2.7, spacing: 30 },
+    edge: { kind: 'strawbale', z: -2.1, spacing: 26 },
+    pitFill: 'dark', fallText: 'CRASH!', sign: '#c8402a',
+    friction: 1, maxSpeed: 17, swatch: '#e8768f',
+  },
+  'dh-mud': {
+    id: 'dh-mud', name: 'Muddy Woods', blurb: 'Slither down muddy chutes under the beeches. Pump the whoops.',
+    sky: ['#5a8ac0', '#a8c8d8', '#e8ecd8'], fog: [0xd8dcc8, 40, 170],
+    hemi: [0xf0f0dc, 0x5a6a3a, 1.35], sun: [0xfff0d0, 1.8],
+    top: { kind: 'singletrack', base: '#6e4a2e', seam: '#4a2e1a', accent: '#b07a3a' },
+    front: { kind: 'soil', base: '#5a3c26', seam: '#3a2414', accent: '#8a8478' },
+    band: 0x4a7a32,
+    ground: [0x4a7a34, 0x3e6a2c, 0x5a8a3c], groundShape: 'hills',
+    far: 'woods', farColors: [0x4a7a3a, 0x5a8a40, 0x3a6a32], clouds: 0xf0f0f0, particles: 'leaves',
+    back: [['beech', 3], ['tree', 1.5], ['deadtree', 0.4], ['log', 1], ['stump', 1], ['toadstools', 1], ['bramble', 1.5], ['bush', 1], ['fern', 1.5], ['spectators', 0.3]], backZ: [-4, -20],
+    fence: { kind: 'tapefence', z: -3.2, spacing: 2.4 },
+    posts: { kind: 'raceflag', z: -2.7, spacing: 36 },
+    edge: { kind: 'toadstools', z: -2.1, spacing: 15 },
+    pitFill: 'water', pitFillColor: 0x4a3420, fallText: 'SPLAT!', sign: '#6a3a1a',
+    friction: 1, maxSpeed: 17, swatch: '#8a5a2e', leafTint: 0xc87a2a,
+  },
+  'dh-rocky': {
+    id: 'dh-rocky', name: 'Boulder Peak', blurb: 'Balance through rock gardens and drop off boulders, high in the mountains.',
+    sky: ['#2a7ad8', '#8ac4f0', '#eaf4fa'], fog: [0xdce8f0, 70, 240],
+    hemi: [0xf4f8ff, 0x7a7a6a, 1.5], sun: [0xffffff, 2.5],
+    top: { kind: 'singletrack', base: '#9a8a74', seam: '#6a5c4a', accent: '#b8b4ac' },
+    front: { kind: 'strata', base: '#8a8478', seam: '#6a645a', accent: '#a49e92' },
+    band: 0xe8642a,
+    ground: [0x8a9a5a, 0x7a8a50, 0x9aa468], groundShape: 'mountain',
+    far: 'mountains', farColors: [0x7a7e88, 0xf4f6fa, 0x8a8e96], clouds: 0xffffff, particles: null,
+    back: [['boulder', 2], ['boulders', 2], ['scree', 1.5], ['pine', 2], ['cairn', 0.6], ['alpineflowers', 2], ['marmot', 0.4], ['rock', 1.5], ['spectators', 0.3]], backZ: [-4, -22],
+    fence: { kind: 'tapefence', z: -3.2, spacing: 2.4 },
+    posts: { kind: 'raceflag', z: -2.7, spacing: 34 },
+    edge: { kind: 'boulders', z: -2.1, spacing: 19 },
+    pitFill: 'dark', fallText: 'CRUNCH!', sign: '#5a4a3a',
+    friction: 1, maxSpeed: 17, swatch: '#9a8a74',
+  },
+  'dh-shore': {
+    id: 'dh-shore', name: 'North Shore', blurb: 'Skinnies, ladder bridges and wooden drops under giant cedars.',
+    sky: ['#5a7a98', '#9ab4c4', '#d8e4e4'], fog: [0xc8d8d0, 30, 150],
+    hemi: [0xe8f4e8, 0x3a5a3a, 1.4], sun: [0xf0f8e8, 1.7],
+    top: { kind: 'singletrack', base: '#4a3424', seam: '#2e1e14', accent: '#7a9a4a' },
+    front: { kind: 'soil', base: '#3e2c1e', seam: '#261810', accent: '#6a8a4a' },
+    band: 0x5a9a3a,
+    ground: [0x3a6a34, 0x2e5a2c, 0x4a7a3c], groundShape: 'hills',
+    far: 'conifers', farColors: [0x2e5a3a, 0x3a6a44, 0x24503a], clouds: 0xe8f0f0, particles: null,
+    back: [['cedar', 3], ['swordfern', 3], ['mossylog', 1.2], ['stump', 1], ['toadstools', 0.6], ['trailsign', 0.3], ['fern', 1.5], ['pine', 1]], backZ: [-4, -18],
+    fence: { kind: 'splitrail', z: -3.2, spacing: 2.4 },
+    posts: { kind: 'trailsign', z: -2.7, spacing: 48 },
+    edge: { kind: 'swordfern', z: -2.1, spacing: 7 },
+    pitFill: 'dark', fallText: 'TIMBER!', sign: '#3a5a2a',
+    friction: 1, maxSpeed: 17, swatch: '#3a6a44', haze: 0.25,
+  },
 };
 
 /** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
 export const WORLDS: string[][] = [
   ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
   ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair', 'toxic', 'mine', 'dino', 'moon', 'sky'],
+  // The downhill bike's own world (MTB_WORLD in ride.ts): only the MTB goes here.
+  ['dh-urban', 'dh-mud', 'dh-rocky', 'dh-shore'],
 ];
 export const BIOME_ORDER = WORLDS.flat();
 export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));

@@ -1039,6 +1039,539 @@ def build_scooter():
     export(os.path.join(OUT, 'scooter.glb'), parts)
 
 
+# ---------------------------------------------------------------- downhill bike
+
+# Bike space (Blender): X forward, Z up, the drive side (-Y) facing the camera, origin on the
+# ground under the bottom bracket. These numbers are mirrored in src/mtb.ts.
+# Modern downhill geometry, after a 2024 Santa Cruz V10 in size L: 29in wheels, long and low
+# (1.30 m wheelbase, the bottom bracket below the axles), a slack 63 degree head angle,
+# 474 mm reach and 638 mm stack.
+MTB_R = 0.37                      # wheel radius, to the tops of the knobs
+MTB_AXLE_R = (-0.455, MTB_R)      # rear axle (x, z), at sag
+MTB_AXLE_F = (0.845, MTB_R)       # front axle, at sag
+MTB_BB = (0.0, 0.35)
+MTB_PIVOT = (0.04, 0.45)          # main pivot: the swingarm turns about it
+MTB_SHOCK_F = (0.17, 0.58)        # shock eye on the frame (on a brace up from the bottom bracket)
+MTB_SHOCK_S = (-0.13, 0.64)       # shock eye on the swingarm yoke
+MTB_HEAD = 63.0                   # head angle, degrees from the ground
+MTB_OFFSET = 0.05                 # fork offset: the legs run this far ahead of the steering axis
+MTB_CRANK = 0.165
+MTB_GRIP = (0.49, 1.07, 0.37)     # grips: x, z, half the bar width
+MTB_RING, MTB_COG, MTB_CHAIN_Y = 0.075, 0.048, -0.06
+
+
+def mtb_axis(s, x=0.0):
+    """A point `s` up the fork legs from the front axle, `x` forward of them (-MTB_OFFSET is
+    the steering axis, through the head tube)."""
+    a = math.radians(MTB_HEAD)
+    return (MTB_AXLE_F[0] - s * math.cos(a) + x * math.sin(a), MTB_AXLE_F[1] + s * math.sin(a) + x * math.cos(a))
+
+
+def mtb_steer(s):
+    return mtb_axis(s, -MTB_OFFSET)
+
+
+def tube(material, p0, p1, r0, r1=None, y=0.0, verts=14):
+    """A frame tube from (x, z) p0 to p1 at depth y."""
+    return limb(material, (p0[0], y, p0[1]), (p1[0], y, p1[1]), r0, r0 if r1 is None else r1, verts=verts)
+
+
+def mtb_wheel(tyre_m, knob_m, rim_m, spoke_m, hub_m, rotor_m, cog_m=None):
+    """A wheel at the origin, axle along Y: knobbly tyre, rim, 28 spokes, hub, a brake rotor on
+    the left (+Y) and, on the back wheel, a cassette on the drive side (-Y)."""
+    R = MTB_R
+    bits = []
+    bpy.ops.mesh.primitive_torus_add(major_radius=R - 0.036, minor_radius=0.032, rotation=(math.pi / 2, 0, 0), major_segments=48, minor_segments=10)
+    t = bpy.context.object
+    t.scale = (1, 1, 1.15)  # local Z is across the wheel once it's stood up
+    apply_tf(t)
+    bits.append(finish(t, tyre_m))
+    # Knobs round the tread: a centre row and a shoulder row each side, staggered.
+    n = 36
+    for k in range(n):
+        a = 2 * math.pi * k / n
+        c, s = math.cos(a), math.sin(a)
+        bits.append(cube(knob_m, (0.022, 0.026, 0.014), loc=(c * (R - 0.006), 0, s * (R - 0.006)), rot=(0, -a + math.pi / 2, 0), bevel=0.003))
+        a2 = a + math.pi / n
+        c2, s2 = math.cos(a2), math.sin(a2)
+        for y in (-0.026, 0.026):
+            bits.append(cube(knob_m, (0.016, 0.014, 0.013), loc=(c2 * (R - 0.014), y, s2 * (R - 0.014)), rot=(0, -a2 + math.pi / 2, 0), bevel=0.003))
+    bpy.ops.mesh.primitive_torus_add(major_radius=R - 0.066, minor_radius=0.011, rotation=(math.pi / 2, 0, 0), major_segments=40, minor_segments=6)
+    rim = bpy.context.object
+    rim.scale = (1, 1, 1.6)
+    apply_tf(rim)
+    bits.append(finish(rim, rim_m))
+    for k in range(32):
+        a = 2 * math.pi * k / 32
+        side = 1 if k % 2 else -1
+        a0 = a + side * 0.18
+        bits.append(limb(spoke_m, (0.022 * math.cos(a0), side * 0.03, 0.022 * math.sin(a0)),
+                         ((R - 0.07) * math.cos(a), side * 0.006, (R - 0.07) * math.sin(a)), 0.0025, 0.0025, verts=4))
+    bits.append(cyl(hub_m, 0.026, 0.09, rot=(math.pi / 2, 0, 0), verts=16, bevel=0.004))
+    bits.append(cyl(hub_m, 0.036, 0.008, loc=(0, 0.03, 0), rot=(math.pi / 2, 0, 0), verts=18))
+    bits.append(cyl(hub_m, 0.036, 0.008, loc=(0, -0.03, 0), rot=(math.pi / 2, 0, 0), verts=18))
+    # Brake rotor: a steel disc with holes, on the left.
+    bits.append(cyl(rotor_m, 0.1, 0.004, loc=(0, 0.046, 0), rot=(math.pi / 2, 0, 0), verts=28))
+    for k in range(8):
+        a = 2 * math.pi * k / 8
+        bits.append(cyl(hub_m, 0.012, 0.006, loc=(0.075 * math.cos(a), 0.046, 0.075 * math.sin(a)), rot=(math.pi / 2, 0, 0), verts=8))
+    if cog_m:
+        for i in range(4):
+            bits.append(cyl(cog_m, MTB_COG - i * 0.008, 0.004, loc=(0, MTB_CHAIN_Y + 0.004 + i * 0.007, 0), rot=(math.pi / 2, 0, 0), verts=24))
+    return bits
+
+
+def mtb_studs(stud_m):
+    """Ice studs for snow: little steel points standing out of the knobs."""
+    R = MTB_R
+    bits = []
+    for k in range(36):
+        a = 2 * math.pi * k / 36 + math.pi / 36
+        c, s = math.cos(a), math.sin(a)
+        for y in (-0.026, 0.026):
+            bits.append(cyl(stud_m, 0.005, 0.014, loc=(c * (R - 0.002), y, s * (R - 0.002)), rot=(0, -a + math.pi / 2, 0), verts=6))
+    return bits
+
+
+FF_C, FF_R = (0.0, 0.016, 0.17), (0.141, 0.172, 0.15)
+FF_PORT = (0.11, 0.054, 0.17)  # eye port half width, half height, centre height
+
+
+def ff_bottom(y):
+    """Height of the shell's bottom edge: lowest at the point of the chin bar, rising in a
+    straight line under the cheeks to the back of the neck."""
+    return max(-0.034, 0.012 + 0.2 * y)
+
+
+# Cuts for ff_shell. Each is (g, snap): g(v) is roughly how far inside the kept part the vertex
+# is, in metres (negative: cut away), and snap(v) moves a vertex just outside onto the edge, so
+# edges come out smooth rather than following the sphere's grid.
+def ff_port_cut(k, inside):
+    a, b, c = FF_PORT[0] * k, FF_PORT[1] * k, FF_PORT[2]
+
+    def f(v):
+        return ((abs(v.x) / a) ** 4 + (abs(v.z - c) / b) ** 4) ** 0.25
+
+    def g(v):
+        if v.y > -0.02:
+            return -1.0 if inside else 1.0
+        d = (f(v) - 1) * b
+        return -d if inside else d
+
+    def snap(v):
+        r = max(f(v), 1e-6)
+        v.x /= r
+        v.z = c + (v.z - c) / r
+    return g, snap
+
+
+# Cuts across the egg's rows snap less far: low down the rows are close together in height,
+# and snapping two onto the same line folds the faces between them.
+def ff_z_above(fn):
+    def snap(v):
+        v.z = fn(v.y)
+    return (lambda v: v.z - fn(v.y)), snap, 0.0035
+
+
+def ff_z_below(fn):
+    def snap(v):
+        v.z = fn(v.y)
+    return (lambda v: fn(v.y) - v.z), snap, 0.0035
+
+
+def ff_y_below(w):
+    def snap(v):
+        v.y = w
+    return (lambda v: w - v.y), snap
+
+
+def ff_x_within(w):
+    def snap(v):
+        v.x = math.copysign(w, v.x)
+    return (lambda v: w - abs(v.x)), snap
+
+
+def ff_slot(xc, w):
+    """Keep a band `w` either side of x = xc."""
+    def snap(v):
+        v.x = xc + math.copysign(w, v.x - xc)
+    return (lambda v: w - abs(v.x - xc)), snap
+
+
+def ff_y_above(w):
+    def snap(v):
+        v.y = w
+    return (lambda v: v.y - w), snap
+
+
+def ff_shell(material, grow=0.0, cuts=(), thick=0.0, keep=None, segs=96, rings=64, name='ff', tol=0.009):
+    """The full-face shell, `grow` bigger all round: an egg over the head with the jaw pushed
+    forward into a chin bar, trimmed by `cuts` (see above) and `keep(x, y, z)`; `thick` makes it
+    solid, inwards. The face is at -Y."""
+    rx, ry, rz = (r + grow for r in FF_R)
+    o = sphere(material, 1.0, loc=FF_C, scale=(rx, ry, rz), segs=segs, rings=rings)
+    for v in o.data.vertices:
+        t = max(0.0, min(1.0, (0.125 - v.co.z) / 0.07))
+        low = t * t * (3 - 2 * t)
+        front = max(0.0, -(v.co.y - FF_C[1]) / ry)
+        back = max(0.0, (v.co.y - FF_C[1]) / ry)
+        side = min(1.0, abs(v.co.x) / rx)
+        # The chin bar: below the eye port the egg would curve back in, so the front is pushed
+        # out to stand well ahead of the face, in a moto-style beak that narrows to a ridge.
+        if v.co.y < FF_C[1] and low > 0:
+            w = (v.co.z - FF_C[2]) / rz
+            reach = ry * math.sqrt(max(0.04, 1 - w * w))
+            k = min(3.5, ry * (1.12 + 0.2 * low) / reach)
+            k = 1 + (k - 1) * low * front ** 0.7
+            v.co.y = FF_C[1] + (v.co.y - FF_C[1]) * k - 0.018 * low * front * (1 - side) ** 2
+            v.co.x *= 1 - 0.22 * low * front
+        # A low, long crown: flatter on top, drawn out a little at the back, with a lip
+        # kicking out over the neck.
+        if v.co.z > FF_C[2]:
+            v.co.z = FF_C[2] + (v.co.z - FF_C[2]) * (1 - 0.08 * (1 - side))
+        v.co.y += 0.018 * back ** 2 * (1 - low) + 0.012 * back * max(0.0, min(1.0, (0.07 - v.co.z) / 0.06))
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    # Each cut slices the faces exactly along its line: edges crossing it are split where they
+    # cross, the faces split between the new points, and everything outside is deleted.
+    for cut in cuts:
+        g = cut[0]
+        new = set()
+        for e in [e for e in bm.edges if (g(e.verts[0].co) >= 0) != (g(e.verts[1].co) >= 0)]:
+            a, b = e.verts
+            pa, pb = a.co.copy(), b.co.copy()
+            lo, hi, glo, ghi = 0.0, 1.0, g(pa), g(pb)
+            for _ in range(8):
+                t = lo + (hi - lo) * glo / (glo - ghi) if glo != ghi else (lo + hi) / 2
+                gt = g(pa.lerp(pb, t))
+                if (gt >= 0) == (glo >= 0):
+                    lo, glo = t, gt
+                else:
+                    hi, ghi = t, gt
+            _, nv = bmesh.utils.edge_split(e, a, t)
+            nv.co = pa.lerp(pb, t)
+            new.add(nv)
+        for f in bm.faces[:]:
+            vs = [v for v in f.verts if v in new]
+            if len(vs) == 2 and not any(vs[1] in (l.edge.other_vert(vs[0]),) for l in vs[0].link_loops):
+                try:
+                    bmesh.utils.face_split(f, vs[0], vs[1])
+                except ValueError:
+                    pass
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if v not in new and g(v.co) < 0], context='VERTS')
+    gone = set()
+    if keep:
+        gone |= {v for v in bm.verts if not keep(*v.co)}
+    bmesh.ops.delete(bm, geom=list(gone), context='VERTS')
+    # Rows snapped onto the same edge: merge them, so there are no flat slivers to solidify.
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=0.0008)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges[:], dist=0.0005)
+    if thick:
+        # Solid: an inner skin moved in along the egg's own normals (sturdier than solidify on
+        # the snapped edges), joined to the outer one round every open edge.
+        inner = {}
+        for v in bm.verts[:]:
+            n = Vector(((v.co.x - FF_C[0]) / rx ** 2, (v.co.y - FF_C[1]) / ry ** 2, (v.co.z - FF_C[2]) / rz ** 2)).normalized()
+            inner[v] = bm.verts.new(v.co - n * thick)
+        edges = [(e.verts[0], e.verts[1]) for e in bm.edges if len(e.link_faces) == 1]
+        for f in bm.faces[:]:
+            bm.faces.new([inner[v] for v in reversed(f.verts)])
+        for a, b in edges:
+            try:
+                bm.faces.new((a, b, inner[b], inner[a]))
+            except ValueError:
+                pass
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(o.data)
+    bm.free()
+    o.name = name
+    return o
+
+
+def fullface_parts():
+    """A downhill full-face helmet: a shell down over the ears with a chin bar jutting forward,
+    a peak over the eye port, goggles sitting in the port with their strap round the shell,
+    vents in the chin bar and a stripe over the crown. The face is at -Y."""
+    shell_m = mat('fullface', (255, 214, 64))
+    accent = mat('fullface_stripe', (232, 64, 42))
+    trim = mat('helmet_vent', (40, 40, 44))
+    strap_m = mat('goggle_strap', (24, 182, 176))
+    frame_m = mat('goggle_frame', (250, 250, 246))
+    lens = mat('goggle_lens_dh', (255, 150, 40))
+    bottom = ff_z_above(ff_bottom)
+    shell = ff_shell(shell_m, cuts=(bottom, ff_port_cut(1.0, False)), thick=0.012, name='ff_shell')
+    bits = [shell]
+    # A red stripe over the crown, and a red rim round the bottom edge.
+    bits.append(ff_shell(accent, 0.002, (ff_x_within(0.024), ff_z_above(lambda y: 0.12)), 0.004, keep=lambda x, y, z: y > -0.12))
+    bits.append(ff_shell(accent, 0.002, (bottom, ff_z_below(lambda y: ff_bottom(y) + 0.022)), 0.004))
+    # The chin bar in red, from under the port to the bottom edge, back to the cheeks.
+    # Its back edge sweeps back lower down, along the cheek.
+    bits.append(ff_shell(accent, 0.002, (bottom, ff_z_below(lambda y: 0.1), (lambda v: -0.095 + 0.75 * (0.1 - v.z) - v.y, None)), 0.004))
+    # Slit vents running back over the top, and exhausts low at the back.
+    for xc in (-0.062, -0.022, 0.022, 0.062):
+        bits.append(ff_shell(trim, 0.0015, (ff_slot(xc, 0.007), ff_y_above(-0.07 + abs(xc) * 0.4), ff_y_below(0.035 - abs(xc) * 0.3), ff_z_above(lambda y: 0.22)), 0.004))
+    for xc in (-0.05, 0.05):
+        bits.append(ff_shell(trim, 0.0015, (ff_slot(xc, 0.022), ff_y_above(0.08), ff_z_above(lambda y: 0.1), ff_z_below(lambda y: 0.125)), 0.004))
+    # Rubber trim round the eye port.
+    bits.append(ff_shell(trim, 0.002, (ff_port_cut(1.14, True), ff_port_cut(0.96, False)), 0.016))
+    # Goggles: a white frame filling the port, standing proud of it, with a mirrored lens, and the
+    # strap round the outside of the shell.
+    bits.append(ff_shell(frame_m, 0.008, (ff_port_cut(1.06, True),), 0.022))
+    bits.append(ff_shell(lens, 0.012, (ff_port_cut(0.8, True),), 0.006))
+    band = 0.02
+    bits.append(ff_shell(strap_m, 0.006, (ff_z_above(lambda y: FF_PORT[2] - band), ff_z_below(lambda y: FF_PORT[2] + band), ff_port_cut(1.08, False)), 0.006))
+    # Vents across the chin bar, and a mouth vent under them.
+    for x, z, w, h, rz in ((-0.036, 0.074, 0.042, 0.012, 0.3), (0.036, 0.074, 0.042, 0.012, -0.3), (-0.038, 0.05, 0.036, 0.011, 0.3), (0.038, 0.05, 0.036, 0.011, -0.3), (0.0, 0.058, 0.024, 0.03, 0.0)):
+        y = surface_y(shell, x, z)
+        bits.append(cube(trim, (w, 0.012, h), loc=(x, y + 0.005, z), rot=(-0.6, 0, rz), bevel=0.003))
+    # Peak: a curved sheet out from the brow above the port, tipped up a little.
+    bm = bmesh.new()
+    rows = []
+    zb = 0.238
+    k = math.sqrt(1 - ((zb - FF_C[2]) / FF_R[2]) ** 2)
+    for s in (0.0, 0.5, 1.0):
+        row = []
+        for i in range(13):
+            th = -0.95 + 1.9 * i / 12
+            nx, ny = math.sin(th), -math.cos(th)
+            out = -0.012 + 0.105 * s * (1 - 0.45 * (th / 0.95) ** 2)
+            row.append(bm.verts.new((nx * (FF_R[0] * k + out), FF_C[1] + ny * (FF_R[1] * k + out), zb + 0.02 * s + 0.008 * s * s - 0.02 * s * (th / 0.95) ** 2)))
+        rows.append(row)
+    for a, b in zip(rows, rows[1:]):
+        for i in range(12):
+            bm.faces.new((a[i], a[i + 1], b[i + 1], b[i]))
+    bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=0.009)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new('peak')
+    bm.to_mesh(me)
+    bm.free()
+    peak = bpy.data.objects.new('peak', me)
+    bpy.context.collection.objects.link(peak)
+    bits.append(finish(peak, accent))
+    return bits
+
+
+def build_mtb():
+    """Full-suspension downhill bike, in parts that move like the real thing, plus the rider's full-face helmet.
+
+    mtb_frame (origin under the bottom bracket), mtb_swingarm (origin at the main pivot),
+    mtb_fork_upper (crowns, stanchions, stem and bars) and mtb_fork_lower (lowers), both with their
+    origin at the front axle, mtb_wheel_f / mtb_wheel_r and mtb_studs (origin at the axle),
+    mtb_cranks (origin at the bottom bracket), mtb_pedal, and the rear shock as mtb_shock_body,
+    mtb_shock_shaft and mtb_spring, each from its eye along +X (the spring is 1 long, to be
+    stretched between the perches).
+    """
+    reset()
+    frame_m = mat('mtb_frame', (24, 182, 176))
+    frame_dk = mat('mtb_frame_dark', (16, 128, 126))
+    graphic = mat('mtb_graphic', (255, 214, 64))
+    black = mat('mtb_black', (38, 38, 42))
+    alloy = mat('mtb_alloy', (196, 202, 212))
+    gold = mat('mtb_stanchion', (232, 182, 66))
+    spring_m = mat('mtb_spring', (255, 112, 24))
+    tyre_m = mat('mtb_tyre', (48, 46, 46))
+    knob_m = mat('mtb_knob', (62, 60, 58))
+    rim_m = mat('mtb_rim', (30, 30, 34))
+    spoke_m = mat('mtb_spoke', (200, 204, 210))
+    hub_m = mat('mtb_hub', (232, 64, 42))
+    rotor_m = mat('mtb_rotor', (170, 176, 184))
+    grip_m = mat('mtb_grip', (255, 112, 24))
+    saddle_m = mat('mtb_saddle', (34, 34, 38))
+    stud_m = mat('mtb_stud', (236, 240, 246))
+    parts = []
+
+    # --- frame: head tube, top tube, down tube (with the shock mount), an interrupted seat
+    # tube (the shock passes through), saddle, bottom bracket shell and chain guide.
+    ht0, ht1 = mtb_steer(0.6), mtb_steer(0.715)
+    f = [tube(frame_m, ht0, ht1, 0.034, verts=20)]
+    f.append(tube(frame_dk, mtb_steer(0.59), mtb_steer(0.605), 0.037, verts=20))
+    f.append(tube(frame_dk, mtb_steer(0.71), mtb_steer(0.725), 0.037, verts=20))
+    # The seat tube runs straight up and back from the bottom bracket, steep and short; the
+    # shock passes through a gap in it, bridged by a plate on each side.
+    def seat_line(z):
+        return (MTB_BB[0] - (z - MTB_BB[1]) * 0.26, z)
+    seat_top = seat_line(0.77)
+    # A long, low top tube, sloping down to the seat tube, and a long down tube, fat and
+    # straight from the head tube to the bottom bracket.
+    tt0 = mtb_steer(0.69)
+    f.append(tube(frame_m, tt0, seat_line(0.74), 0.028, 0.024))
+    dt0 = mtb_steer(0.62)
+    f.append(tube(frame_m, dt0, (0.05, 0.39), 0.04, 0.034))
+    def on_dt(t):
+        return (dt0[0] + (0.05 - dt0[0]) * t, dt0[1] + (0.39 - dt0[1]) * t)
+    f.append(tube(graphic, on_dt(0.1), on_dt(0.62), 0.0415, verts=14))
+    # A brace up from the bottom bracket to the shock mount.
+    f.append(tube(frame_m, (0.02, MTB_BB[1]), (MTB_SHOCK_F[0] + 0.01, MTB_SHOCK_F[1] - 0.02), 0.03, 0.024))
+    f.append(tube(frame_m, MTB_BB, seat_line(0.57), 0.03, 0.028))
+    f.append(tube(frame_m, seat_line(0.71), seat_top, 0.027))
+    for y in (-0.05, 0.05):
+        f.append(limb(frame_dk, (seat_line(0.55)[0], y, 0.55), (seat_line(0.73)[0], y, 0.73), 0.012, 0.012, verts=10))
+    # Gusset under the top tube where it meets the seat tube.
+    f.append(tube(frame_m, seat_line(0.71), (seat_line(0.74)[0] + 0.1, 0.765), 0.016, 0.012, verts=10))
+    # Seat post with its clamp, and a low, slammed saddle.
+    post = seat_line(0.82)
+    f.append(tube(black, seat_top, post, 0.016))
+    f.append(tube(graphic, seat_line(0.76), seat_line(0.78), 0.022, verts=14))
+    # Lofted across Y, then turned to run along X, nose forward, sitting on the post.
+    sad = loft(saddle_m, [(-0.135, 0.022, 0.01, 0, 0, 2), (-0.12, 0.062, 0.02, 0, 0, 2.6), (-0.07, 0.056, 0.022, 0, 0, 2.4),
+                          (0.02, 0.026, 0.018, 0, 0, 2.2), (0.11, 0.016, 0.015, 0, -0.006, 2), (0.13, 0.008, 0.01, 0, -0.008, 2)],
+               segs=20, axis='y', name='saddle')
+    sad.rotation_euler = (0, 0, -math.pi / 2)
+    sad.location = (post[0] + 0.02, 0, post[1] + 0.022)
+    apply_tf(sad)
+    f.append(sad)
+    # A yellow panel down each side of it.
+    for y in (-1, 1):
+        f.append(cube(graphic, (0.12, 0.004, 0.012), loc=(post[0] - 0.02, y * 0.05, post[1] + 0.02), rot=(0, 0, -y * 0.12), bevel=0.002))
+    f.append(cyl(black, 0.026, 0.1, loc=(MTB_BB[0], 0, MTB_BB[1]), rot=(math.pi / 2, 0, 0), verts=18))
+    # Main pivot housing and the shock mount.
+    f.append(cyl(frame_dk, 0.03, 0.11, loc=(MTB_PIVOT[0], 0, MTB_PIVOT[1]), rot=(math.pi / 2, 0, 0), verts=18))
+    for y in (-0.022, 0.022):
+        f.append(cube(frame_dk, (0.05, 0.008, 0.06), loc=(MTB_SHOCK_F[0] + 0.01, y, MTB_SHOCK_F[1] + 0.015), bevel=0.003))
+    # Chain guide round the top of the ring.
+    f.append(cube(black, (0.12, 0.012, 0.03), loc=(0.0, MTB_CHAIN_Y - 0.02, MTB_BB[1] + MTB_RING + 0.02), bevel=0.006))
+    parts.append(join('mtb_frame', f))
+
+    # --- swingarm: chainstays from the pivot to the rear axle, seat stays from the axle up to
+    # the yoke that drives the shock, a brace, dropouts and the brake caliper.
+    P, A, S = MTB_PIVOT, MTB_AXLE_R, MTB_SHOCK_S
+    sw = []
+    for y in (-0.065, 0.065):
+        sw.append(tube(frame_m, (P[0] - 0.02, P[1]), (A[0] + 0.02, A[1] + 0.01), 0.022, 0.016, y=y))
+        sw.append(tube(frame_m, (A[0] + 0.02, A[1] + 0.02), (S[0] - 0.01, S[1] - 0.04), 0.017, 0.02, y=y))
+        sw.append(tube(frame_dk, (S[0] - 0.01, S[1] - 0.04), (P[0] - 0.02, P[1] + 0.02), 0.02, y=y * 0.6))
+        sw.append(cube(frame_dk, (0.05, 0.012, 0.05), loc=(A[0], y * 1.05, A[1]), bevel=0.006))
+    sw.append(cube(frame_dk, (0.04, 0.12, 0.03), loc=(S[0] + 0.0, 0, S[1] - 0.035), bevel=0.008))
+    sw.append(cube(frame_dk, (0.06, 0.11, 0.025), loc=(P[0] - 0.06, 0, P[1] + 0.005), bevel=0.008))
+    for y in (-0.02, 0.02):
+        sw.append(cube(frame_dk, (0.035, 0.008, 0.05), loc=(S[0], y, S[1] - 0.012), bevel=0.003))
+    sw.append(cube(black, (0.05, 0.02, 0.035), loc=(A[0] + 0.06, 0.066, A[1] + 0.06), bevel=0.006))
+    parts.append(join('mtb_swingarm', sw))
+
+    # --- fork: made upright about the steering axis, then tipped back to the head angle so the
+    # parts sit right in bike space (origin moved to the front axle below).
+    def along(s, x=0.0, y=0.0):
+        """Fork space: `s` up the fork legs, `x` forward of them, `y` across."""
+        px, pz = mtb_axis(s, x)
+        return (px, y, pz)
+
+    tilt = (0, -math.radians(90 - MTB_HEAD), 0)
+    up = []
+    for y in (-0.075, 0.075):
+        up.append(limb(gold, along(0.36, y=y), along(0.775, y=y), 0.019, 0.019, verts=16))
+    # Lower crown under the head tube, upper crown above it, each clamping both stanchions and,
+    # behind them, the steerer, which runs up the head tube on the steering axis.
+    for sc in (0.57, 0.745):
+        up.append(cube(black, (0.1, 0.2, 0.038), loc=along(sc, x=-0.022), rot=tilt, bevel=0.014))
+    up.append(limb(black, along(0.57, -MTB_OFFSET), along(0.77, -MTB_OFFSET), 0.017, 0.017, verts=12))
+    # Direct-mount stem on the upper crown, riser bars and grips.
+    gx, gz, gw = MTB_GRIP
+    stem = along(0.775, -0.02)
+    up.append(cube(black, (0.075, 0.07, 0.036), loc=stem, rot=tilt, bevel=0.012))
+    clamp = (gx + 0.02, gz - 0.025)
+    up.append(cyl(black, 0.018, 0.12, loc=(clamp[0], 0, clamp[1]), rot=(math.pi / 2, 0, 0), verts=14))
+    for s in (-1, 1):
+        up.append(limb(black, (clamp[0], s * 0.05, clamp[1]), (gx + 0.012, s * 0.16, gz + 0.004), 0.012, 0.012, verts=10))
+        up.append(limb(black, (gx + 0.012, s * 0.16, gz + 0.004), (gx, s * (gw - 0.05), gz), 0.012, 0.012, verts=10))
+        up.append(limb(grip_m, (gx, s * (gw - 0.06), gz), (gx, s * (gw + 0.05), gz), 0.019, 0.019, verts=14))
+        up.append(limb(black, (gx, s * (gw - 0.075), gz), (gx, s * (gw - 0.06), gz), 0.023, 0.023, verts=14))
+        # Brake levers reaching out over the grips.
+        up.append(limb(alloy, (gx + 0.01, s * (gw - 0.09), gz + 0.01), (gx + 0.07, s * (gw - 0.0), gz - 0.02), 0.006, 0.005, verts=6))
+    parts.append(join('mtb_fork_upper', up))
+
+    lo = []
+    for y in (-0.075, 0.075):
+        lo.append(limb(black, along(-0.035, y=y), along(0.395, y=y), 0.027, 0.027, verts=16))
+        lo.append(limb(alloy, along(0.385, y=y), along(0.41, y=y), 0.028, 0.028, verts=16))
+        lo.append(cube(black, (0.05, 0.02, 0.05), loc=along(0.0, y=y * 1.02), bevel=0.01))
+    # Arch-free DH lowers: a stripe decal on each, and the brake caliper on the left.
+    for y in (-0.103, 0.103):
+        lo.append(limb(graphic, along(0.12, y=y), along(0.33, y=y), 0.006, 0.006, verts=6))
+    lo.append(cube(black, (0.05, 0.02, 0.035), loc=along(0.09, x=-0.06, y=0.1), bevel=0.006))
+    parts.append(join('mtb_fork_lower', lo))
+
+    # --- wheels and studs
+    parts.append(join('mtb_wheel_f', mtb_wheel(tyre_m, knob_m, rim_m, spoke_m, hub_m, rotor_m)))
+    parts.append(join('mtb_wheel_r', mtb_wheel(tyre_m, knob_m, rim_m, spoke_m, hub_m, rotor_m, cog_m=alloy)))
+    parts.append(join('mtb_studs', mtb_studs(stud_m)))
+
+    # --- cranks and chainring (built at the origin, which is their axle, the drive-side arm pointing +X),
+    # and a flat pedal (origin at its spindle).
+    cr = [cyl(alloy, MTB_RING, 0.004, loc=(0, MTB_CHAIN_Y, 0), rot=(math.pi / 2, 0, 0), verts=32)]
+    cr.append(cyl(black, MTB_RING * 0.7, 0.006, loc=(0, MTB_CHAIN_Y, 0), rot=(math.pi / 2, 0, 0), verts=5))
+    cr.append(cyl(alloy, 0.012, 0.16, rot=(math.pi / 2, 0, 0), verts=12))
+    for y, sx in ((-0.075, 1), (0.075, -1)):
+        cr.append(limb(black, (0, y, 0), (sx * MTB_CRANK, y, 0), 0.016, 0.012, verts=8))
+    parts.append(join('mtb_cranks', cr))
+    pd = [cube(black, (0.09, 0.09, 0.016), bevel=0.006)]
+    for x in (-0.04, 0.04):
+        for y in (-0.04, -0.013, 0.013, 0.04):
+            pd.append(cyl(alloy, 0.004, 0.022, loc=(x, y, 0), verts=5))
+    parts.append(join('mtb_pedal', pd))
+
+    # --- rear shock: piggyback body from the frame eye, shaft from the swingarm eye, a coil
+    # spring between the perches.
+    sb = [cyl(alloy, 0.016, 0.03, rot=(math.pi / 2, 0, 0), verts=14)]
+    sb.append(limb(black, (0.01, 0, 0), (0.17, 0, 0), 0.02, 0.02, verts=16))
+    sb.append(limb(alloy, (0.045, 0, 0), (0.055, 0, 0), 0.034, 0.034, verts=18))
+    sb.append(limb(black, (0.03, 0, 0.034), (0.12, 0, 0.034), 0.014, 0.014, verts=12))
+    sb.append(limb(alloy, (0.03, 0, 0.0), (0.03, 0, 0.034), 0.008, 0.008, verts=8))
+    sb.append(limb(hub_m, (0.115, 0, 0.034), (0.125, 0, 0.034), 0.015, 0.015, verts=12))
+    parts.append(join('mtb_shock_body', sb))
+    sh = [cyl(alloy, 0.016, 0.03, rot=(math.pi / 2, 0, 0), verts=14)]
+    sh.append(limb(alloy, (0.01, 0, 0), (0.17, 0, 0), 0.009, 0.009, verts=12))
+    sh.append(limb(alloy, (0.025, 0, 0), (0.035, 0, 0), 0.034, 0.034, verts=18))
+    parts.append(join('mtb_shock_shaft', sh))
+    bm = bmesh.new()
+    turns, segs, cr_r, wire = 7, 16, 0.029, 0.0055
+    path = [(i / (turns * segs), cr_r * math.cos(2 * math.pi * i / segs), cr_r * math.sin(2 * math.pi * i / segs)) for i in range(turns * segs + 1)]
+    rings = []
+    for i, (x, y, z) in enumerate(path):
+        r = []
+        for k in range(6):
+            a = 2 * math.pi * k / 6
+            # The wire's cross-section, round the coil's own radius.
+            nx, nz = math.cos(2 * math.pi * i / segs), math.sin(2 * math.pi * i / segs)
+            r.append(bm.verts.new((x + wire * math.sin(a), y + wire * math.cos(a) * nx, z + wire * math.cos(a) * nz)))
+        rings.append(r)
+    for a, b in zip(rings, rings[1:]):
+        for k in range(6):
+            bm.faces.new((a[k], a[(k + 1) % 6], b[(k + 1) % 6], b[k]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new('mtb_spring')
+    bm.to_mesh(me)
+    bm.free()
+    spring = bpy.data.objects.new('mtb_spring', me)
+    bpy.context.collection.objects.link(spring)
+    parts.append(finish(spring, spring_m))
+
+    # --- the rider's full-face helmet, on the same head as the skater's.
+    skin = mat('skin', (240, 192, 154))
+    eye = mat('eye', (30, 30, 34))
+    white = mat('eye_white', (255, 255, 255))
+    hair = mat('hair', (92, 58, 36))
+    mouth = mat('mouth', (150, 70, 60))
+    sk = skull(skin)
+    head = join('head_fullface', [sk, *face(sk, skin, eye, white, hair, mouth), *fullface_parts()])
+    head.scale = (1.08, 1.08, 1.08)
+    apply_tf(head)
+    parts.append(head)
+
+    # Origins: each part turns or slides about its own joint.
+    origins = {
+        'mtb_swingarm': (MTB_PIVOT[0], 0, MTB_PIVOT[1]),
+        'mtb_fork_upper': (MTB_AXLE_F[0], 0, MTB_AXLE_F[1]),
+        'mtb_fork_lower': (MTB_AXLE_F[0], 0, MTB_AXLE_F[1]),
+    }
+    for o in parts:
+        bpy.ops.object.select_all(action='DESELECT')
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        bpy.context.scene.cursor.location = origins.get(o.name, (0, 0, 0))
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+    export(os.path.join(OUT, 'mtb.glb'), parts)
+
+
 # ---------------------------------------------------------------- props
 
 def build_props():
@@ -1140,6 +1673,7 @@ def build_props():
     build_dino(out)
     build_moon(out)
     build_sky(out)
+    build_downhill(out)
     export(os.path.join(OUT, 'props.glb'), out)
 
 
@@ -2755,12 +3289,253 @@ def build_sky(out):
                                     for x, z, r in ((-0.6, 0.4, 0.5), (0, 0.6, 0.7), (0.6, 0.4, 0.5), (0.3, 0.9, 0.45))]))
 
 
+def build_downhill(out):
+    """Props for the bike's downhill world: the hillside town, the muddy woods, the boulder peak
+    and the North Shore rainforest, plus race dressing (course tape, flags, spectators)."""
+    white = mat('white', (245, 245, 245))
+    glass = mat('dh_window', (52, 70, 96))
+    frame_w = mat('dh_frame', (250, 246, 236))
+    tin = mat('dh_tin', (150, 156, 160))
+    tin_r = mat('dh_tin_rust', (178, 98, 62))
+    door_m = mat('dh_door', (120, 70, 40))
+    tape_r = mat('dh_tape_red', (232, 52, 46))
+    stake = mat('dh_stake', (210, 170, 110))
+    pole = mat('dh_pole', (110, 80, 54))
+    iron = mat('iron', (68, 68, 72))
+    skin = mat('dh_skin', (236, 186, 148))
+    skin2 = mat('dh_skin_dark', (160, 110, 80))
+    jeans = mat('dh_jeans', (52, 62, 92))
+    bark = mat('dh_bark', (100, 70, 48))
+    bark_g = mat('dh_bark_grey', (150, 146, 136))
+    bark_r = mat('dh_cedar_bark', (130, 70, 50))
+    moss = mat('dh_moss', (92, 140, 60))
+    moss_dk = mat('dh_moss_dark', (60, 104, 52))
+    leaf = mat('dh_leaf', (70, 140, 64))
+    leaf_lt = mat('dh_leaf_light', (110, 170, 80))
+    cedar_m = mat('dh_cedar', (44, 100, 66))
+    cedar_lt = mat('dh_cedar_light', (64, 124, 76))
+    rock_m = mat('dh_rock', (146, 142, 136))
+    rock_dk = mat('dh_rock_dark', (112, 108, 104))
+    rock_lt = mat('dh_rock_light', (176, 172, 164))
+    lichen = mat('dh_lichen', (190, 186, 110))
+    cap_r = mat('dh_toadstool', (226, 52, 40))
+    wood = mat('dh_wood', (176, 128, 80))
+    wood_dk = mat('dh_wood_dark', (128, 88, 54))
+    fur = mat('dh_marmot', (150, 110, 72))
+    flower_w = mat('dh_edelweiss', (250, 250, 240))
+    flower_y = mat('flower_yellow', (255, 214, 70))
+
+    # --- the hillside town: narrow, brightly painted houses stacked up the hill, tin roofs.
+    houses = (('townhouse_a', (238, 118, 150), 2), ('townhouse_b', (92, 164, 232), 3), ('townhouse_c', (250, 198, 70), 2), ('townhouse_d', (110, 196, 130), 3))
+    for k, (name, rgb, floors) in enumerate(houses):
+        wall = mat(name + '_wall', rgb)
+        trim = mat(name + '_trim', tuple(min(255, int(c * 0.72)) for c in rgb))
+        w, d, fh = 3.6 + 0.4 * (k % 2), 3.2, 2.6
+        h = floors * fh + 0.4
+        hs = [cube(wall, (w, d, h), loc=(0, 0, h / 2), bevel=0.04)]
+        hs.append(cube(trim, (w + 0.08, d + 0.08, 0.4), loc=(0, 0, 0.2), bevel=0.03))
+        # Tin roof, sloping back, rusty or plain.
+        hs.append(cube(tin_r if k % 2 else tin, (w + 0.5, d + 0.7, 0.08), loc=(0, 0.1, h + 0.25), rot=(-0.18, 0, 0), bevel=0.01))
+        for f in range(floors):
+            z = 0.4 + f * fh + 1.35
+            for x in ((-0.9, 0.9) if w > 3.7 else (-0.8, 0.8)):
+                if f == 0 and x < 0:
+                    hs.append(cube(door_m, (0.9, 0.08, 1.9), loc=(x, -d / 2 - 0.02, 0.4 + 0.95), bevel=0.02))
+                    hs.append(cube(frame_w, (1.06, 0.06, 0.1), loc=(x, -d / 2 - 0.03, 0.4 + 1.95)))
+                    continue
+                hs.append(cube(frame_w, (0.96, 0.06, 1.16), loc=(x, -d / 2 - 0.02, z), bevel=0.02))
+                hs.append(cube(glass, (0.76, 0.06, 0.96), loc=(x, -d / 2 - 0.04, z)))
+                hs.append(cube(frame_w, (0.06, 0.07, 0.96), loc=(x, -d / 2 - 0.05, z)))
+                # Shutters, in the trim colour.
+                for sx in (-0.58, 0.58):
+                    hs.append(cube(trim, (0.24, 0.05, 1.1), loc=(x + sx, -d / 2 - 0.02, z), bevel=0.01))
+            if f > 0:
+                # A little balcony with railings on the upper floors.
+                hs.append(cube(frame_w, (1.4, 0.6, 0.08), loc=(0.9, -d / 2 - 0.3, z - 0.62)))
+                for i in range(6):
+                    hs.append(cube(iron, (0.03, 0.03, 0.6), loc=(0.9 - 0.65 + i * 0.26, -d / 2 - 0.58, z - 0.3)))
+                hs.append(cube(iron, (1.4, 0.04, 0.04), loc=(0.9, -d / 2 - 0.58, z)))
+        out.append(join(name, hs))
+
+    # Course tape: a stake every 2.4 m with red and white tape between.
+    tf = [cyl(stake, 0.035, 1.1, loc=(-1.2, 0, 0.55), verts=6)]
+    for k in range(8):
+        t0, t1 = k / 8, (k + 1) / 8
+        z0, z1 = 0.92 - 0.1 * math.sin(math.pi * t0), 0.92 - 0.1 * math.sin(math.pi * t1)
+        tf.append(limb(tape_r if k % 2 == 0 else white, (-1.2 + 2.4 * t0, 0, z0), (-1.2 + 2.4 * t1, 0, z1), 0.022, 0.022, verts=4))
+    out.append(join('tapefence', tf))
+
+    # A tall feather flag on a pole, in race colours.
+    flag_a = mat('dh_flag_a', (255, 214, 64))
+    flag_b = mat('dh_flag_b', (24, 182, 176))
+    fl = [cyl(iron, 0.03, 3.4, loc=(0, 0, 1.7), verts=8)]
+    bm = bmesh.new()
+    rows = []
+    for i in range(9):
+        t = i / 8
+        z = 0.9 + 2.4 * t
+        wdt = 0.55 * math.sin(math.pi * (0.15 + 0.85 * t)) ** 0.6 + 0.05
+        rows.append((bm.verts.new((0.02, 0, z)), bm.verts.new((0.02 + wdt, 0.05 * math.sin(t * 3), z + 0.12 * t))))
+    for a, b in zip(rows, rows[1:]):
+        bm.faces.new((a[0], a[1], b[1], b[0]))
+    bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=0.02)
+    me = bpy.data.meshes.new('flag')
+    bm.to_mesh(me)
+    bm.free()
+    fo = bpy.data.objects.new('flag', me)
+    bpy.context.collection.objects.link(fo)
+    fl.append(finish(fo, flag_a))
+    fl.append(cube(flag_b, (0.5, 0.04, 0.3), loc=(0.3, 0, 2.0), rot=(0, -0.08, 0)))
+    out.append(join('raceflag', fl))
+
+    # Three spectators cheering, arms up.
+    tops = [mat('dh_top_a', (232, 64, 42)), mat('dh_top_b', (60, 120, 220)), mat('dh_top_c', (255, 190, 40))]
+    sp = []
+    for i, (x, y, hgt) in enumerate(((-0.6, 0.1, 1.0), (0.05, -0.15, 1.08), (0.65, 0.12, 0.95))):
+        sk = skin if i != 1 else skin2
+        sp.append(cyl(jeans, 0.09, 0.8 * hgt, loc=(x - 0.1, y, 0.4 * hgt), verts=8))
+        sp.append(cyl(jeans, 0.09, 0.8 * hgt, loc=(x + 0.1, y, 0.4 * hgt), verts=8))
+        sp.append(cyl(tops[i], 0.22, 0.65 * hgt, loc=(x, y, 1.1 * hgt), r2=0.19, verts=10))
+        sp.append(sphere(sk, 0.13, loc=(x, y, 1.58 * hgt), segs=12, rings=8))
+        sp.append(sphere(tops[(i + 1) % 3], 0.135, loc=(x, y, 1.62 * hgt), scale=(1, 1, 0.6), segs=12, rings=6))
+        for side in (-1, 1):
+            up = (i + side) % 2 == 0
+            hand = (x + side * 0.42, y, 1.85 * hgt) if up else (x + side * 0.38, y - 0.15, 1.05 * hgt)
+            sp.append(limb(tops[i], (x + side * 0.2, y, 1.35 * hgt), hand, 0.06, 0.05, verts=6))
+            sp.append(sphere(sk, 0.06, loc=hand, segs=8, rings=5))
+    out.append(join('spectators', sp))
+
+    # A wooden telegraph pole with its cross arm and insulators.
+    pp = [cyl(pole, 0.12, 7.0, loc=(0, 0, 3.5), r2=0.09, verts=8), cube(pole, (1.8, 0.12, 0.12), loc=(0, 0, 6.5))]
+    for x in (-0.75, -0.25, 0.25, 0.75):
+        pp.append(cyl(white, 0.05, 0.16, loc=(x, 0, 6.65), verts=8))
+    out.append(join('powerpole', pp))
+
+    # --- the muddy woods: tall beeches, fallen logs, stumps, toadstools and brambles.
+    be = [cyl(bark_g, 0.32, 4.6, loc=(0, 0, 2.3), r2=0.2, verts=10)]
+    for i, (x, y, z, r) in enumerate([(0, 0, 5.4, 2.4), (1.9, 0.3, 4.6, 1.8), (-1.9, -0.2, 4.8, 1.9), (0.6, -0.8, 6.6, 1.7), (-0.8, 0.7, 6.4, 1.6), (0, 0.2, 3.9, 1.6)]):
+        be.append(ico((leaf, leaf_lt)[i % 2], r, loc=(x, y, z), sub=2, jitter=0.22, seed=300 + i, smooth=True))
+    for sx in (-1, 1):
+        be.append(cyl(bark_g, 0.1, 1.8, loc=(sx * 0.6, 0, 3.6), rot=(0, sx * math.radians(45), 0), r2=0.05, verts=6))
+    out.append(join('beech', be))
+
+    lg = [cyl(bark, 0.32, 4.2, loc=(0, 0, 0.3), rot=(0, math.pi / 2, 0), verts=12)]
+    lg.append(cyl(wood, 0.27, 0.04, loc=(2.11, 0, 0.3), rot=(0, math.pi / 2, 0), verts=12))
+    lg.append(cyl(wood, 0.27, 0.04, loc=(-2.11, 0, 0.3), rot=(0, math.pi / 2, 0), verts=12))
+    lg.append(cube(moss, (1.6, 0.4, 0.08), loc=(-0.4, 0, 0.6), bevel=0.04))
+    lg.append(cyl(bark, 0.07, 0.6, loc=(0.9, -0.1, 0.65), rot=(0.4, 0.3, 0), verts=6))
+    out.append(join('log', lg))
+
+    st = [cyl(bark, 0.42, 0.6, loc=(0, 0, 0.3), r2=0.38, verts=12), cyl(wood, 0.37, 0.04, loc=(0, 0, 0.61), verts=12)]
+    for k in range(5):
+        a = k * 2 * math.pi / 5 + 0.3
+        st.append(limb(bark, (0.3 * math.cos(a), 0.3 * math.sin(a), 0.15), (0.65 * math.cos(a), 0.65 * math.sin(a), 0.0), 0.1, 0.05, verts=6))
+    out.append(join('stump', st))
+
+    ms = []
+    for k, (x, y, hgt, r) in enumerate(((0, 0, 0.32, 0.16), (0.25, 0.1, 0.22, 0.11), (-0.2, -0.05, 0.18, 0.09), (0.1, -0.2, 0.14, 0.07))):
+        ms.append(cyl(white, 0.035 + r * 0.15, hgt, loc=(x, y, hgt / 2), verts=8))
+        ms.append(sphere(cap_r, r, loc=(x, y, hgt), scale=(1, 1, 0.55), segs=12, rings=8))
+        for j in range(4):
+            a = j * 1.7 + k
+            ms.append(sphere(white, r * 0.18, loc=(x + r * 0.6 * math.cos(a), y + r * 0.6 * math.sin(a), hgt + r * 0.32), segs=6, rings=4))
+    out.append(join('toadstools', ms))
+
+    br = [ico(moss_dk, 0.7, loc=(0, 0, 0.45), scale=(1.5, 1, 0.75), sub=2, jitter=0.3, seed=320, smooth=True)]
+    br.append(ico(leaf, 0.5, loc=(0.6, -0.2, 0.55), sub=2, jitter=0.3, seed=321, smooth=True))
+    for k in range(8):
+        a = k * 0.8
+        br.append(sphere(mat('dh_berry', (70, 30, 80)), 0.05, loc=(0.8 * math.cos(a), 0.5 * math.sin(a) - 0.2, 0.55 + 0.2 * math.sin(k)), segs=6, rings=4))
+    out.append(join('bramble', br))
+
+    # --- the boulder peak: big boulders, scree, cairns, alpine flowers and a marmot.
+    out.append(join('boulder', [
+        ico(rock_m, 1.4, loc=(0, 0, 0.9), scale=(1.3, 1.0, 0.85), sub=2, jitter=0.25, seed=330),
+        ico(rock_dk, 0.7, loc=(1.3, -0.4, 0.35), scale=(1.1, 0.9, 0.7), sub=1, jitter=0.3, seed=331),
+        cube(lichen, (0.6, 0.04, 0.3), loc=(-0.4, -1.12, 1.1), rot=(0.3, 0, 0.2), bevel=0.05),
+    ]))
+    out.append(join('boulders', [
+        ico(rock_lt, 0.8, loc=(0, 0, 0.5), scale=(1.2, 1.0, 0.8), sub=1, jitter=0.3, seed=335),
+        ico(rock_m, 0.6, loc=(0.9, 0.3, 0.35), sub=1, jitter=0.3, seed=336),
+        ico(rock_dk, 0.5, loc=(-0.8, -0.2, 0.3), sub=1, jitter=0.3, seed=337),
+        ico(rock_m, 0.3, loc=(0.3, -0.7, 0.15), sub=1, jitter=0.3, seed=338),
+    ]))
+    sc = []
+    for k in range(14):
+        a, rr = k * 2.39, 0.25 + 0.12 * k
+        sc.append(ico((rock_m, rock_lt, rock_dk)[k % 3], 0.12 + 0.06 * (k % 3), loc=(rr * math.cos(a), 0.6 * rr * math.sin(a), 0.05), scale=(1.2, 1, 0.6), sub=1, jitter=0.3, seed=340 + k))
+    out.append(join('scree', sc))
+    cn = []
+    zc = 0.0
+    for k, r in enumerate((0.42, 0.36, 0.3, 0.24, 0.18, 0.13)):
+        cn.append(ico((rock_m, rock_lt)[k % 2], r, loc=(0.03 * (k % 2), 0, zc + r * 0.55), scale=(1.2, 1.0, 0.6), sub=1, jitter=0.2, seed=360 + k))
+        zc += r * 1.1
+    out.append(join('cairn', cn))
+    fw = [ico(moss, 0.3, loc=(0, 0, 0.1), scale=(1.4, 1.0, 0.5), sub=2, jitter=0.3, seed=370, smooth=True)]
+    for k in range(7):
+        a = k * 0.9
+        x, y = 0.3 * math.cos(a), 0.2 * math.sin(a)
+        fw.append(cyl(moss_dk, 0.012, 0.25, loc=(x, y, 0.2), verts=4))
+        fw.append(sphere(flower_w if k % 3 else flower_y, 0.05, loc=(x, y, 0.33), scale=(1, 1, 0.5), segs=8, rings=4))
+    out.append(join('alpineflowers', fw))
+    mm = [sphere(fur, 0.2, loc=(0, 0, 0.32), scale=(0.8, 0.75, 1.3), segs=12, rings=8),
+          sphere(fur, 0.12, loc=(0, -0.05, 0.62), segs=12, rings=8),
+          sphere(mat('dh_marmot_belly', (210, 180, 140)), 0.13, loc=(0, -0.08, 0.3), scale=(0.8, 0.5, 1.1), segs=10, rings=6)]
+    for x in (-0.07, 0.07):
+        mm.append(sphere(mat('eye', (30, 30, 34)), 0.02, loc=(x, -0.15, 0.66), segs=6, rings=4))
+        mm.append(sphere(fur, 0.035, loc=(x * 1.3, 0.0, 0.73), segs=6, rings=4))
+    mm.append(ico(rock_m, 0.35, loc=(0, 0.1, 0.05), scale=(1.4, 1.0, 0.5), sub=1, jitter=0.3, seed=380))
+    out.append(join('marmot', mm))
+
+    # --- the North Shore rainforest: huge cedars, mossy logs, sword ferns, split-rail fence, trail signs.
+    cd = [cyl(bark_r, 0.7, 12.0, loc=(0, 0, 6.0), r2=0.35, verts=12), cyl(bark_r, 1.0, 1.0, loc=(0, 0, 0.5), r2=0.7, verts=12)]
+    for k in range(4):
+        a = k * math.pi / 2 + 0.4
+        cd.append(limb(bark_r, (0.5 * math.cos(a), 0.5 * math.sin(a), 0.6), (1.3 * math.cos(a), 1.3 * math.sin(a), 0.0), 0.3, 0.12, verts=6))
+    for i in range(6):
+        z = 5.0 + i * 1.45
+        r = 3.0 - i * 0.4
+        cd.append(cyl((cedar_m, cedar_lt)[i % 2], r, 1.6, loc=(0.1 * (i % 2), 0, z), r2=r * 0.35, verts=10, smooth=False))
+    cd.append(cube(moss, (0.5, 0.05, 1.6), loc=(0, -0.62, 2.2), bevel=0.05))
+    out.append(join('cedar', cd))
+
+    ml = [cyl(bark_r, 0.45, 6.0, loc=(0, 0, 0.4), rot=(0, math.pi / 2, 0), verts=12)]
+    ml.append(cube(moss, (5.4, 0.85, 0.2), loc=(0, 0, 0.8), bevel=0.08))
+    ml.append(cube(moss_dk, (2.0, 0.95, 0.24), loc=(1.2, 0, 0.72), bevel=0.08))
+    for k in range(5):
+        ml.append(ico(leaf_lt, 0.18, loc=(-2.5 + k * 1.2, -0.4, 0.95), sub=1, jitter=0.3, seed=390 + k, smooth=True))
+    out.append(join('mossylog', ml))
+
+    sw = []
+    for k in range(11):
+        a = k * 2 * math.pi / 11
+        tip = (1.1 * math.cos(a), 0.8 * math.sin(a), 0.5 + 0.25 * math.sin(k * 1.3))
+        sw.append(limb((leaf, cedar_lt, moss)[k % 3], (0, 0, 0.1), tip, 0.09, 0.02, verts=4))
+        mid = (tip[0] * 0.6, tip[1] * 0.6, tip[2] * 0.95 + 0.15)
+        sw.append(limb((leaf, cedar_lt, moss)[k % 3], (0, 0, 0.1), mid, 0.1, 0.07, verts=4))
+    out.append(join('swordfern', sw))
+
+    # Split-rail fence: a 2.4 m bay, posts and two rough rails.
+    out.append(join('splitrail', [
+        cyl(wood_dk, 0.08, 1.2, loc=(-1.2, 0, 0.6), verts=6),
+        limb(wood, (-1.2, 0, 0.95), (1.2, 0, 0.92), 0.06, 0.055, verts=5),
+        limb(wood, (-1.2, 0, 0.5), (1.2, 0, 0.52), 0.06, 0.055, verts=5),
+    ]))
+    ts = [cyl(wood_dk, 0.07, 1.8, loc=(0, 0, 0.9), verts=6),
+          cube(wood, (0.9, 0.06, 0.32), loc=(0.1, -0.06, 1.55), bevel=0.02),
+          cube(white, (0.5, 0.04, 0.06), loc=(0.12, -0.1, 1.55)),
+          cube(white, (0.12, 0.04, 0.18), loc=(0.38, -0.1, 1.55), rot=(0, math.radians(45), 0))]
+    out.append(join('trailsign', ts))
+
+
 if __name__ == '__main__':
     import sys
-    which = sys.argv[1:] or ['skater', 'scooter', 'props']
+    which = sys.argv[1:] or ['skater', 'scooter', 'mtb', 'props']
     if 'skater' in which:
         build_skater()
     if 'scooter' in which:
         build_scooter()
+    if 'mtb' in which:
+        build_mtb()
     if 'props' in which:
         build_props()

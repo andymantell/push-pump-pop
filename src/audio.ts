@@ -96,6 +96,7 @@ const GROUNDS: Record<Ground, GroundSound> = {
 
 const BIOME_GROUND: Record<string, Ground> = {
   park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'concrete', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'concrete', haunted: 'stone', funfair: 'wood', toxic: 'concrete', mine: 'stone', dino: 'dirt', moon: 'concrete', sky: 'stone',
+  'dh-urban': 'stone', 'dh-mud': 'dirt', 'dh-rocky': 'stone', 'dh-shore': 'dirt',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -161,6 +162,10 @@ export class Sound {
   private bound = false;
   /** On a scooter: an aluminium deck and bars that rattle, and whips instead of flips. */
   private scooter = false;
+  /** On a downhill bike: knobbly tyres, a ticking freewheel, a chain that slaps and shocks that soak up landings. */
+  private bike = false;
+  private tickT = 0;
+  private rockT = 0;
   private cur: Trick | null = null;
   private spinning = false;
   private flipT = 0;
@@ -340,10 +345,11 @@ export class Sound {
   }
 
   /** A new track: its surface, rails and ambience. */
-  setScene(b: Biome, snow: boolean, bound = snow, scooter = false) {
+  setScene(b: Biome, snow: boolean, bound = snow, scooter = false, bike = false) {
     this.scooter = scooter;
+    this.bike = bike;
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
-    this.railSound = b.id === 'jungle' || b.id === 'farm' || b.id === 'pirate' || b.id === 'dino' || b.id === 'sky' ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
+    this.railSound = b.id === 'jungle' || b.id === 'farm' || b.id === 'pirate' || b.id === 'dino' || b.id === 'sky' || (b.id.startsWith('dh-') && b.id !== 'dh-urban') ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
     this.snow = snow;
     this.bound = bound;
     // Start fresh: nothing the rider did on the last track should sound on this one.
@@ -371,7 +377,7 @@ export class Sound {
   update(dt: number, r: Rider, active: boolean, ambLevel: number) {
     const ctx = this.ctx!;
     if (!this.ready()) return;
-    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow, this.bound, this.scooter); }
+    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow, this.bound, this.scooter, this.bike); }
     const t = ctx.currentTime;
     const p = GROUNDS[this.ground];
     const speed = active ? r.speed : 0;
@@ -393,9 +399,26 @@ export class Sound {
       if (this.dist >= this.nextSeam) {
         const s = p.seam;
         this.nextSeam = this.dist + s.every * (1 + (Math.random() * 2 - 1) * s.jitter);
-        const g = s.gain * 0.6 * Math.min(1, speed / 8) * (r.manual ? 0.5 : 1);
+        const g = s.gain * 0.6 * Math.min(1, speed / 8) * (r.manual ? 0.5 : 1) * (this.bike ? 0.45 : 1);
         this.clack(t, s.f, s.q, g);
         if (!r.manual) this.clack(t + 0.5 / speed, s.f * 0.94, s.q, g * 0.8);
+      }
+    }
+
+    if (this.bike && active && !r.bailing && !r.falling) {
+      // The freewheel ticking while you coast (quiet while pedalling), faster the faster you go.
+      if (!r.pushing && speed > 1) {
+        this.tickT += dt * (6 + speed * 2.2);
+        if (this.tickT >= 1) { this.tickT -= 1; this.clack(t, 5200, 9, 0.035); }
+      }
+      // Rocks: tyres thudding over them, the chain slapping the stays.
+      if (rolling && r.track.rough(r.x) > 0.02 && speed > 1) {
+        this.rockT += dt * (2 + speed * 0.9);
+        if (this.rockT >= 1) {
+          this.rockT -= 0.6 + Math.random() * 0.8;
+          this.tone(t, { f: 80 + Math.random() * 40, fEnd: 45, gain: 0.25, decay: 0.07 });
+          if (Math.random() < 0.6) this.clack(t + 0.02, 1500 + Math.random() * 1500, 3, 0.12);
+        }
       }
     }
 
@@ -555,6 +578,14 @@ export class Sound {
 
   /** Tail snap: the board's tail hitting the ground, then the wheels leaving it. */
   private pop(t: number) {
+    if (this.bike) {
+      // Both tyres leaving the ground, the chain rattling.
+      const p = GROUNDS[this.ground];
+      this.burst(t, { type: p.land.type, f: p.land.f * 1.2, q: p.land.q, gain: p.land.gain * 0.3, decay: p.land.decay * 0.5 });
+      this.tone(t, { f: 120, fEnd: 60, gain: 0.2, decay: 0.06 });
+      for (let i = 0; i < 3; i++) this.clack(t + 0.03 + i * 0.025, 1800 + i * 300, 4, 0.08);
+      return;
+    }
     if (this.scooter && !this.snow) {
       // A bunny hop: no tail to snap, just the wheels leaving the ground and the deck rattling.
       const p = GROUNDS[this.ground];
@@ -582,7 +613,13 @@ export class Sound {
     this.duckUntil = t + 0.1 + s * 0.08;
     this.burst(t, { type: p.land.type, f: p.land.f, q: p.land.q, gain: p.land.gain * s * 0.8, decay: p.land.decay * (0.7 + s * 0.5) });
     this.tone(t, { f: 95, fEnd: 40, gain: p.land.thump * s * 0.7, decay: 0.15 + s * 0.1 });
-    if (!this.snow) {
+    if (this.bike) {
+      // Tyres thudding down and the suspension soaking it up: a deep squash and a hiss of oil,
+      // then the chain slapping the stays.
+      this.tone(t, { f: 70, fEnd: 38, gain: 0.5 * s, attack: 0.02, decay: 0.25 });
+      this.burst(t + 0.02, { buf: this.pink, type: 'bandpass', f: 500, q: 1.2, gain: 0.25 * s, attack: 0.03, decay: 0.18, fEnd: 250 });
+      for (let i = 0; i < 2 + Math.round(s * 2); i++) this.clack(t + 0.06 + i * 0.04, 1600 + Math.random() * 900, 3, 0.1 * s);
+    } else if (!this.snow) {
       // Back wheels, then front: each a punchy smack of urethane and a ring from the trucks.
       for (const [dt, g] of [[0, 1], [0.035, 0.8]]) this.wheels(t + dt, g * s);
       // A big landing rattles the trucks.
@@ -680,7 +717,7 @@ export class Sound {
   grab() {
     if (!this.ready()) return;
     const t = this.ctx!.currentTime;
-    if (this.scooter) {
+    if (this.scooter || this.bike) {
       // Body tricks: no board to grab, just a swish of legs and clothes, and the deck clinking free.
       this.burst(t, { buf: this.pink, type: 'bandpass', f: 600, q: 1.2, gain: 0.3, attack: 0.04, decay: 0.2, fEnd: 1300 });
       this.clack(t + 0.02, 2400, 5, 0.1);
@@ -1116,6 +1153,49 @@ export class Sound {
           const p = pan() * 0.6;
           for (let i = 0; i < 3; i++) this.tone(at + i * 0.7, { type: 'square', f: 440, fEnd: 330, gain: 0.006, attack: 0.05, decay: 0.55, glide: 0.5, lp: 1400, to: out, pan: p });
         });
+        break;
+      }
+      case 'dh-urban': case 'dh-mud': case 'dh-rocky': case 'dh-shore': {
+        // A downhill race: fans along the tape ringing cowbells and cheering you past, over the
+        // sound of the place itself.
+        const cowbell = (at: number) => {
+          const p = pan(), n = 3 + Math.floor(Math.random() * 6), gap = 0.11 + Math.random() * 0.06;
+          for (let i = 0; i < n; i++) {
+            const tt = at + i * gap + Math.random() * 0.02;
+            this.tone(tt, { type: 'square', f: 562, gain: 0.01, decay: 0.22, lp: 2600, to: out, pan: p });
+            this.tone(tt, { type: 'square', f: 838, gain: 0.008, decay: 0.16, lp: 3200, to: out, pan: p });
+          }
+        };
+        const cheer = (at: number) => this.burst(at, { buf: this.pink, type: 'bandpass', f: 900 + Math.random() * 400, q: 0.6, gain: 0.05, attack: 0.35, decay: 1.6, to: out, pan: pan() });
+        const crowd = b.id === 'dh-urban' ? 1 : b.id === 'dh-shore' ? 0.5 : 0.7;
+        every(3 / crowd, 8 / crowd, cowbell);
+        every(8 / crowd, 18 / crowd, cheer);
+        if (b.id === 'dh-urban') {
+          // Town: the murmur of the crowd, gulls over the harbour, the church bell.
+          bed(this.pink, { type: 'bandpass', f: 700, q: 0.8 }, 0.03, 7, 0.6, 200);
+          every(6, 14, (at) => {
+            const p = pan(), f = 1500 + Math.random() * 500;
+            for (let i = 0; i < 3; i++) this.tone(at + i * 0.22, { type: 'triangle', f, fEnd: f * 0.7, gain: 0.014, attack: 0.02, decay: 0.18, glide: 0.18, to: out, pan: p });
+          });
+          every(25, 50, (at) => { for (let i = 0; i < 3; i++) this.tone(at + i * 1.4, { type: 'triangle', f: 247, gain: 0.03, attack: 0.005, decay: 2.5, to: out, pan: -0.4 }); });
+        } else if (b.id === 'dh-mud') {
+          // Wet woods: leaves dripping, a woodpecker, crows.
+          bed(this.pink, { type: 'bandpass', f: 1300, q: 0.6 }, 0.05, 9, 0.7, 400);
+          every(0.4, 1.4, (at) => this.tone(at, { f: 1800 + Math.random() * 1400, fEnd: 900, gain: 0.008, decay: 0.05, glide: 0.04, to: out, pan: pan() }));
+          every(12, 26, (at) => { const p = pan(); for (let i = 0; i < 12; i++) this.burst(at + i * 0.055, { type: 'bandpass', f: 1400, q: 3, gain: 0.03, decay: 0.03, to: out, pan: p }); });
+          every(9, 20, (at) => { const p = pan(); for (let i = 0; i < 2; i++) this.tone(at + i * 0.4, { type: 'sawtooth', f: 520, fEnd: 380, gain: 0.012, attack: 0.02, decay: 0.25, glide: 0.25, lp: 1400, to: out, pan: p }); });
+          if (!night) every(3, 7, bird);
+        } else if (b.id === 'dh-rocky') {
+          // High mountains: wind over the rocks, marmots whistling, an eagle far up.
+          bed(this.pink, { type: 'bandpass', f: 500, q: 0.5 }, 0.08, 8, 0.9, 300);
+          every(10, 22, (at) => this.tone(at, { f: 2900, fEnd: 2500, gain: 0.02, attack: 0.01, decay: 0.3, glide: 0.25, to: out, pan: pan() }));
+          every(20, 40, (at) => this.tone(at, { type: 'triangle', f: 2200, fEnd: 1500, gain: 0.012, attack: 0.05, decay: 0.9, glide: 0.8, to: out, pan: pan() }));
+        } else {
+          // North Shore rainforest: a creek below, rain dripping off the cedars, ravens.
+          bed(this.brown, { type: 'bandpass', f: 900, q: 0.7 }, 0.06, 5, 0.4, 300);
+          every(0.3, 1.0, (at) => this.tone(at, { f: 2200 + Math.random() * 1600, fEnd: 1200, gain: 0.007, decay: 0.04, glide: 0.03, to: out, pan: pan() }));
+          every(10, 22, (at) => this.tone(at, { type: 'sawtooth', f: 260, fEnd: 200, gain: 0.02, attack: 0.03, decay: 0.35, glide: 0.3, lp: 900, to: out, pan: pan() }));
+        }
         break;
       }
       case 'sky': {

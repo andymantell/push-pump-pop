@@ -6,7 +6,7 @@ import type { Track, Rail } from './track';
 // playtest alike, and says as soon as each challenge is done.
 
 /** A family of tricks a challenge can ask for instead of one name. 'any' is any air trick but an ollie. */
-export type Group = 'flip' | 'grab' | 'whip' | 'double' | 'hold' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'any';
+export type Group = 'flip' | 'grab' | 'whip' | 'double' | 'hold' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'bike' | 'skinny' | 'any';
 export type Match = TrickName | Group;
 
 /**
@@ -58,17 +58,20 @@ const GROUPS: Record<Group, TrickName[]> = {
   // Scooter: whips and barspins on the right, body tricks held on the left.
   whip: ['Tailwhip', 'Heelwhip', 'Barspin', 'Double Whip', 'Double Heelwhip', 'Double Barspin', 'Tailwhip Barspin', 'Heelwhip Barspin'],
   double: ['Double Whip', 'Double Heelwhip', 'Double Barspin', 'Tailwhip Barspin', 'Heelwhip Barspin'],
-  hold: ['Superman', 'No Footer', 'Can Can', 'X-Up'],
+  hold: ['Superman', 'No Footer', 'Can Can', 'X-Up', 'No Hander'],
+  // Downhill bike: the bike thrown about on the right; skinnies ridden along.
+  bike: ['Whip', 'Tabletop', 'Turndown'],
+  skinny: ['Skinny', 'Skinny Manual', 'Skinny Stoppie'],
   spin: ['FS 180', 'BS 180', 'FS 360', 'BS 360'],
   '180': ['FS 180', 'BS 180'],
   '360': ['FS 360', 'BS 360'],
   bodyflip: ['Backflip', 'Frontflip'],
-  grind: ['50-50', 'Boardslide', '5-0', 'Nosegrind', 'Feeble', 'Smith'],
-  manual: ['Manual', 'Nose Manual', 'Tail Press', 'Nose Press'],
+  grind: ['50-50', 'Boardslide', '5-0', 'Nosegrind', 'Feeble', 'Smith', 'Skinny', 'Skinny Manual', 'Skinny Stoppie'],
+  manual: ['Manual', 'Nose Manual', 'Tail Press', 'Nose Press', 'Stoppie'],
   loop: ['Loop'],
   any: [],
 };
-GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.whip, ...GROUPS.hold, ...GROUPS.spin, ...GROUPS.bodyflip];
+GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.whip, ...GROUPS.bike, ...GROUPS.hold, ...GROUPS.spin, ...GROUPS.bodyflip];
 
 export function matches(m: Match, name: TrickName): boolean {
   return m in GROUPS ? GROUPS[m as Group].includes(name) : m === name;
@@ -78,9 +81,16 @@ export function members(m: Match): TrickName[] {
   return m in GROUPS ? GROUPS[m as Group] : [m as TrickName];
 }
 
-/** How many challenges must be done to complete a track: one in the first two worlds, then two. */
-export function requiredCount(worldIndex: number, kind: string = 'run'): number {
+/** The downhill world's first two biomes, which ask for one challenge like Sunny Park and Beach. */
+const EASY_DOWNHILL = ['dh-urban', 'dh-mud'];
+
+/**
+ * How many challenges must be done to complete a track: one in the first two biomes (by their
+ * place in the game, `worldIndex`), then two. The downhill world starts again at one.
+ */
+export function requiredCount(worldIndex: number, kind: string = 'run', biome = ''): number {
   if (kind !== 'run') return 0;
+  if (biome.startsWith('dh-')) return EASY_DOWNHILL.includes(biome) ? 1 : 2;
   return worldIndex <= 1 ? 1 : 2;
 }
 
@@ -90,7 +100,7 @@ export function icon(c: Challenge): string {
   if (m) {
     if (matches(m, 'Indy') || m === 'grab' || members(m).every((n) => GROUPS.grab.includes(n))) return '&#9995;';
     if (members(m).every((n) => GROUPS.hold.includes(n))) return '&#129464;';
-    if (members(m).every((n) => GROUPS.whip.includes(n))) return '&#128260;';
+    if (members(m).every((n) => GROUPS.whip.includes(n) || GROUPS.bike.includes(n))) return '&#128260;';
     if (m === 'Bunny Hop') return '&#128756;';
     if (members(m).every((n) => GROUPS.spin.includes(n))) return '&#127744;';
     if (members(m).every((n) => GROUPS.bodyflip.includes(n))) return '&#129528;';

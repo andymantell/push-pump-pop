@@ -11,16 +11,19 @@ import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { loadAssets } from '../src/assets';
 import { Skater } from '../src/skater';
 import { ScooterRig } from '../src/scooter';
+import { MtbRig } from '../src/mtb';
 import { Rider, Swipe } from '../src/rider';
 import { TrackBuilder } from '../src/track';
 
 const q = new URLSearchParams(location.search);
 const times = (q.get('at') ?? '0,0.02,0.04,0.07,0.1,0.15,0.22,0.35,0.5,0.65,0.8,0.86,0.95').split(',').map(Number);
-const angles: Record<string, [number, number]> = { side: [0, 0.2], 'three-quarter': [Math.PI / 4, 0.4], back: [Math.PI * 0.85, 0.5], low: [0.25, -0.3] };
+const angles: Record<string, [number, number]> = { front: [1.15, 0.05], side: [0, 0.2], 'three-quarter': [Math.PI / 4, 0.4], back: [Math.PI * 0.85, 0.5], low: [0.25, -0.3] };
 const views = (q.get('views') ?? 'side,three-quarter,back').split(',');
 const snow = q.get('snow') === '1';
 
-const CW = 200, CH = 260;
+const CW = Number(q.get('cw') ?? 200), CH = Number(q.get('ch') ?? 260);
+/** Camera distance and the height it looks at, above the rider. */
+const DIST = Number(q.get('dist') ?? 3.4), LOOK = Number(q.get('look') ?? 0.75), OX = Number(q.get('ox') ?? 0);
 const W = CW * times.length, H = CH * views.length;
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
@@ -40,19 +43,29 @@ scene.add(ground);
 
 const assets = await loadAssets();
 const scoot = q.get('ride') === 'scooter';
-const skater = scoot ? new ScooterRig(assets.parts) : new Skater(assets.parts);
+const mtb = q.get('ride') === 'mtb';
+const skater = mtb ? new MtbRig(assets.parts) : scoot ? new ScooterRig(assets.parts) : new Skater(assets.parts);
 if (skater instanceof ScooterRig) skater.setKind(snow ? 'snow' : 'scooter');
+else if (skater instanceof MtbRig) skater.setSnow(snow);
 else skater.setBoard(snow ? 'snow' : 'skate');
 scene.add(skater.root);
 
 const rail = q.get('rail') === '1';
+const rocks = q.get('rocks') === '1';
 const b = new TrackBuilder(0);
 if (rail) b.flat(20).rail(8);
+if (rocks) b.flat(16).rocky((t) => t.flat(14), 0.22);
 b.flat(200);
 const track = b.build(5, 190);
+for (const rk of track.gardenRocks) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshLambertMaterial({ color: 0x8a8580 }));
+  m.scale.set(rk.w / 2, rk.h, 0.35);
+  m.position.set(rk.x, 0, 0);
+  scene.add(m);
+}
 const noop = () => {};
 const r = new Rider(track, { trick: noop, land: noop, bail: noop, pump: noop, fall: noop } as never);
-r.opts = { friction: 1, maxSpeed: 17, snow, scooter: scoot };
+r.opts = { friction: 1, maxSpeed: 17, snow, scooter: scoot, mtb };
 const v0 = q.get('v');
 r.v = v0 === null ? 8 : Number(v0);
 const dt = 1 / 120;
@@ -77,8 +90,9 @@ times.forEach((at, col) => {
   while (t < at - 1e-6) { step(); t += dt; }
   views.forEach((v, row) => {
     const [a, h] = angles[v];
-    const target = new THREE.Vector3(r.x, r.y + 0.75, 0);
-    cam.position.set(r.x + Math.sin(a) * 3.4, target.y + h, Math.cos(a) * 3.4);
+    if (q.get('nobody') === '1') for (const o of Object.values((skater as any).p as Record<string, THREE.Object3D>)) o.visible = false;
+    const target = new THREE.Vector3(r.x + OX, r.y + LOOK, 0);
+    cam.position.set(r.x + OX + Math.sin(a) * DIST, target.y + h, Math.cos(a) * DIST);
     cam.lookAt(target);
     const y = H - (row + 1) * CH;
     renderer.setViewport(col * CW, y, CW, CH);
@@ -88,3 +102,5 @@ times.forEach((at, col) => {
   });
 });
 (window as any).ready = true;
+(window as any).rig = skater;
+(window as any).scene = scene;

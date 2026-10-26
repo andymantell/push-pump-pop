@@ -1463,6 +1463,76 @@ export const LANDMARKS: Record<string, Landmark> = {
     g.add(cyl(6, 5.4, 1.4, 0x6ab85a, [0, -0.7, 0], 14), mesh(new THREE.ConeGeometry(5.4, 9, 10), 0x9a7a5a, [0, -5.9, 0], [Math.PI, 0, 0]));
     return g;
   } },
+  // --- The downhill world. Hillside Town:
+  funicular: { z: -26, r: 7, build: () => {
+    // A funicular (ascensor) up the hillside: a steep track on a viaduct, a little car, and a
+    // station at each end.
+    const g = new THREE.Group();
+    const ang = 0.62, len = 22;
+    const dx = Math.cos(ang) * len, dy = Math.sin(ang) * len;
+    g.add(box(4, 3.4, 3.6, 0xf2c040, [-dx / 2 - 1.5, 1.7, 0]), box(4.4, 0.3, 4, 0x9a5a3a, [-dx / 2 - 1.5, 3.5, 0]));
+    g.add(box(4, 3.4, 3.6, 0xe8768f, [dx / 2 + 1.5, dy + 1.7, 0]), box(4.4, 0.3, 4, 0x9a5a3a, [dx / 2 + 1.5, dy + 3.5, 0]));
+    // The viaduct under the track, legs down to the ground.
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8, x = -dx / 2 + dx * t, y = dy * t;
+      if (y > 0.5) g.add(box(0.5, y, 2.6, 0xd8d0c0, [x, y / 2, 0]));
+    }
+    g.add(beam([-dx / 2, 0.2, -0.7], [dx / 2, dy + 0.2, -0.7], 0.18, 0x5a5a62), beam([-dx / 2, 0.2, 0.7], [dx / 2, dy + 0.2, 0.7], 0.18, 0x5a5a62));
+    g.add(beam([-dx / 2, 0.05, 0], [dx / 2, dy + 0.05, 0], 0.4, 0xc8c0b0));
+    // The car, its floor level on the slope, half way up.
+    const car = group(box(3.2, 2.2, 2.0, 0xd84a3a, [0, 1.1, 0]), box(3.4, 0.2, 2.2, 0xf4f0e8, [0, 2.3, 0]),
+      box(2.6, 0.8, 2.05, 0x34465a, [0, 1.45, 0]), box(0.15, 2.2, 2.05, 0xf4f0e8, [-0.6, 1.1, 0]), box(0.15, 2.2, 2.05, 0xf4f0e8, [0.6, 1.1, 0]));
+    car.position.set(-dx * 0.08, dy * 0.42 + 0.3, 0);
+    g.add(car);
+    return g;
+  } },
+  belltower: { z: -24, r: 5, build: () => {
+    // The town church: a white nave and a tall bell tower with a clock and a tiled cap.
+    const wall = 0xf4f0e8, trim = 0x5ca4e8;
+    const g = group(box(9, 6, 6, wall, [2.5, 3, 0]), mesh(new THREE.ConeGeometry(5.4, 2.6, 4), 0x9a5a3a, [2.5, 7.3, 0], [0, Math.PI / 4, 0]));
+    g.add(box(4, 17, 4, wall, [-3.5, 8.5, 0]), box(4.4, 0.5, 4.4, trim, [-3.5, 11.5, 0]), box(4.4, 0.5, 4.4, trim, [-3.5, 17, 0]));
+    // Bell openings and the bell.
+    g.add(box(1.6, 2.6, 4.1, 0x2a2a34, [-3.5, 14.2, 0]), cyl(0.5, 0.8, 1.0, 0xd8a83a, [-3.5, 14.4, 0], 10));
+    g.add(mesh(new THREE.ConeGeometry(3.1, 4.5, 4), 0xd8783a, [-3.5, 19.5, 0], [0, Math.PI / 4, 0]), cyl(0.06, 0.06, 2.4, 0x3a3a3a, [-3.5, 22.6, 0], 4), box(1.2, 0.12, 0.12, 0x3a3a3a, [-3.5, 23.1, 0]));
+    g.add(cyl(1.1, 1.1, 0.2, 0xfaf6ea, [-3.5, 9.6, 2.05], 20, [Math.PI / 2, 0, 0]), box(0.08, 0.8, 0.05, 0x2a2a2a, [-3.5, 9.9, 2.18]), box(0.6, 0.08, 0.05, 0x2a2a2a, [-3.3, 9.6, 2.18]));
+    g.add(box(1.4, 3.2, 0.2, 0x7a4a2a, [2.5, 1.6, 3.05]), cyl(1.2, 1.2, 0.15, 0x5ca4e8, [2.5, 4.6, 3.05], 16, [Math.PI / 2, 0, 0]));
+    return g;
+  } },
+  mural: { z: -10.5, r: 6, build: () => {
+    // A wall painted end to end: sun, sea, hills and a rider mid-whip.
+    const cv = document.createElement('canvas');
+    cv.width = 512; cv.height = 256;
+    const c = cv.getContext('2d')!;
+    const sky = c.createLinearGradient(0, 0, 0, 256);
+    sky.addColorStop(0, '#ff7a5a'); sky.addColorStop(0.6, '#ffd060');
+    c.fillStyle = sky; c.fillRect(0, 0, 512, 256);
+    c.fillStyle = '#ffef9a'; c.beginPath(); c.arc(380, 120, 60, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#3a8ad0'; c.fillRect(0, 170, 512, 86);
+    c.fillStyle = '#5ac0e8'; for (let x = 0; x < 512; x += 40) { c.beginPath(); c.arc(x + 20, 176, 20, Math.PI, 0); c.fill(); }
+    for (const [x, col] of [[60, '#e8768f'], [150, '#6ec482'], [240, '#b07ad8']] as const) { c.fillStyle = col; c.beginPath(); c.arc(x, 200, 90, Math.PI, 0); c.fill(); }
+    c.strokeStyle = '#1a1a2a'; c.lineWidth = 9; c.lineCap = 'round';
+    c.beginPath(); c.arc(250, 90, 26, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(330, 70, 26, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.moveTo(250, 90); c.lineTo(285, 55); c.lineTo(330, 70); c.moveTo(285, 55); c.lineTo(300, 35); c.stroke();
+    c.fillStyle = '#1a1a2a'; c.font = '900 44px system-ui, sans-serif'; c.fillText('BAJA!', 24, 60);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const g = group(box(13, 6.4, 0.8, 0xd8d0c0, [0, 3.2, 0]), box(13.4, 0.4, 1.0, 0x9a5a3a, [0, 6.5, 0]));
+    g.add(mesh(new THREE.PlaneGeometry(12.4, 6), toon(0xffffff, { map: tex }), [0, 3.1, 0.41]));
+    return g;
+  } },
+  startgate: { z: -6, r: 4, build: () => {
+    // The race's inflatable arch and a timing screen.
+    const g = new THREE.Group();
+    const arch = mesh(new THREE.TorusGeometry(3.4, 0.55, 10, 24, Math.PI), 0xd84a3a, [0, 0, 0]);
+    g.add(arch);
+    const panel = textPanel('DOWNHILL', 5.2, 1.1, '#ffd84a', '#1a1a2a');
+    panel.position.set(0, 3.5, 0.6);
+    g.add(panel, box(1.4, 1.2, 1.4, 0x2a2a34, [-3.4, 0.6, 0]), box(1.4, 1.2, 1.4, 0x2a2a34, [3.4, 0.6, 0]));
+    const clock = textPanel('0:00.00', 2.4, 0.8, '#101018', '#ff5a3a');
+    clock.position.set(5.5, 2.6, 0.2);
+    g.add(clock, cyl(0.08, 0.08, 2.2, 0x3a3a3a, [5.5, 1.1, 0], 6));
+    return g;
+  } },
 };
 
 /** Which landmarks each track has, spread along it in order. */
@@ -1521,4 +1591,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'sky-1': ['floatisle', 'bigwindmill'], 'sky-2': ['balloons', 'skycastle'], 'sky-3': ['bigwindmill', 'floatisle'], 'sky-4': ['rainbow'],
   'sky-5': ['bigwindmill', 'balloons'], 'sky-6': ['skycastle', 'floatisle'], 'sky-7': ['rainbow', 'blimp'], 'sky-8': ['floatisle', 'bigwindmill'],
   'sky-9': ['blimp', 'skycastle'], 'sky-10': ['floatisle', 'skycastle'], 'sky-mega': ['rainbow'],
+  'dh-urban-1': ['startgate', 'belltower'], 'dh-urban-2': ['funicular'], 'dh-urban-3': ['mural', 'belltower'], 'dh-urban-4': ['funicular', 'mural'],
+  'dh-urban-5': ['belltower', 'crane'], 'dh-urban-6': ['mural', 'startgate'], 'dh-urban-7': ['funicular', 'belltower'], 'dh-urban-8': ['startgate', 'mural'],
+  'dh-urban-9': ['lighthouse', 'crane'], 'dh-urban-10': ['startgate', 'funicular'],
 };

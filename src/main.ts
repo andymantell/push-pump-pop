@@ -9,7 +9,8 @@ import { World } from './world';
 import { LampLights } from './lighting';
 import { Skater } from './skater';
 import { ScooterRig } from './scooter';
-import { RIDES, RideId, rideGoes, savedRide, saveRide, signFor } from './ride';
+import { MtbRig } from './mtb';
+import { RIDES, RideId, rideGoes, savedRide, saveRide, signFor, MTB_WORLD } from './ride';
 import { challengesOf, parOf } from './progress';
 import { loadAssets } from './assets';
 import { TRACKS, TrackDef, PIPE_TIME, STOP_AFTER_FINISH } from './tracks';
@@ -27,9 +28,9 @@ import { Sound } from './audio';
 import { Quality, Setting, SETTINGS } from './quality';
 
 const $ = (id: string) => document.getElementById(id)!;
-const progress = new Progress(TRACKS, BIOME_ORDER, (() => { try { return localStorage; } catch { return null; } })());
+const progress = new Progress(TRACKS, BIOME_ORDER, (() => { try { return localStorage; } catch { return null; } })(), WORLDS[MTB_WORLD]?.slice(0, 1) ?? []);
 progress.migrate();
-/** Skateboard or scooter: each has its own stars, see ride.ts. */
+/** Skateboard, scooter or downhill bike: each has its own stars, see ride.ts. */
 let ride: RideId = savedRide();
 progress.ride = ride;
 const starsHtml = (n: number) => '<span class="stars">' + [1, 2, 3].map((i) => (i <= n ? '&#9733;' : '&#9734;')).join('') + '</span>';
@@ -155,8 +156,8 @@ const rider = new Rider(track, {
   land({ airTime, smooth, peakY }) {
     sound.land(airTime);
     chal.land(rider.x);
-    // Coming down backwards on a scooter.
-    if (ride === 'scooter' && rider.bodyYaw && !rider.bailing) score.addBonus('Fakie', 100);
+    // Coming down backwards on a scooter or a bike.
+    if (ride !== 'skate' && rider.bodyYaw && !rider.bailing) score.addBonus('Fakie', 100);
     if (def.kind === 'pipe') {
       const h = peakY - track.maxY;
       if (h > 0.5) score.addBonus(`Air ${h.toFixed(1)}m`, Math.round(h * 150));
@@ -165,7 +166,13 @@ const rider = new Rider(track, {
     } else if (airTime > 0.7) score.addBonus(`Air ${airTime.toFixed(1)}s`, Math.round(airTime * 120));
     if (smooth) { score.addBonus('Smooth', 75); popup('Smooth landing', 'good'); }
   },
-  bail() { sound.bail(); chal.bail(); score.lose(); popup('BAIL!', 'bad'); loseLife(); },
+  bail() {
+    sound.bail(); chal.bail(); score.lose();
+    // Thrown off in a rock garden: over the bars, or off the back.
+    const tipped = ride === 'mtb' && Math.abs(rider.balance) >= 1;
+    popup(tipped ? (rider.balance > 0 ? 'OVER THE BARS!' : 'LOOPED OUT!') : 'BAIL!', 'bad');
+    loseLife();
+  },
   pump(good) { sound.pump(good); chal.pump(good); if (good) popup('Pump!', 'good'); },
   fall() {
     sound.fall(rider.loopFall ? 'loop' : world.biome.pitFill);
@@ -252,18 +259,21 @@ function loadTrack(d: TrackDef) {
   rider.track = track;
   const isPipe = d.kind === 'pipe', isMega = d.kind === 'mega';
   const snow = d.biome === 'snow';
-  const scoot = ride === 'scooter';
+  const scoot = ride === 'scooter', bike = ride === 'mtb';
   // Bound in on a mountain board down the farm's dirt tracks: grabs instead of flips.
-  const mountain = d.biome === 'farm' && !scoot;
+  const mountain = d.biome === 'farm' && ride === 'skate';
   // Mega ramps are smooth and fast.
-  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow, mountain, scooter: scoot, gravity: b.gravity };
+  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow: snow && !bike, mountain, scooter: scoot, mtb: bike, gravity: b.gravity };
   skater.setBoard(snow ? 'snow' : mountain ? 'mountain' : 'skate');
   scooter.setKind(snow ? 'snow' : 'scooter');
   skater.setSpace(d.biome === 'moon');
   scooter.setSpace(d.biome === 'moon');
-  skater.root.visible = !scoot;
+  mtb.setSnow(snow);
+  mtb.setSpace(d.biome === 'moon');
+  skater.root.visible = ride === 'skate';
   scooter.root.visible = scoot;
-  sound.setScene(world.biome, snow, !scoot && (snow || mountain), scoot);
+  mtb.root.visible = bike;
+  sound.setScene(world.biome, snow && !bike, ride === 'skate' && (snow || mountain), scoot, bike);
   rider.reset();
   // Half pipes start up on the coping: the first tap drops you in.
   if (isPipe || isMega) rider.perch();
@@ -272,13 +282,14 @@ function loadTrack(d: TrackDef) {
 
 const skater = new Skater(assets.parts);
 const scooter = new ScooterRig(assets.parts, skater.shadowMesh);
-scene.add(skater.root, scooter.root, skater.shadowMesh);
-for (const f of [skater, scooter]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+const mtb = new MtbRig(assets.parts, skater.shadowMesh);
+scene.add(skater.root, scooter.root, mtb.root, skater.shadowMesh);
+for (const f of [skater, scooter, mtb]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
 /** Whoever's riding. */
-const figure = () => (ride === 'scooter' ? scooter : skater);
+const figure = () => (ride === 'scooter' ? scooter : ride === 'mtb' ? mtb : skater);
 
 // Big combos are recorded for slow-motion replays: see replay.ts.
-const replays: Replays = new Replays([...skater.joints, ...scooter.joints], camera, skater.shadowMesh);
+const replays: Replays = new Replays([...skater.joints, ...scooter.joints, ...mtb.joints], camera, skater.shadowMesh);
 const player = new Player(replays, () => replays.clips);
 const chip = $('replaychip');
 let chipClip: Clip | null = null;
@@ -379,8 +390,8 @@ function start(d: TrackDef = def) {
   // However the device is being held right now counts as level.
   tilt.calibrate();
   $('trackname').textContent = d.name;
-  $('grabzone').textContent = ride === 'scooter' ? 'HOLD' : 'GRAB';
-  $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : 'FLIP';
+  $('grabzone').textContent = ride === 'skate' ? 'GRAB' : 'HOLD';
+  $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : ride === 'mtb' ? 'TRICK' : 'FLIP';
   show(null);
   state = 'playing';
 }
@@ -437,7 +448,7 @@ function openSelect(world: number | null = selWorld) {
   for (const w of worlds) {
     const btn = document.createElement('button');
     btn.className = 'small' + (w.i === world ? ' on' : '') + (w.open ? '' : ' locked');
-    btn.innerHTML = `${w.open ? '' : '&#128274; '}WORLD ${w.i + 1}`;
+    btn.innerHTML = `${w.open ? '' : '&#128274; '}${w.i === MTB_WORLD ? 'DOWNHILL' : `WORLD ${w.i + 1}`}`;
     btn.addEventListener('click', () => { sound.click(); openSelect(w.i); if (!w.open) toast(`&#128274; Complete track 5 of <b>${BIOMES[WORLDS[w.i - 1].at(-1)!].name}</b> to open World ${w.i + 1}`); });
     tabs.appendChild(btn);
   }
@@ -717,8 +728,8 @@ function frame(now: number) {
         else rider.respawn(rider.x, 6);
       }
     }
-    // A manual keeps the combo going on the ground.
-    score.update(dt, rider.grounded && !rider.manual);
+    // A manual, or a rock garden on the bike, keeps the combo going on the ground.
+    score.update(dt, rider.grounded && !rider.manual && !rider.garden);
     if (def.kind === 'pipe') {
       if (time >= PIPE_TIME) { time = PIPE_TIME; finish(); }
     } else if (def.kind === 'mega') {
@@ -779,6 +790,13 @@ function frame(now: number) {
   hud.cue.textContent = dropIn ? 'TAP TO DROP IN' : 'TAP!';
   hud.cue.classList.toggle('on', cue || dropIn);
   $('zones').classList.toggle('hidden', state !== 'playing');
+  // Rock gardens: the balance marker, forward to the right.
+  const bal = $('balance');
+  bal.classList.toggle('on', state === 'playing' && !!rider.garden);
+  if (rider.garden) {
+    bal.querySelector('i')!.style.left = `${50 + Math.max(-1, Math.min(1, rider.balance)) * 50}%`;
+    bal.classList.toggle('danger', Math.abs(rider.balance) > 0.6);
+  }
   if (state === 'playing') drawChallenges();
   hud.score.textContent = fmt(score.total);
   hud.time.textContent = def.kind === 'pipe' ? Math.max(0, PIPE_TIME - time).toFixed(1) : def.kind === 'mega' ? `${mega.drop}/${MEGA_DROPS}` : time.toFixed(1);
@@ -794,7 +812,7 @@ requestAnimationFrame(frame);
 
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
-  rider, score, skater, scooter, replays, get ride() { return ride; }, setRide, progress, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
+  rider, score, skater, scooter, mtb, replays, get ride() { return ride; }, setRide, progress, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
   quality,
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };

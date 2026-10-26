@@ -225,7 +225,9 @@ export function landingProblems(trackId: string): string[] {
   // A rail over a gap is crossed by grinding it, at any speed: only the jumped gaps count.
   const jumped = track.pits.map((p, i) => i).filter((i) => !track.rails.some((r) => r.x0 < track.pits[i].x0 && r.x1 > track.pits[i].x1));
   const difficulty = def.difficulty ?? 10;
-  if (jumped.length && difficulty > LEARN_MAX_DIFFICULTY) {
+  // On the bike's downhill courses gravity brings the speed, not pumping: anyone rolling
+  // clears the gaps, which is how downhill is.
+  if (jumped.length && difficulty > LEARN_MAX_DIFFICULTY && !def.biome.startsWith('dh-')) {
     const rate = jumped.reduce((s, i) => s + slow[i], 0) / jumped.length;
     if (rate > SLOW_CLEAR(difficulty)) out.push(`riders who never pump clear ${Math.round(rate * 100)}% of the gaps (at most ${SLOW_CLEAR(difficulty) * 100}% at difficulty ${difficulty}): ${jumped.map((i) => `${track.pits[i].x0.toFixed(0)} m ${Math.round(slow[i] * 100)}%`).join(', ')}`);
   }
