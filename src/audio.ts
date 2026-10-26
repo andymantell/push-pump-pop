@@ -94,7 +94,7 @@ const GROUNDS: Record<Ground, GroundSound> = {
 };
 
 const BIOME_GROUND: Record<string, Ground> = {
-  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'sand', haunted: 'stone', funfair: 'wood',
+  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'sand', haunted: 'stone', funfair: 'wood', toxic: 'concrete', mine: 'stone',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -1092,6 +1092,45 @@ export class Sound {
         });
         if (night) every(0.8, 2.5, crickets);
         else every(4, 10, bird);
+        break;
+      }
+      case 'toxic': {
+        // Machines humming, steam hissing from the vents, belts clanking, goo bubbling, and a
+        // warning klaxon somewhere far off.
+        bed(this.brown, { type: 'lowpass', f: 140, q: 1.2 }, 0.1, 4, 0.3);
+        every(5, 12, (at) => this.burst(at, { buf: this.pink, type: 'highpass', f: 3000, q: 0.5, gain: 0.05, attack: 0.05, decay: 1.2, to: out, pan: pan() }));
+        every(1.5, 4, (at) => {
+          const p = pan();
+          for (let i = 0; i < 3; i++) this.tone(at + i * 0.22, { f: 300 + Math.random() * 120, gain: 0.012, attack: 0.002, decay: 0.07, to: out, pan: p });
+        });
+        every(0.7, 2.2, (at) => {
+          const f = 120 + Math.random() * 100;
+          this.tone(at, { f, fEnd: f * 2.4, gain: 0.04, attack: 0.01, decay: 0.1, glide: 0.09, to: out, pan: pan() });
+        });
+        every(25, 50, (at) => {
+          const p = pan() * 0.6;
+          for (let i = 0; i < 3; i++) this.tone(at + i * 0.7, { type: 'square', f: 440, fEnd: 330, gain: 0.006, attack: 0.05, decay: 0.55, glide: 0.5, lp: 1400, to: out, pan: p });
+        });
+        break;
+      }
+      case 'mine': {
+        // A deep cave: a low rumble, water dripping and echoing, pickaxes chinking far off, a mine
+        // cart rattling past somewhere, and the soft ringing hum of the crystals.
+        bed(this.brown, { type: 'lowpass', f: 90, q: 1 }, 0.09, 9, 0.3);
+        every(0.8, 2.6, (at) => {
+          const f = 900 + Math.random() * 900, p = pan();
+          this.tone(at, { f, fEnd: f * 1.6, gain: 0.03, attack: 0.002, decay: 0.12, glide: 0.05, to: out, pan: p });
+          this.tone(at + 0.18, { f, fEnd: f * 1.6, gain: 0.01, attack: 0.002, decay: 0.12, glide: 0.05, to: out, pan: p });
+        });
+        every(4, 9, (at) => {
+          const p = pan() * 0.7;
+          for (let i = 0; i < 3; i++) this.tone(at + i * 0.55, { type: 'triangle', f: 2400 + Math.random() * 300, gain: 0.012, attack: 0.001, decay: 0.25, to: out, pan: p });
+        });
+        every(20, 40, (at) => this.burst(at, { buf: this.brown, type: 'bandpass', f: 300, q: 1.5, gain: 0.05, attack: 1.2, decay: 2.5, to: out, pan: pan() * 0.8 }));
+        every(6, 12, (at) => {
+          const f = [523, 659, 784, 988][Math.floor(Math.random() * 4)];
+          this.tone(at, { type: 'sine', f, gain: 0.008, attack: 0.6, decay: 2.4, to: out, pan: pan() });
+        });
         break;
       }
       case 'candy': {

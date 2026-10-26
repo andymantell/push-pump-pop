@@ -115,7 +115,7 @@ export function ride(trackId: string, pumpRate: number, ollie: boolean, seed: nu
     if (r.perched && !queue.length) press('pump');
     if (r.grounded && !r.falling && !r.perched && r.dropT < 0) {
       const lead = Math.abs(r.v) * REACTION;
-      if (track.slope(r.x + lead) < -0.12 && t - lastPump > 0.45 && (r.inPipe || nextLip(track, r.x, lead + 0.5) === null)) {
+      if ((track.slope(r.x + lead) < -0.12 || track.beltAt(r.x + lead)) && t - lastPump > 0.45 && (r.inPipe || nextLip(track, r.x, lead + 0.5) === null)) {
         if (rand() < pumpRate) press('pump');
         lastPump = t;
       }

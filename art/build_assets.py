@@ -1103,6 +1103,8 @@ def build_props():
     build_pirate(out)
     build_haunted(out)
     build_funfair(out)
+    build_toxic(out)
+    build_mine(out)
     export(os.path.join(OUT, 'props.glb'), out)
 
 
@@ -2322,6 +2324,164 @@ def build_funfair(out):
     # A single balloon on a string, tied to a peg at the track's edge.
     out.append(join('balloon', [cyl(wood_dk, 0.03, 0.2, loc=(0, 0, 0.1), verts=6), limb(white, (0, 0, 0.18), (0.1, 0, 1.25), 0.008, 0.008, verts=4),
                                 sphere(red, 0.2, loc=(0.1, 0, 1.47), scale=(1, 1, 1.2), segs=12, rings=8), cyl(red, 0.04, 0.06, loc=(0.1, 0, 1.24), r2=0.0, verts=6)]))
+
+
+def build_toxic(out):
+    yellow = mat('hazard_yellow', (250, 200, 30))
+    black = mat('hazard_black', (34, 34, 38))
+    goo = mat('goo_glow', (120, 240, 80))
+    steel = mat('steel', (160, 168, 176))
+    steel_dk = mat('steel_dark', (96, 102, 110))
+    pipe_m = mat('pipe_green', (70, 130, 110))
+    pipe_r = mat('pipe_red', (190, 70, 50))
+    amber = mat('lamp_light', (255, 243, 176))
+    white = mat('white', (245, 245, 245))
+
+    def barrel(x, y, z, lean=0.0):
+        parts = [cyl(yellow, 0.32, 0.95, loc=(x, y, z + 0.475), verts=16)]
+        for dz in (0.2, 0.75):
+            parts.append(cyl(black, 0.325, 0.12, loc=(x, y, z + dz), verts=16))
+        parts.append(cyl(steel_dk, 0.3, 0.03, loc=(x, y, z + 0.96), verts=16))
+        return parts
+
+    # A leaky barrel of goo with a dribble down its side and a puddle round its foot.
+    tb = barrel(0, 0, 0) + [sphere(goo, 0.1, loc=(0.1, -0.05, 0.98), scale=(1.4, 1, 0.5), segs=10, rings=6),
+                            cyl(goo, 0.04, 0.6, loc=(0.2, -0.24, 0.66), verts=8), sphere(goo, 0.06, loc=(0.2, -0.25, 0.35), segs=8, rings=6),
+                            sphere(goo, 0.45, loc=(0.25, -0.35, 0.0), scale=(1.2, 0.8, 0.05), segs=14, rings=6)]
+    out.append(join('toxicbarrel', tb))
+
+    # A stack of barrels: three on the bottom, two on top.
+    st = []
+    for x in (-0.66, 0, 0.66):
+        st += barrel(x, 0, 0)
+    for x in (-0.33, 0.33):
+        st += barrel(x, 0, 0.97)
+    out.append(join('barrelstack', st))
+
+    # Pipes on stands, with a valve wheel and an elbow up into the air.
+    pp = []
+    for z, m in ((0.5, pipe_m), (0.95, pipe_r)):
+        pp.append(cyl(m, 0.16, 3.6, loc=(0, 0, z), rot=(0, math.pi / 2, 0), verts=14))
+        for x in (-1.8, 1.8):
+            pp.append(cyl(steel_dk, 0.2, 0.1, loc=(x, 0, z), rot=(0, math.pi / 2, 0), verts=14))
+    pp.append(cyl(pipe_m, 0.16, 1.6, loc=(1.6, 0, 1.3), verts=14))
+    pp.append(sphere(pipe_m, 0.17, loc=(1.6, 0, 0.5), segs=12, rings=8))
+    for x in (-1.2, 0.6):
+        pp.append(cube(steel_dk, (0.1, 0.4, 1.0), loc=(x, 0, 0.5)))
+    pp.append(cyl(pipe_r, 0.22, 0.05, loc=(-0.4, -0.2, 1.25), rot=(math.pi / 2, 0, 0), verts=16))
+    for a in range(4):
+        pp.append(cube(pipe_r, (0.42, 0.04, 0.04), loc=(-0.4, -0.2, 1.25), rot=(0, a * math.pi / 4, 0)))
+    pp.append(cyl(steel, 0.05, 0.25, loc=(-0.4, -0.1, 1.1), verts=8))
+    out.append(join('pipes', pp))
+
+    # A warning beacon: an amber light on a striped pole.
+    wl = [cyl(black, 0.07, 3.2, loc=(0, 0, 1.6), verts=10), cyl(steel_dk, 0.22, 0.1, loc=(0, 0, 0.05), verts=12)]
+    for z in (0.4, 1.0, 1.6, 2.2, 2.8):
+        wl.append(cyl(yellow, 0.075, 0.3, loc=(0, 0, z), verts=10))
+    wl.append(cyl(steel_dk, 0.2, 0.12, loc=(0, 0, 3.25), verts=12))
+    wl.append(sphere(amber, 0.19, loc=(0, 0, 3.42), scale=(1, 1, 1.2), segs=12, rings=8))
+    wl.append(cyl(steel_dk, 0.07, 0.08, loc=(0, 0, 3.66), verts=10))
+    out.append(join('warnlamp', wl))
+
+    # A railing of pipe: posts and two rails, painted yellow.
+    rf = [cyl(yellow, 0.05, 1.1, loc=(-1.2, 0, 0.55), verts=8), sphere(yellow, 0.06, loc=(-1.2, 0, 1.1), segs=8, rings=6)]
+    for z in (0.55, 1.05):
+        rf.append(cyl(yellow, 0.035, 2.4, loc=(0, 0, z), rot=(0, math.pi / 2, 0), verts=8))
+    rf.append(cube(black, (0.12, 0.1, 0.1), loc=(-1.2, 0, 0.03)))
+    out.append(join('pipefence', rf))
+
+    # A cartoon warning sign: a yellow triangle with a big green goo drop.
+    hs = [cyl(steel_dk, 0.04, 1.4, loc=(0, 0, 0.7), verts=8),
+          cyl(black, 0.5, 0.05, loc=(0, -0.04, 1.6), rot=(math.pi / 2, 0, 0), verts=3),
+          cyl(yellow, 0.42, 0.06, loc=(0, -0.05, 1.6), rot=(math.pi / 2, 0, 0), verts=3),
+          sphere(goo, 0.1, loc=(0, -0.09, 1.52), scale=(1, 0.4, 1), segs=10, rings=8),
+          cyl(goo, 0.1, 0.16, loc=(0, -0.09, 1.66), r2=0.0, verts=10)]
+    out.append(join('hazardsign', hs))
+
+    # A puddle of goo with a bubble about to pop.
+    out.append(join('goopuddle', [sphere(goo, 0.5, loc=(0, 0, 0), scale=(1.3, 0.9, 0.06), segs=16, rings=6),
+                                  sphere(goo, 0.12, loc=(0.2, -0.1, 0.05), segs=10, rings=8), sphere(goo, 0.07, loc=(-0.25, 0.1, 0.03), segs=8, rings=6)]))
+
+    # A steam vent: a short chimney stub with a cap.
+    out.append(join('steamvent', [cyl(steel, 0.3, 1.2, loc=(0, 0, 0.6), verts=14), cyl(steel_dk, 0.38, 0.12, loc=(0, 0, 1.22), verts=14),
+                             cyl(steel_dk, 0.32, 0.08, loc=(0, 0, 0.04), verts=14), cyl(steel_dk, 0.31, 0.06, loc=(0, 0, 0.7), verts=14)]))
+
+
+def build_mine(out):
+    timber = mat('mine_timber', (150, 104, 60))
+    timber_dk = mat('mine_timber_dark', (110, 74, 42))
+    iron = mat('iron', (68, 68, 72))
+    rock = mat('mine_rock', (110, 100, 108))
+    rock_dk = mat('mine_rock_dark', (80, 72, 82))
+    purple = mat('crystal_glow_purple', (200, 120, 255))
+    blue = mat('crystal_glow_blue', (110, 200, 255))
+    green = mat('crystal_glow_green', (120, 255, 170))
+    glow = mat('lamp_light', (255, 243, 176))
+    red = mat('red', (230, 60, 50))
+    white = mat('white', (245, 245, 245))
+    gold = mat('gold', (250, 200, 40))
+
+    def crystal(m, x, y, h, r, tilt=0.0, yaw=0.0, z=0.0):
+        o = cyl(m, r, h, loc=(0, 0, h / 2), verts=6, smooth=False)
+        tip = cyl(m, r, r * 1.6, loc=(0, 0, h + r * 0.8), r2=0.0, verts=6, smooth=False)
+        o = join('c', [o, tip])
+        apply_tf(o)
+        o.rotation_euler = (tilt, 0, yaw)
+        o.location = (x, y, z)
+        apply_tf(o)
+        return o
+
+    # Crystal clusters, one in each colour, glowing.
+    for name, m, seed in (('crystals', purple, 3), ('crystalsblue', blue, 5), ('crystalsgreen', green, 9)):
+        import random
+        rnd = random.Random(seed)
+        parts = [ico(rock_dk, 0.5, loc=(0, 0, 0.05), scale=(1.3, 1, 0.45), sub=1, jitter=0.3, seed=seed)]
+        for k in range(6):
+            a = k * 1.1
+            parts.append(crystal(m, 0.25 * math.cos(a), 0.2 * math.sin(a), 0.5 + rnd.random() * 0.9, 0.09 + rnd.random() * 0.07, tilt=(rnd.random() - 0.5) * 0.9, yaw=a))
+        out.append(join(name, parts))
+
+    # A mine cart on its rails, full of ore and the odd gem.
+    mc = [cube(iron, (1.2, 0.8, 0.6), loc=(0, 0, 0.6), bevel=0.04), cube(rock_dk, (1.1, 0.7, 0.1), loc=(0, 0, 0.88)),
+          ico(rock, 0.3, loc=(-0.2, 0.05, 0.95), sub=1, jitter=0.3, seed=1), ico(rock, 0.28, loc=(0.25, -0.05, 0.95), sub=1, jitter=0.3, seed=2),
+          crystal(purple, 0.05, 0.1, 0.35, 0.07, z=0.9)]
+    for x in (-0.4, 0.4):
+        for y in (-0.42, 0.42):
+            mc.append(cyl(iron, 0.17, 0.08, loc=(x, y, 0.2), rot=(math.pi / 2, 0, 0), verts=12))
+    for y in (-0.42, 0.42):
+        mc.append(cube(iron, (2.4, 0.05, 0.06), loc=(0, y, 0.03)))
+    for x in (-1.0, -0.33, 0.33, 1.0):
+        mc.append(cube(timber_dk, (0.15, 1.1, 0.05), loc=(x, 0, 0.0)))
+    out.append(join('minecart', mc))
+
+    # Pit props: a timber frame holding the roof up, 2.4 m wide.
+    out.append(join('pitprops', [cube(timber, (0.2, 0.2, 2.2), loc=(-1.2, 0, 1.1)), cube(timber, (2.6, 0.22, 0.22), loc=(-0.1, 0, 2.3)),
+                                 cube(timber_dk, (0.12, 0.12, 0.9), loc=(-0.85, 0, 1.85), rot=(0, 0.75, 0))]))
+
+    # A miner's lantern on a timber post.
+    out.append(join('minelamp', [cube(timber, (0.16, 0.16, 2.6), loc=(0, 0, 1.3)), cube(timber_dk, (0.1, 0.5, 0.08), loc=(0, -0.22, 2.4)),
+                                 cyl(iron, 0.012, 0.25, loc=(0, -0.44, 2.28), verts=4),
+                                 cyl(glow, 0.12, 0.28, loc=(0, -0.44, 2.0), verts=10), cyl(iron, 0.15, 0.05, loc=(0, -0.44, 2.16), verts=10),
+                                 cyl(iron, 0.15, 0.05, loc=(0, -0.44, 1.85), verts=10)]))
+
+    # A heap of ore with a pickaxe stuck in it.
+    oh = [ico(rock, 0.6, loc=(0, 0, 0.1), scale=(1.4, 1.1, 0.7), sub=1, jitter=0.4, seed=4), ico(rock_dk, 0.35, loc=(0.6, -0.2, 0.1), sub=1, jitter=0.3, seed=6),
+          limb(timber, (-0.2, -0.1, 0.3), (-0.5, -0.4, 1.3), 0.04, 0.035, verts=6), cube(iron, (0.7, 0.08, 0.1), loc=(-0.5, -0.4, 1.3), rot=(0, 0.2, 0.8))]
+    oh.append(crystal(blue, 0.2, -0.3, 0.3, 0.06, tilt=0.3))
+    out.append(join('oreheap', oh))
+
+    # A crate of dynamite (cartoon): red sticks poking out, a fuse.
+    tn = [cube(timber, (0.8, 0.5, 0.45), loc=(0, 0, 0.23), bevel=0.02)]
+    for i in range(4):
+        tn.append(cyl(red, 0.06, 0.4, loc=(-0.2 + i * 0.13, 0, 0.55), verts=8))
+    tn.append(limb(white, (0.2, 0, 0.75), (0.35, -0.1, 0.95), 0.01, 0.01, verts=4))
+    tn.append(cube(red, (0.5, 0.02, 0.15), loc=(0, -0.26, 0.25)))
+    out.append(join('tnt', tn))
+
+    # A bucket on a rope hanging from a little winch.
+    out.append(join('winch', [cube(timber, (0.12, 0.12, 1.8), loc=(-0.5, 0, 0.9)), cube(timber, (0.12, 0.12, 1.8), loc=(0.5, 0, 0.9)),
+                              cyl(timber_dk, 0.12, 1.1, loc=(0, 0, 1.6), rot=(0, math.pi / 2, 0), verts=10), cyl(iron, 0.01, 0.8, loc=(0, -0.1, 1.15), verts=4),
+                              cyl(iron, 0.16, 0.25, loc=(0, -0.1, 0.7), r2=0.2, verts=10), cube(iron, (0.04, 0.3, 0.04), loc=(0.62, 0.15, 1.6))]))
 
 
 if __name__ == '__main__':

@@ -37,6 +37,14 @@ const PUMP_BOUNCE = 1.25;
 /** Mud drags you back: a steady pull plus more the faster you go. */
 const MUD_DRAG = 1.2;
 const MUD_DRAG_PER_SPEED = 0.16;
+/** A fast belt pulls you up to its speed, at most this hard... */
+const BELT_PUSH = 3.5;
+const BELT_GRIP = 0.6;
+/** ...and a backwards one drags you back this hard, but never below a crawl. */
+const BELT_DRAG = 1.6;
+const BELT_CRAWL = 3;
+/** Pumping on a belt pushes you on as if you were going downhill. */
+const BELT_PUMP = 0.5;
 /** Half pipe start: standing on the coping, nose up over the pipe. */
 const PERCH_ANGLE = 0.3;
 /** How far over the coping the board sits while perched, and how long dropping in takes. */
@@ -377,7 +385,8 @@ export class Rider {
     if (!this.grounded && !this.grind && !this.loop && !this.inPipe && this.vy < 0) this.airPump = AIR_PUMP_TIME;
     if (this.grounded) {
       const s = Math.sin(Math.atan(this.track.slope(this.x))) * Math.sign(this.v || 1);
-      this.ev.pump(s < -0.08);
+      // Downhill, or on a conveyor belt, where pumping always pushes you on.
+      this.ev.pump(s < -0.08 || !!this.track.beltAt(this.x));
     }
   }
 
@@ -788,11 +797,15 @@ export class Rider {
       let a = -GRAVITY * sin;
       a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v);
       if (tr.inMud(this.x)) a -= dir * (MUD_DRAG + MUD_DRAG_PER_SPEED * Math.abs(this.v));
+      const belt = !this.inPipe ? tr.beltAt(this.x) : null;
+      if (belt && belt.speed > this.v) a += Math.min(BELT_PUSH, BELT_GRIP * (belt.speed - this.v));
+      else if (belt && belt.speed < 0 && this.v > BELT_CRAWL) a -= BELT_DRAG;
 
       if (this.pumpTimer > 0 && !this.bailing) {
         // Pumping pays off on the way down a transition and costs a little on the way up.
         const downhill = -sin * dir;
         let f = Math.max(-0.12, Math.min(1, downhill * 3));
+        if (belt) f = Math.max(f, BELT_PUMP);
         // Half pipe: pumping through the flat bottom counts too, so it's easy to build height.
         if (this.opts.pipe) f = Math.max(f, Math.abs(sin) < 0.3 ? 0.8 : 0.25);
         a += dir * PUMP_ACCEL * f;

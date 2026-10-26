@@ -286,6 +286,66 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
         for (const x of [0, 128, 256]) c.fillRect(x + 3, 0, 3, 256);
         break;
       }
+      case 'grating': {
+        // Steel floor grating: a tight grid of slots, with a tread plate seam every tile.
+        c.fillStyle = s.seam;
+        for (let y = 4; y < 256; y += 12) for (let x = 4; x < 256; x += 12) c.fillRect(x, y, 7, 7);
+        c.fillStyle = 'rgba(255,255,255,0.12)';
+        for (let y = 4; y < 256; y += 12) c.fillRect(0, y - 2, 256, 1);
+        c.fillStyle = 'rgba(0,0,0,0.35)';
+        c.fillRect(0, 0, 5, 256);
+        speckle(c, 300, 0.08, 0.04);
+        break;
+      }
+      case 'hazard': {
+        // Riveted steel plates, with black and yellow hazard stripes along the top.
+        c.fillStyle = s.seam;
+        for (const x of [0, 128]) c.fillRect(x, 0, 3, 256);
+        for (const y of [0, 128]) c.fillRect(0, y, 256, 3);
+        c.fillStyle = 'rgba(255,255,255,0.35)';
+        for (let x = 10; x < 256; x += 30) for (const y of [10, 118, 138, 246]) { c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill(); }
+        c.save();
+        c.beginPath(); c.rect(0, 0, 256, 34); c.clip();
+        c.fillStyle = s.accent ?? '#f2c020';
+        c.fillRect(0, 0, 256, 34);
+        c.fillStyle = '#222226';
+        for (let x = -40; x < 300; x += 40) { c.beginPath(); c.moveTo(x, 34); c.lineTo(x + 20, 34); c.lineTo(x + 54, 0); c.lineTo(x + 34, 0); c.fill(); }
+        c.restore();
+        c.fillStyle = 'rgba(80,140,40,0.3)';
+        for (let i = 0; i < 6; i++) c.fillRect(r() * 256, 34, 4 + r() * 4, 20 + r() * 60);
+        break;
+      }
+      case 'cartrock': {
+        // Packed rock with a mine-cart track along it: two iron rails on wooden sleepers.
+        speckle(c, 900, 0.1, 0.05);
+        c.fillStyle = s.accent ?? s.seam;
+        for (let x = 6; x < 256; x += 32) c.fillRect(x, 70, 14, 116);
+        c.fillStyle = 'rgba(0,0,0,0.3)';
+        for (let x = 6; x < 256; x += 32) c.fillRect(x + 11, 70, 3, 116);
+        for (const y of [88, 160]) {
+          c.fillStyle = '#3a3a40';
+          c.fillRect(0, y, 256, 9);
+          c.fillStyle = 'rgba(255,255,255,0.35)';
+          c.fillRect(0, y, 256, 2);
+        }
+        break;
+      }
+      case 'timber': {
+        // Rock held up by timber: posts and a beam framing each bay, crystals glinting in the rock.
+        speckle(c, 1100, 0.12, 0.05);
+        c.fillStyle = s.seam;
+        c.fillRect(0, 0, 22, 256);
+        c.fillRect(0, 0, 256, 20);
+        c.fillStyle = 'rgba(0,0,0,0.3)';
+        c.fillRect(18, 0, 4, 256);
+        c.fillRect(0, 16, 256, 4);
+        c.fillStyle = s.accent ?? '#fff';
+        for (let i = 0; i < 5; i++) {
+          const x = 40 + r() * 200, y = 40 + r() * 200;
+          c.beginPath(); c.moveTo(x, y - 9); c.lineTo(x + 4, y); c.lineTo(x, y + 9); c.lineTo(x - 4, y); c.fill();
+        }
+        break;
+      }
       case 'quaywall': {
         // Granite blocks in courses, weed and wet stain low down, iron rungs here and there.
         c.fillStyle = s.seam;
@@ -381,6 +441,7 @@ const PARTICLES: Record<Particles, ParticleLook> = {
   dust: { n: 1300, color: 0xe0c090, size: 0.08, vx: 7, vy: -0.3, sway: 0.4, opacity: 0.7 },
   sprinkles: { n: 500, color: 0xffffff, size: 0.12, vx: 0.3, vy: -1.4, sway: 0.6, colors: [0xff5a9a, 0x5ad0ff, 0xffe04a, 0x7aea6a, 0xb07aff] },
   fireflies: { n: 220, color: 0xfff27a, size: 0.22, vx: 0, vy: 0, sway: 0, wander: 0.8, blink: true },
+  smog: { n: 500, color: 0xc8d890, size: 0.5, vx: 0.8, vy: 0.15, sway: 0.4, opacity: 0.25 },
   wisps: { n: 90, color: 0x8affd0, size: 0.34, vx: 0.2, vy: 0.1, sway: 0, wander: 0.5, blink: true },
 };
 
@@ -506,6 +567,7 @@ export class World {
     this.buildBouncers();
     this.buildStacks();
     this.buildRocks();
+    this.buildBelts();
     this.buildPitFills();
     this.buildStairs();
     this.buildRails();
@@ -519,7 +581,7 @@ export class World {
     this.buildSky();
   }
 
-  /** Lava, jack-o'-lantern faces and witches' brew always glow; lamps and windows only when the mood turns them on. The models'
+  /** Lava, jack-o'-lantern faces, goo and crystals always glow; lamps and windows only when the mood turns them on. The models'
    * materials are shared by every track, so this is set afresh for each one. */
   private lightUp() {
     const on = !!this.biome.lights;
@@ -530,7 +592,7 @@ export class World {
         for (const mat of ([] as THREE.Material[]).concat(mesh.material)) {
           const t = mat as THREE.MeshToonMaterial;
           if (!t.emissive) continue;
-          if (t.name === 'lava' || t.name === 'ember' || t.name === 'pumpkin_glow' || t.name === 'goo_glow') t.emissive.copy(t.color).multiplyScalar(0.8);
+          if (t.name === 'lava' || t.name === 'ember' || t.name === 'pumpkin_glow' || t.name === 'goo_glow' || t.name.startsWith('crystal_glow')) t.emissive.copy(t.color).multiplyScalar(0.8);
           else if (t.name === 'lamp_light' || t.name === 'window_glow') t.emissive.copy(t.color).multiplyScalar(on ? 1 : 0);
         }
       });
@@ -933,6 +995,55 @@ export class World {
         b.castShadow = true;
         this.group.add(b);
       }
+    }
+  }
+
+  /** Conveyor belts: a ribbed rubber belt with arrows that runs, drums at each end, a steel frame. */
+  private belts: { tex: THREE.Texture; speed: number }[] = [];
+  private beacons: THREE.Sprite[] = [];
+  private buildBelts() {
+    const tr = this.track;
+    if (!tr.belts.length) return;
+    const half = TRACK_W / 2, steel = toon(0x5a6068), drum = toon(0x9aa0a8);
+    for (const belt of tr.belts) {
+      // Green arrows on a fast belt, red ones pointing back on a slow one.
+      const fast = belt.speed > 0;
+      const tex = canvasTexture(256, 128, (c) => {
+        c.fillStyle = '#2e3034';
+        c.fillRect(0, 0, 256, 128);
+        c.fillStyle = 'rgba(255,255,255,0.08)';
+        for (let x = 0; x < 256; x += 16) c.fillRect(x, 0, 5, 128);
+        c.fillStyle = fast ? '#6ae03a' : '#e84a3a';
+        for (const x0 of [40, 168]) {
+          const d = fast ? 1 : -1;
+          c.beginPath();
+          c.moveTo(x0 - 22 * d, 30); c.lineTo(x0 + 10 * d, 64); c.lineTo(x0 - 22 * d, 98);
+          c.lineTo(x0 - 10 * d, 98); c.lineTo(x0 + 22 * d, 64); c.lineTo(x0 - 10 * d, 30);
+          c.fill();
+        }
+      });
+      tex.wrapS = THREE.RepeatWrapping;
+      const len = belt.x1 - belt.x0;
+      tex.repeat.set(len / 3, 1);
+      const mat = toon(0xffffff, { map: tex });
+      mat.userData.outlineParameters = { visible: false };
+      const y = tr.height(belt.x0);
+      const top = new THREE.Mesh(new THREE.PlaneGeometry(len, TRACK_W - 0.2), mat);
+      top.rotation.x = -Math.PI / 2;
+      top.position.set((belt.x0 + belt.x1) / 2, y + 0.03, -0.1);
+      top.receiveShadow = true;
+      this.group.add(top);
+      // The frame along the front, with a roller drum every couple of metres.
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(len + 0.4, 0.35, 0.12), steel);
+      frame.position.set((belt.x0 + belt.x1) / 2, y - 0.1, half + 0.08);
+      this.group.add(frame);
+      for (let x = belt.x0; x <= belt.x1 + 0.01; x += Math.max(1, len / Math.round(len / 2))) {
+        const d = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 12), drum);
+        d.rotation.x = Math.PI / 2;
+        d.position.set(x, y - 0.1, half + 0.16);
+        this.group.add(d);
+      }
+      this.belts.push({ tex, speed: belt.speed });
     }
   }
 
@@ -1409,6 +1520,61 @@ export class World {
         }
         break;
       }
+      case 'factory': {
+        // The works stretching away: sheds with saw-tooth roofs, chimneys and cooling towers.
+        const shed = mat(b.farColors[0]), shed2 = mat(b.farColors[1]), stripe = mat(0xd84a3a), white = mat(0xd8dcd0);
+        const r = rng(73);
+        for (let x = -40; x < len + 80; x += 16 + r() * 10) {
+          const w = 12 + r() * 6, h = 6 + r() * 6;
+          const s = new THREE.Mesh(new THREE.BoxGeometry(w, h, 10), r() > 0.5 ? shed : shed2);
+          s.position.set(x, tr.minY + h / 2, -95 - r() * 15);
+          far.add(s);
+          for (let k = 0; k < 3; k++) {
+            const tooth = new THREE.Mesh(new THREE.ConeGeometry(w / 6, 2, 3), shed2);
+            tooth.position.set(x - w / 3 + k * (w / 3), tr.minY + h + 0.8, s.position.z);
+            tooth.rotation.y = Math.PI / 2;
+            far.add(tooth);
+          }
+        }
+        for (let x = 10; x < len + 80; x += 60 + r() * 50) {
+          const h = 26 + r() * 14;
+          const ch = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, h, 10), white);
+          ch.position.set(x, tr.minY + h / 2, -112);
+          const band = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.3, 2.5, 10), stripe);
+          band.position.set(x, tr.minY + h - 3, -112);
+          far.add(ch, band);
+        }
+        for (let x = 40; x < len + 80; x += 140) {
+          const tower = new THREE.Mesh(new THREE.CylinderGeometry(8, 11, 24, 18, 1, true), white);
+          tower.position.set(x, tr.minY + 12, -135);
+          far.add(tower);
+        }
+        break;
+      }
+      case 'cave': {
+        // The far wall of the cavern: lumpy rock, with clusters of glowing crystals in it.
+        const r = rng(31);
+        for (let x = -40; x < len + 80; x += 14) {
+          const h = 30 + r() * 20;
+          const lump = new THREE.Mesh(new THREE.IcosahedronGeometry(14 + r() * 8, 0), mat(b.farColors[Math.floor(r() * 2)]));
+          lump.position.set(x, tr.minY + h * 0.4, -105 - r() * 15);
+          lump.scale.set(1, 2.2, 0.6);
+          far.add(lump);
+        }
+        const glows = [0xc890ff, 0x7ad0ff, 0x7affb0].map((c) => new THREE.MeshBasicMaterial({ color: c }));
+        for (let x = -30; x < len + 60; x += 10 + r() * 16) {
+          const g = new THREE.Group(), m = glows[Math.floor(r() * 3)];
+          for (let k = 0; k < 4; k++) {
+            const c = new THREE.Mesh(new THREE.ConeGeometry(0.6 + r() * 0.5, 3 + r() * 4, 6), m);
+            c.position.set((r() - 0.5) * 3, 1.5, (r() - 0.5) * 2);
+            c.rotation.z = (r() - 0.5) * 0.8;
+            g.add(c);
+          }
+          g.position.set(x, tr.minY + 2 + r() * 14, -92 - r() * 8);
+          far.add(g);
+        }
+        break;
+      }
       case 'fields': {
         // Patchwork farmland: rolling hills striped with crop rows, hedges along the top.
         const stripes = b.farColors.map((col, k) => {
@@ -1720,6 +1886,20 @@ export class World {
       }
       this.sky.add(halo, moon);
     }
+    if (b.cave) {
+      // The roof of the cavern: a band of dark rock with stalactites hanging down from it.
+      const rock = new THREE.MeshBasicMaterial({ color: 0x120e18, fog: false });
+      const roof = new THREE.Mesh(new THREE.PlaneGeometry(1000, 120), rock);
+      roof.position.set(0, 150, -300);
+      this.sky.add(roof);
+      for (let x = -450; x < 450; x += 6 + r() * 14) {
+        const h = 12 + r() * 40;
+        const st = new THREE.Mesh(new THREE.ConeGeometry(3 + r() * 5, h, 5), rock);
+        st.rotation.z = Math.PI;
+        st.position.set(x, 90 - h / 2 + 2, -299);
+        this.sky.add(st);
+      }
+    }
     if (b.aurora) {
       const colors = [0x5affb0, 0x40d8ff, 0xa070ff];
       for (let k = 0; k < 3; k++) {
@@ -1810,6 +1990,21 @@ export class World {
       o.add(halo);
       this.addLamp(x, y + 3.5 * scale, z, 0xfff0c0, 34, 12);
     }
+    if (this.biome.lights && kind === 'warnlamp') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(0, 3.42, 0);
+      halo.scale.setScalar(2);
+      o.add(halo);
+      this.beacons.push(halo);
+      this.addLamp(x, y + 3.42 * scale, z, 0xffa830, 28, 11);
+    }
+    if (this.biome.lights && kind === 'minelamp') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(0, 2.0, 0.44);
+      halo.scale.setScalar(1.6);
+      o.add(halo);
+      this.addLamp(x, y + 2.0 * scale, z + 0.44 * scale, 0xffc070, 26, 10);
+    }
     if (this.biome.lights && kind === 'gumlamp') {
       const halo = new THREE.Sprite(haloMaterial());
       halo.position.set(0, 2.66, 0);
@@ -1883,7 +2078,7 @@ export class World {
       }
       if (b.posts.kind === 'liftpylon') this.buildLift(tops);
     }
-    if (b.lights && !['lamp', 'gumlamp', 'docklamp', 'gaslamp', 'fairlamp'].includes(b.posts?.kind ?? '')) this.buildNightLights(end);
+    if (b.lights && !['lamp', 'gumlamp', 'docklamp', 'gaslamp', 'fairlamp', 'warnlamp', 'minelamp'].includes(b.posts?.kind ?? '')) this.buildNightLights(end);
     if (b.edge) for (let x = 6; x < end; x += b.edge.spacing * (0.7 + r() * 0.6)) this.placeProp(b.edge.kind, x, b.edge.z, 1, r() * Math.PI);
     for (const p of this.track.props) this.placeProp(p.kind, p.x, p.z, p.scale, p.rot);
     this.buildBlobs();
@@ -2046,6 +2241,12 @@ export class World {
   private buildSky() { /* sky is the scene background, set in applyEnvironment */ }
 
   update(dt: number, camX: number, camY: number) {
+    for (const b of this.belts) b.tex.offset.x -= (b.speed * dt) / 3;
+    if (this.beacons.length) {
+      // Warning beacons flash.
+      const on = Math.sin(performance.now() / 160) > 0 ? 2 : 0.6;
+      for (const h of this.beacons) h.scale.setScalar(on);
+    }
     for (const j of this.jellies) {
       if (j.t > 1) continue;
       j.t += dt;

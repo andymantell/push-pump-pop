@@ -1109,6 +1109,130 @@ export const LANDMARKS: Record<string, Landmark> = {
     g.add(sign);
     return g;
   } },
+  // ---- Toxic Factory
+  goovat: { z: -14, r: 6, build: () => {
+    // A giant vat of glowing green goo on legs, a ladder up the side, pipes feeding in.
+    const steel = 0x8a9098, goo = glow(0x7aff4a);
+    const g = group(cyl(4, 4, 6, steel, [0, 5, 0], 20), cyl(3.8, 3.8, 0.2, goo, [0, 8.05, 0], 20), cyl(4.2, 4.2, 0.4, 0x5a6068, [0, 8.1, 0], 20));
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2 + 0.4;
+      g.add(cyl(0.25, 0.25, 2.2, 0x5a6068, [Math.cos(a) * 3.2, 1.1, Math.sin(a) * 3.2], 8));
+    }
+    for (let k = 0; k < 5; k++) g.add(ball(0.35 + (k % 2) * 0.2, goo, [-1.5 + k * 0.8, 8.2 + (k % 3) * 0.15, (k % 2) - 0.5], 8));
+    for (const y of [3, 5, 7]) g.add(box(8.1, 0.3, 0.3, 0xf2c020, [0, y, 0], [0, 0, 0]));
+    g.add(box(0.5, 0.25, 0.1, goo, [1.2, 4, 4.05]), cyl(0.5, 0.5, 0.2, goo, [2.4, 0.1, 3.4], 14));
+    for (let y = 2.4; y < 8.4; y += 0.5) g.add(box(0.8, 0.06, 0.06, 0x3a3e44, [-4.2, y, 1.2]));
+    g.add(box(0.06, 6, 0.06, 0x3a3e44, [-4.2, 5.4, 0.8]), box(0.06, 6, 0.06, 0x3a3e44, [-4.2, 5.4, 1.6]));
+    g.add(beam([4, 7, 0], [8, 11, -1], 0.5, 0x4a8a6e), beam([8, 11, -1], [8, 0, -1], 0.5, 0x4a8a6e));
+    const label = textPanel('GOO', 2.6, 1.2, '#f2c020', '#222226', '#222226');
+    label.position.set(0, 5.6, 4.06);
+    g.add(label);
+    return g;
+  } },
+  coolingtower: { z: -30, r: 10, build: () => {
+    // A big cooling tower, waisted in the middle, puffing a cloud of steam.
+    const g = group(mesh(new THREE.CylinderGeometry(6, 8.5, 18, 24, 1, true), 0xd8dcd0, [0, 9, 0]), mesh(new THREE.CylinderGeometry(7, 6, 6, 24, 1, true), 0xd8dcd0, [0, 21, 0]));
+    g.add(cyl(7.05, 7.05, 1, 0xd84a3a, [0, 23, 0], 24));
+    for (const [x, y, r] of [[0, 26, 4], [2, 29, 3.5], [-1.5, 31, 3], [1, 34, 2.5]] as const) g.add(ball(r, 0xf4f4f0, [x, y, 0], 10));
+    return g;
+  } },
+  crusher: { z: -12, r: 6, build: () => {
+    // A crusher: a huge striped press block hanging in a steel frame over a squashed car.
+    const steel = 0x5a6068;
+    const g = group(box(0.8, 9, 0.8, steel, [-3.5, 4.5, 0]), box(0.8, 9, 0.8, steel, [3.5, 4.5, 0]), box(8, 1, 1.2, steel, [0, 9.2, 0]));
+    g.add(box(5.6, 2.6, 3, 0xf2c020, [0, 6, 0]), cyl(0.5, 0.5, 2.6, 0x9aa0a8, [0, 8, 0], 10));
+    for (let i = 0; i < 5; i++) g.add(box(0.5, 2.62, 3.02, 0x222226, [-2.2 + i * 1.1, 6, 0], [0, 0, 0.5]));
+    g.add(box(5, 0.6, 3.4, 0x3a3e44, [0, 0.3, 0]), box(3.4, 0.6, 1.8, 0xd84a3a, [0, 0.9, 0]), box(1.6, 0.4, 1.6, 0xd84a3a, [0.3, 1.35, 0]));
+    for (const x of [-1.2, 1.2]) g.add(cyl(0.35, 0.35, 0.25, 0x222226, [x, 0.75, 0.95], 10, [Math.PI / 2, 0, 0]));
+    return g;
+  } },
+  robotarm: { z: -9, r: 5, build: () => {
+    // A big orange robot arm, reaching over towards the track with a claw.
+    const orange = 0xf08a2a, dark = 0x3a3e44;
+    const g = group(cyl(1.2, 1.5, 1, dark, [0, 0.5, 0], 14), cyl(0.9, 0.9, 1, orange, [0, 1.5, 0], 14));
+    g.add(beam([0, 2, 0], [1.5, 6, 1], 0.8, orange), ball(0.6, dark, [1.5, 6, 1], 12), beam([1.5, 6, 1], [4.5, 5, 3.5], 0.6, orange));
+    g.add(ball(0.4, dark, [4.5, 5, 3.5], 10), beam([4.5, 5, 3.5], [4.7, 3.8, 3.7], 0.25, dark));
+    for (const d of [-0.35, 0.35]) g.add(beam([4.7, 3.8, 3.7 + d], [4.9, 3.1, 3.7 + d * 1.6], 0.15, dark));
+    g.add(ball(0.18, glow(0xff3a2a), [1.6, 6.5, 1.5], 8));
+    return g;
+  } },
+  controlroom: { z: -16, r: 6, build: () => {
+    // A control room up on stilts: a long lit window, screens, a little satellite dish.
+    const wall = 0x9aa0a8;
+    const g = new THREE.Group();
+    for (const x of [-3.5, 3.5]) g.add(box(0.4, 4, 0.4, 0x5a6068, [x, 2, 0]));
+    g.add(box(8, 3.5, 4, wall, [0, 5.75, 0]), box(8.4, 0.4, 4.4, 0x5a6068, [0, 7.7, 0]));
+    g.add(box(6.6, 1.6, 0.1, glow(0x9ad8ff), [0, 6, 2.02]));
+    for (let i = 0; i < 4; i++) g.add(box(1, 0.6, 0.05, glow(i % 2 ? 0x7aff4a : 0xffb030), [-2.4 + i * 1.6, 5.9, 2.06]));
+    g.add(beam([-3.5, 0, 3], [-3.5, 4, 2.2], 0.15, 0xf2c020), cyl(0.8, 0.1, 0.4, 0xd8dcd0, [2.6, 8.4, 0], 12, [0.6, 0, 0]));
+    const sign = textPanel('CONTROL', 3, 0.7, '#222226', '#f2c020');
+    sign.position.set(0, 7.2, 2.05);
+    g.add(sign);
+    return g;
+  } },
+  // ---- Crystal Mine
+  minehead: { z: -18, r: 7, build: () => {
+    // The mine entrance: a timber-framed tunnel mouth with a winding tower and its big wheel above.
+    const wood = 0x8a5a30, iron = 0x4a4a52;
+    const g = group(box(7, 6, 3, 0x3a3240, [0, 3, 0]), box(4, 4.2, 0.1, 0x0a080c, [0, 2.1, 1.55]));
+    g.add(box(0.5, 4.6, 0.5, wood, [-2.2, 2.3, 1.6]), box(0.5, 4.6, 0.5, wood, [2.2, 2.3, 1.6]), box(5.2, 0.5, 0.6, wood, [0, 4.6, 1.6]));
+    for (const x of [-0.9, 0.9]) g.add(box(0.12, 0.08, 6, iron, [x, 0.05, 3]));
+    for (const x of [-2.6, 2.6]) g.add(beam([x, 6, 0], [x * 0.3, 15, 0], 0.4, iron));
+    g.add(beam([-2.6, 6, 0], [2.6, 10, 0], 0.2, iron), beam([2.6, 6, 0], [-2.6, 10, 0], 0.2, iron));
+    const wheel = new THREE.Group();
+    wheel.add(mesh(new THREE.TorusGeometry(2.4, 0.18, 6, 24), iron));
+    for (let k = 0; k < 6; k++) wheel.add(box(4.8, 0.14, 0.14, iron, [0, 0, 0], [0, 0, (k / 6) * Math.PI]));
+    wheel.position.set(0, 15, 0);
+    g.add(wheel);
+    const sign = textPanel('MINE', 2.6, 0.8, '#4a3020', '#f2c040');
+    sign.position.set(0, 5.4, 1.62);
+    g.add(sign);
+    return g;
+  } },
+  geode: { z: -14, r: 6, build: () => {
+    // A huge geode split open, lined with glowing purple crystals.
+    const g = group(mesh(new THREE.SphereGeometry(5, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), 0x6a6070, [0, 1, 0], [Math.PI / 2, 0, 0]));
+    g.add(mesh(new THREE.CircleGeometry(4.4, 18), 0x2a1a40, [0, 4, 0.6]));
+    const c = glow(0xc890ff), c2 = glow(0xe8c8ff);
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2, d = 2.4 + (k % 3) * 0.6;
+      g.add(mesh(new THREE.ConeGeometry(0.35, 1.6, 6), k % 3 ? c : c2, [Math.cos(a) * d, 4 + Math.sin(a) * d, 1.2], [Math.PI / 2 - 0.3, 0, a]));
+    }
+    return g;
+  } },
+  cavefall: { z: -16, r: 7, build: () => {
+    // An underground waterfall pouring off a ledge into a pool, lit blue from below.
+    const rock = 0x4a4250, water = glow(0x6ac8ff);
+    const g = new THREE.Group();
+    for (const [x, y, r] of [[-3.5, 4, 4.5], [3.5, 5, 4.8], [0, 10, 4.6], [-2.5, 12, 3.6], [3, 12.5, 3.4]] as const) {
+      const lump = mesh(new THREE.IcosahedronGeometry(r, 0), rock, [x, y, -1.5]);
+      lump.scale.set(1, 1.3, 0.7);
+      g.add(lump);
+    }
+    g.add(box(4, 1, 3, rock, [0, 12, 1]));
+    g.add(box(2.6, 12, 0.3, new THREE.MeshBasicMaterial({ color: 0x8ad8ff, transparent: true, opacity: 0.75 }), [0, 6, 2.4]));
+    for (const x of [-0.9, -0.2, 0.6]) g.add(box(0.18, 12, 0.05, glow(0xe0f6ff), [x, 6, 2.6]));
+    g.add(cyl(4.5, 4.5, 0.3, water, [0, 0.15, 3.5], 20));
+    for (let k = 0; k < 6; k++) g.add(ball(0.6 + (k % 2) * 0.3, 0xffffff, [-1.5 + k * 0.6, 0.6, 2.8 + (k % 2) * 0.5], 8));
+    for (const x of [-4, 4]) g.add(mesh(new THREE.ConeGeometry(0.5, 2.2, 6), glow(0x7ad0ff), [x, 1.1, 2.6]));
+    return g;
+  } },
+  cathedral: { z: -30, r: 12, build: () => {
+    // A crystal cathedral: a forest of giant glowing crystal spires, tallest in the middle.
+    const cs = [glow(0xc890ff), glow(0x7ad0ff), glow(0x7affb0)];
+    const g = new THREE.Group();
+    for (let k = 0; k < 11; k++) {
+      const x = (k - 5) * 2.2, h = 22 - Math.abs(k - 5) * 3.2;
+      g.add(mesh(new THREE.CylinderGeometry(0, 1.3, h, 6), cs[k % 3], [x, h / 2, (k % 2) * 1.5], [0, 0, (k - 5) * -0.04]));
+    }
+    for (let k = 0; k < 7; k++) {
+      const lump = mesh(new THREE.IcosahedronGeometry(2.6, 0), 0x3a3240, [(k - 3) * 3.8, 0.6, 1 + (k % 2) * 0.8]);
+      lump.scale.set(1.3, 0.6, 1);
+      g.add(lump);
+    }
+    for (let k = 0; k < 10; k++) g.add(mesh(new THREE.CylinderGeometry(0, 0.5, 2.5 + (k % 3), 6), cs[(k + 1) % 3], [(k - 4.5) * 2.6, 1.6, 3.2], [0, 0, (k % 2 ? 0.3 : -0.3)]));
+    return g;
+  } },
 };
 
 /** Which landmarks each track has, spread along it in order. */
@@ -1152,4 +1276,10 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'funfair-1': ['balloonarch', 'ferris'], 'funfair-2': ['carousel', 'coasterhill'], 'funfair-3': ['coasterhill'], 'funfair-4': ['helterskelter', 'bigtop'],
   'funfair-5': ['helterskelter', 'carousel'], 'funfair-6': ['bigtop', 'ferris'], 'funfair-7': ['carousel', 'coasterhill'], 'funfair-8': ['bigtop', 'helterskelter'],
   'funfair-9': ['ferris', 'carousel'], 'funfair-10': ['coasterhill', 'balloonarch'], 'funfair-pipe': ['bigtop'],
+  'toxic-1': ['goovat', 'coolingtower'], 'toxic-2': ['controlroom'], 'toxic-3': ['goovat', 'robotarm'], 'toxic-4': ['coolingtower', 'controlroom'],
+  'toxic-5': ['robotarm', 'goovat'], 'toxic-6': ['crusher', 'coolingtower'], 'toxic-7': ['controlroom', 'crusher'], 'toxic-8': ['goovat', 'robotarm'],
+  'toxic-9': ['crusher', 'controlroom'], 'toxic-10': ['coolingtower', 'goovat'], 'toxic-mega': ['coolingtower'],
+  'mine-1': ['minehead', 'geode'], 'mine-2': ['cavefall'], 'mine-3': ['geode', 'cathedral'], 'mine-4': ['minehead', 'cavefall'],
+  'mine-5': ['cathedral', 'geode'], 'mine-6': ['cavefall', 'minehead'], 'mine-7': ['geode', 'cathedral'], 'mine-8': ['minehead', 'cavefall'],
+  'mine-9': ['cathedral', 'geode'], 'mine-10': ['cavefall', 'cathedral'], 'mine-mega': ['cathedral'],
 };

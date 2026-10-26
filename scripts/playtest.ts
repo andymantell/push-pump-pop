@@ -418,7 +418,9 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         if (t - railOllieAt > REACTION + JITTER + 0.1) railOllie = false;
         const slopeThen = track.slope(r.x + lead * dir) * dir;
         // The downslope past a lip is a landing, not something to pump before you take off.
-        if (slopeThen < -0.12 && t - lastPumpDecision > 0.45 && (r.inPipe || nextLip(track, r.x, lead + 0.5) === null)) { press('pump'); lastPumpDecision = t; }
+        // On a conveyor belt, pump all the way along it.
+        const belt = track.beltAt(r.x + lead * dir);
+        if ((slopeThen < -0.12 || belt) && t - lastPumpDecision > 0.45 && (r.inPipe || nextLip(track, r.x, lead + 0.5) === null)) { press('pump'); lastPumpDecision = t; }
         // Pop at the lip: decide when the lip is about one reaction-time away.
         const lip = isPipe || pumpOnly ? null : nextLip(track, r.x, lead + 1.5);
         if (lip !== null && t - lipPlanned > 0.6 && Math.abs(lip - lead) < 0.6 + r.v * 0.04) {

@@ -14,14 +14,13 @@ The ground rules, difficulty scale, challenges and par calibration in `level-pla
 | 4 | Pirate Cove | stepping-stone gaps close together | 8 | 5 to 7 | Galleon Bowl | built |
 | 5 | Haunted Hollow | big drop-offs in the dark | 8 | 5 to 8 | Graveyard Halfpipe | built |
 | 6 | Funfair | loops chained together, coaster rails | 10 | 6 to 8 | Big Top Halfpipe | built |
-| 7 | Toxic Factory | conveyor belts and goo pits | 10 | 6 to 9 | mega ramp | planned |
-| 8 | Crystal Mine | rail lines and rail-to-rail hops | 10 | 6 to 9 | mega ramp | planned |
+| 7 | Toxic Factory | conveyor belts and goo pits | 10 | 6 to 9 | Smokestack Mega Ramp | built |
+| 8 | Crystal Mine | rail lines and rail-to-rail hops | 10 | 6 to 9 | Mine Shaft Mega Ramp | built |
 | 9 | Dino Valley | giant humps to launch off | 10 | 7 to 9 | mega ramp | planned |
 | 10 | Moon Base | low gravity (about 7 instead of 14), bigger features | 10 | 7 to 10 | mega ramp | planned |
 | 11 | Sky Islands | uphill gaps between floating islands | 10 | 8 to 10 | mega ramp | planned |
 
-New pieces still to build: `conveyor` (Toxic Factory), up-rails (Crystal
-Mine), giant humps (Dino), gravity per biome and a tall-air camera (Moon), sky pits (Sky Islands).
+New pieces still to build: giant humps (Dino), gravity per biome and a tall-air camera (Moon), sky pits (Sky Islands).
 
 ## Autumn Farm: mud
 
@@ -155,3 +154,50 @@ wheel on the skyline.
 | 9 | funfair-9 | Night Ride | 8 | everything | big wheel, carousel | fair lights |
 | 10 | funfair-10 | Big Dipper | 8 | huge first drop, a 7.4 m gap | coaster hill, balloon arch | last ride |
 | bonus | funfair-pipe | Big Top Halfpipe | - | - | big top | showtime |
+
+## Toxic Factory: conveyor belts
+
+`conveyor(len, speed)` is a belt on flat ground. A fast belt (green arrows, speed above yours)
+pulls you up to its speed; a backwards one (red arrows, negative speed) drags you back, but
+never below 3 m/s, so it can't stop you. Pumping anywhere on a belt pushes you on (and counts
+as a good pump), and both bots pump all the way along belts. Put slow belts before gaps (riders
+who never pump fall in) and fast ones before rails and kickers, since a fast belt before a gap
+lets everyone clear it. Gaps are green goo (`pitFill: 'water'` in green).
+
+| # | id | Name | Diff | New | Landmarks | Mood |
+|---|----|------|----:|-----|-----------|------|
+| 1 | toxic-1 | Fast Belt | 6 | fast belts | goo vat, cooling tower | smoggy day |
+| 2 | toxic-2 | Slow Belt | 6 | slow belts to pump | control room | morning shift |
+| 3 | toxic-3 | Goo Gaps | 7 | slow belts into goo gaps | goo vat, robot arm | toxic glow |
+| 4 | toxic-4 | Pipe Rails | 7 | pipe rails, one over the goo | cooling tower, control room | grey day |
+| 5 | toxic-5 | Barrel Stacks | 7 | kickers between belts | robot arm, goo vat | smoggy sun |
+| 6 | toxic-6 | Crusher Room | 8 | everything, no let-up | crusher, cooling tower | drizzle |
+| 7 | toxic-7 | Chute Drop | 8 | drop-offs onto belts | control room, crusher | sunset |
+| 8 | toxic-8 | Switch Belts | 8 | fast and slow in turn | goo vat, robot arm | smog |
+| 9 | toxic-9 | Night Shift | 9 | everything | crusher, control room | night shift |
+| 10 | toxic-10 | Reactor Hall | 9 | everything, a 7.4 m goo gap | cooling tower, goo vat | reactor glow |
+| bonus | toxic-mega | Smokestack Mega Ramp | - | - | cooling tower | dusk |
+
+## Crystal Mine: rail lines
+
+Underground: `cave: true` swaps the sky for a rock roof with stalactites, and the far scenery is
+the cavern wall with glowing crystals in it. Two new pieces. `railchain(n, len, gap, step)` is a
+line of rails, each a little lower than the one before: grind off the end of one and you drop
+onto the next (the ground under them steps down too, so non-grinders just ride it).
+`uprail(len, dy)` is a rail climbing a ramp, which slows you, so pump into it; it can lead
+straight into a `downrail`. Leave at least 8 m of ground between a plain rail and a `gapRail`,
+or the bots (and players) can't hop on. Gaps are dark mine shafts.
+
+| # | id | Name | Diff | New | Landmarks | Mood |
+|---|----|------|----:|-----|-----------|------|
+| 1 | mine-1 | Cart Rails | 6 | rails, a 3-rail chain | mine entrance, geode | lantern-lit |
+| 2 | mine-2 | Rail Hop | 6 | two rail chains | underground waterfall | crystal glow |
+| 3 | mine-3 | Up the Rock | 7 | up-rails | geode, crystal cathedral | blue seam |
+| 4 | mine-4 | Dark Shafts | 7 | shafts, a rail over one | mine entrance, waterfall | deep dark |
+| 5 | mine-5 | Rail Lines | 7 | two 4-rail chains | cathedral, geode | emerald seam |
+| 6 | mine-6 | Mine Mouth | 8 | drop-offs and rails | waterfall, mine entrance | sunset at the mouth |
+| 7 | mine-7 | Cart Bridges | 8 | rail bridges over hollows | geode, cathedral | dusty |
+| 8 | mine-8 | Deep Seam | 8 | four shafts, up and down rails | mine entrance, waterfall | crystal glow |
+| 9 | mine-9 | Down the Shaft | 9 | everything | cathedral, geode | deep dark |
+| 10 | mine-10 | Heart of the Mine | 9 | everything, a big final gap | waterfall, cathedral | heart of the mine |
+| bonus | mine-mega | Mine Shaft Mega Ramp | - | - | cathedral | blue seam |

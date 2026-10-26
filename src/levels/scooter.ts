@@ -198,6 +198,32 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   'funfair-9': set(30000, loop('Ride every loop', 4), variety(6), gaps('Clear every gap')),
   'funfair-10': scored(19500, gaps('Clear the final gap', { which: [-1] }), loop('Ride every loop', 4)),
   'funfair-pipe': scored(22500, trick('Land a spin', 'spin'), variety(5)),
+
+  // Toxic Factory: conveyor belts.
+  'toxic-1': set(15000, gaps('Clear every gap'), pumps(12), trick('A body trick over the goo', 'hold', { overGap: true })),
+  'toxic-2': set(13000, pumps(20), gaps('Clear every gap'), variety(5)),
+  'toxic-3': set(11500, gaps('Clear every gap'), trick('A spin over the goo', 'spin', { overGap: true }), noLives()),
+  'toxic-4': set(26000, grind('Grind 3 pipes', { count: 3 }), grind('Grind a pipe over the goo', { rails: [1] }), tricks(5)),
+  'toxic-5': set(18500, everyKicker('A trick off every kicker'), gaps('Clear every gap'), variety(6)),
+  'toxic-6': set(27000, gaps('Clear every gap'), combo('Grind and whip in one combo', { include: ['grind', 'whip'] }), noLives()),
+  'toxic-7': set(13500, air('Air for 1.2 seconds', { seconds: 1.2 }), gaps('Clear every gap'), trick('A whip off a drop', 'whip', { from: 'dropoff' })),
+  'toxic-8': set(11000, pumps(18), gaps('Clear every gap'), variety(6)),
+  'toxic-9': set(20000, gaps('Clear every gap'), grind('Grind every pipe', { count: 3 }), noLives()),
+  'toxic-10': scored(22500, gaps('Clear the final gap', { which: [-1] }), variety(6)),
+  'toxic-mega': scored(22500, drops(), bothAirs()),
+
+  // Crystal Mine: rail lines.
+  'mine-1': set(21500, grind('Grind 4 rails', { count: 4 }), pumps(12), variety(4)),
+  'mine-2': set(32500, grind('Grind 6 rails', { count: 6 }), trick('A body trick off a rail', 'hold', { fromRail: true }), gaps('Clear every gap')),
+  'mine-3': set(36500, grind('Grind 4 rails', { count: 4 }), pumps(14), gaps('Clear every gap')),
+  'mine-4': set(26500, gaps('Clear every gap'), grind('Grind a rail over a shaft', { rails: [1] }), trick('A whip over a shaft', 'whip', { overGap: true })),
+  'mine-5': set(46000, grind('Grind 8 rails', { count: 8 }), tricks(4), variety(5)),
+  'mine-6': set(24500, gaps('Clear every gap'), trick('A body trick over a shaft', 'hold', { overGap: true }), grind('Grind 4 rails', { count: 4 })),
+  'mine-7': set(25000, grind('Grind every bridge', { count: 3 }), gaps('Clear every gap'), noLives()),
+  'mine-8': set(33500, gaps('Clear every gap'), trick('A spin over a shaft', 'spin', { overGap: true }), pumps(16)),
+  'mine-9': set(40500, grind('Grind 5 rails', { count: 5 }), gaps('Clear every gap'), noLives()),
+  'mine-10': scored(52500, gaps('Clear the final gap', { which: [-1] }), grind('Grind 7 rails', { count: 7 })),
+  'mine-mega': scored(22500, drops(), bothAirs()),
 };
 
 /** Skateboard words and tricks, the scooter way. */

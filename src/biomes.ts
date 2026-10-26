@@ -1,6 +1,6 @@
 // A biome sets the look, scenery and feel of a track. Track layouts live in src/tracks.
 
-export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall' | 'covesand' | 'cobbles' | 'fairboards' | 'lattice';
+export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall' | 'covesand' | 'cobbles' | 'fairboards' | 'lattice' | 'grating' | 'hazard' | 'cartrock' | 'timber';
 
 export interface Surface {
   kind: SurfaceKind;
@@ -23,7 +23,7 @@ export interface Biome {
   ground: [number, number, number];
   /** How the ground behind the track rises or falls away. */
   groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat' | 'quay';
-  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour' | 'hollow' | 'fair';
+  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour' | 'hollow' | 'fair' | 'factory' | 'cave';
   farColors: number[];
   clouds: number | null;
   particles: Particles | null;
@@ -59,9 +59,11 @@ export interface Biome {
   leafTint?: number;
   /** A big low moon on the horizon (harvest moon). */
   bigMoon?: boolean;
+  /** Underground: a rock roof with stalactites and glowing crystals instead of a sky. */
+  cave?: boolean;
 }
 
-export type Particles = 'snow' | 'heavysnow' | 'embers' | 'ash' | 'rain' | 'petals' | 'leaves' | 'dust' | 'fireflies' | 'sprinkles' | 'wisps';
+export type Particles = 'snow' | 'heavysnow' | 'embers' | 'ash' | 'rain' | 'petals' | 'leaves' | 'dust' | 'fireflies' | 'sprinkles' | 'wisps' | 'smog';
 
 export const BIOMES: Record<string, Biome> = {
   park: {
@@ -266,12 +268,45 @@ export const BIOMES: Record<string, Biome> = {
     pitFill: 'dark', fallText: 'WIPEOUT!', sign: '#c8302a',
     friction: 1, maxSpeed: 17, swatch: '#e84a3a',
   },
+  toxic: {
+    id: 'toxic', name: 'Toxic Factory', blurb: 'Conveyor belts and green goo. Pump hard against the slow belts!',
+    sky: ['#6a8a6a', '#b8c890', '#e8e4b0'], fog: [0xc8d0a0, 50, 180],
+    hemi: [0xf0f4d8, 0x5a6050, 1.35], sun: [0xfff0c0, 1.9],
+    top: { kind: 'grating', base: '#8a9098', seam: '#5a6068' },
+    front: { kind: 'hazard', base: '#6a7078', seam: '#4a5058', accent: '#f2c020' },
+    band: 0xf2c020,
+    ground: [0x767a7c, 0x6a6e70, 0x82868a], groundShape: 'flat',
+    far: 'factory', farColors: [0x7a8278, 0x6a7268], clouds: 0xd8dcc0, particles: null,
+    back: [['toxicbarrel', 2], ['barrelstack', 1.2], ['pipes', 2], ['steamvent', 1], ['crate', 1], ['goopuddle', 1.2], ['hazardsign', 0.8], ['forklift', 0.3]], backZ: [-5, -20],
+    fence: { kind: 'pipefence', z: -3.0, spacing: 2.4 },
+    posts: { kind: 'warnlamp', z: -2.6, spacing: 20 },
+    edge: { kind: 'goopuddle', z: -2.0, spacing: 23 },
+    pitFill: 'water', pitFillColor: 0x6ae03a, fallText: 'GLOOP!', sign: '#2a3a2a',
+    friction: 1, maxSpeed: 17, swatch: '#6ae03a', haze: 0.2,
+  },
+  mine: {
+    id: 'mine', name: 'Crystal Mine', blurb: 'Grind the mine-cart rails deep underground, hopping from rail to rail.',
+    sky: ['#0c0a14', '#1c1628', '#2e2440'], fog: [0x241c32, 40, 150],
+    hemi: [0xc8b8ff, 0x3a2e3a, 1.1], sun: [0xffd8a0, 1.2],
+    top: { kind: 'cartrock', base: '#6a6070', seam: '#4a4250', accent: '#8a6a4a' },
+    front: { kind: 'timber', base: '#4a4250', seam: '#9a6a3c', accent: '#b07fff' },
+    band: 0xb07fff,
+    ground: [0x5a5262, 0x4e4656, 0x665e6e], groundShape: 'hills',
+    far: 'cave', farColors: [0x2a2234, 0x342a40], clouds: null, particles: null,
+    back: [['crystals', 2], ['crystalsblue', 2], ['crystalsgreen', 1.5], ['minecart', 1], ['oreheap', 1.5], ['tnt', 0.6], ['winch', 0.6], ['rock', 2]], backZ: [-5, -18],
+    fence: { kind: 'pitprops', z: -3.2, spacing: 2.4 },
+    posts: { kind: 'minelamp', z: -2.6, spacing: 16 },
+    edge: { kind: 'crystals', z: -2.1, spacing: 21 },
+    pitFill: 'dark', fallText: 'CLONK!', sign: '#4a3020',
+    friction: 1, maxSpeed: 17, swatch: '#b07fff',
+    sunPos: [-6, 14, 5], lights: true, cave: true, haze: 0.2,
+  },
 };
 
 /** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
 export const WORLDS: string[][] = [
   ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
-  ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair'],
+  ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair', 'toxic', 'mine'],
 ];
 export const BIOME_ORDER = WORLDS.flat();
 export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));

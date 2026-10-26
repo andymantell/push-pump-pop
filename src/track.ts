@@ -90,6 +90,13 @@ export interface Stack {
   y: number;
 }
 
+/** A conveyor belt from x0 to x1, its surface running at `speed` m/s (backwards if negative). */
+export interface Belt {
+  x0: number;
+  x1: number;
+  speed: number;
+}
+
 export interface Prop {
   kind: PropKind;
   x: number;
@@ -118,10 +125,12 @@ export class Track {
   readonly stacks: Stack[];
   /** Stepping stones: where the track rides over rock standing out of the water. */
   readonly rocks: { x0: number; x1: number }[];
+  readonly belts: Belt[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = [], stacks: Stack[] = [], rocks: { x0: number; x1: number }[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = [], stacks: Stack[] = [], rocks: { x0: number; x1: number }[] = [], belts: Belt[] = []) {
     this.mud = mud;
     this.rocks = rocks;
+    this.belts = belts;
     this.stacks = stacks;
     this.bouncers = bouncers;
     this.spots = spots;
@@ -174,6 +183,11 @@ export class Track {
     return false;
   }
 
+  beltAt(x: number): Belt | null {
+    for (const b of this.belts) if (x >= b.x0 && x <= b.x1) return b;
+    return null;
+  }
+
   bouncerAt(x: number): Bouncer | null {
     for (const b of this.bouncers) if (x >= b.x0 && x <= b.x1) return b;
     return null;
@@ -212,6 +226,7 @@ export class TrackBuilder {
   bouncers: Bouncer[] = [];
   stacks: Stack[] = [];
   rocks: { x0: number; x1: number }[] = [];
+  belts: Belt[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -312,6 +327,17 @@ export class TrackBuilder {
     this.pads.push({ x0: this.x, x1: this.x + n * len });
     this.stacks.push({ x0: this.x, x1: this.x + n * len, y: this.y });
     return this.flat(n * len);
+  }
+
+  /**
+   * A conveyor belt `len` long on flat ground, running at `speed` m/s. A fast belt (speed above
+   * yours) carries you up to its speed; a backwards one (negative) holds you back, but never
+   * below a crawl, and pumping on any belt pushes you on. Tagged 'belt' or 'slowbelt'.
+   */
+  conveyor(len: number, speed: number): this {
+    this.spot(speed > 0 ? 'belt' : 'slowbelt');
+    this.belts.push({ x0: this.x, x1: this.x + len, speed });
+    return this.flat(len);
   }
 
   /**
@@ -423,6 +449,25 @@ export class TrackBuilder {
     return this.ramp(len, dy);
   }
 
+  /** A rail climbing a ramp up `dy` (positive) over `len`: grinding it uphill slows you down. */
+  uprail(len: number, dy: number, height = 0.6): this {
+    this.spot('uprail');
+    return this.downrail(len, Math.abs(dy), height);
+  }
+
+  /**
+   * A line of `n` rails stepping down, `len` long with a `gap` between: grind off the end of one
+   * and you drop onto the next. Under them the ground steps down too, so you can just ride it.
+   */
+  railchain(n: number, len = 7, gap = 2.4, step = 0.6): this {
+    this.spot('railchain');
+    for (let i = 0; i < n; i++) {
+      this.rail(len);
+      if (i < n - 1) this.ramp(gap, -step);
+    }
+    return this;
+  }
+
   /** A low box ledge to grind along its edge. */
   ledge(len: number, height = 0.45): this {
     this.rails.push({ x0: this.x, y0: this.y + height, x1: this.x + len, y1: this.y + height, z: RAIL_Z, kind: 'ledge' });
@@ -467,6 +512,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers, this.stacks, this.rocks);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers, this.stacks, this.rocks, this.belts);
   }
 }
