@@ -40,6 +40,24 @@ def mesh_obj(name, bm, material, smooth=True):
     return finish(o, material, smooth)
 
 
+def patch(body, material, w0, w1, z0, z1, lift=0.004, t=0.006, nx=10, nz=5, name='patch'):
+    """A flat panel that hugs the front of body: w0 wide at z0, w1 wide at z1, lifted off by lift."""
+    bm = bmesh.new()
+    rows = []
+    for j in range(nz + 1):
+        z = z0 + (z1 - z0) * j / nz
+        w = w0 + (w1 - w0) * j / nz
+        row = []
+        for i in range(nx + 1):
+            x = -w / 2 + w * i / nx
+            row.append(bm.verts.new((x, surface_y(body, x, z) - lift, z)))
+        rows.append(row)
+    for j in range(nz):
+        for i in range(nx):
+            bm.faces.new((rows[j][i], rows[j][i + 1], rows[j + 1][i + 1], rows[j + 1][i]))
+    return solidify(mesh_obj(name, bm, material), t, 0)
+
+
 def solidify(o, t, offset=-1.0):
     m = o.modifiers.new('sol', 'SOLIDIFY')
     m.thickness = t
@@ -645,8 +663,8 @@ def tops(m):
     ], name='hem')]
     t.append(loft(dark, [(0.43, 0.1, 0.075, 0, 0.03, 2.4), (0.5, 0.115, 0.085, 0, 0.035, 2.4), (0.545, 0.085, 0.07, 0, 0.045, 2.2)], name='hood'))
     t.append(sphere(top, 0.07, loc=(0, 0.075, 0.5), scale=(1.45, 0.75, 0.9), segs=16, rings=10))
-    fy = surface_y(body, 0, 0.14)
-    t.append(cube(dark, (0.2, 0.014, 0.12), loc=(0, fy - 0.003, 0.14), bevel=0.006))
+    # The pocket hugs the tummy: a flat box stood off the curve and read as a bum bag in game.
+    t.append(patch(body, dark, 0.2, 0.15, 0.09, 0.19, name='pocket'))
     for sd in (1, -1):
         t.append(cyl(trim, 0.006, 0.12, loc=(sd * 0.03, surface_y(body, sd * 0.03, 0.41) - 0.006, 0.41), verts=6))
         t.append(sphere(trim, 0.009, loc=(sd * 0.03, surface_y(body, sd * 0.03, 0.35) - 0.006, 0.35), segs=8, rings=4))
