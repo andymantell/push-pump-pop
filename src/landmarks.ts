@@ -1233,6 +1233,105 @@ export const LANDMARKS: Record<string, Landmark> = {
     for (let k = 0; k < 10; k++) g.add(mesh(new THREE.CylinderGeometry(0, 0.5, 2.5 + (k % 3), 6), cs[(k + 1) % 3], [(k - 4.5) * 2.6, 1.6, 3.2], [0, 0, (k % 2 ? 0.3 : -0.3)]));
     return g;
   } },
+  // ---- Dino Valley
+  brachio: { z: -26, r: 9, build: () => {
+    // A huge friendly long-necked dinosaur, munching the top of a tree.
+    const skin = 0x7ab0a0, belly = 0xb8d8b0, dark = 0x4a7a6e;
+    const body = ball(5, skin, [0, 7.5, 0], 16);
+    body.scale.set(1.5, 0.9, 0.9);
+    const g = group(body);
+    const under = ball(4.4, belly, [0, 6.8, 1.2], 14);
+    under.scale.set(1.4, 0.7, 0.75);
+    g.add(under);
+    for (const [x, z] of [[-4.5, 2], [-4.5, -2], [4, 2], [4, -2]] as const) g.add(cyl(1.1, 1.3, 5, x < 0 ? skin : dark, [x, 2.5, z], 10));
+    g.add(beam([5.5, 9, 0], [9, 17, 0], 1.6, skin), beam([9, 17, 0], [10, 21, 0], 1.2, skin));
+    const head = ball(1.4, skin, [10.8, 21.6, 0], 12);
+    head.scale.set(1.5, 0.8, 0.9);
+    g.add(head, ball(0.25, 0x222222, [11.4, 22.1, 0.9], 8), ball(0.1, 0xffffff, [11.5, 22.2, 1.1], 6));
+    g.add(beam([-6.5, 7, 0], [-11, 4, 0], 1.6, skin), beam([-11, 4, 0], [-15, 2.5, 0], 0.8, skin));
+    for (let k = 0; k < 6; k++) g.add(ball(0.7, dark, [-3 + k * 1.4, 11.6 - Math.abs(k - 2) * 0.3, 0], 8));
+    g.add(cyl(0.6, 0.8, 18, 0x8a6a40, [14, 9, -2], 8), ball(3.4, 0x4a9a40, [14, 19, -2], 10), ball(2.4, 0x6ab84a, [12.5, 20, -0.5], 10));
+    return g;
+  } },
+  trex: { z: -14, r: 6, build: () => {
+    // A big (cartoon, friendly) T. rex, standing tall with its tiny arms out.
+    const skin = 0x6aa04a, belly = 0xd8d890, dark = 0x4a7a36;
+    const body = ball(2.6, skin, [0, 5.2, 0], 14);
+    body.scale.set(1.3, 1, 0.9);
+    const g = group(body, ball(2, belly, [1.2, 4.8, 0.8], 12));
+    for (const z of [-1, 1]) g.add(beam([-0.5, 4, z], [0, 1.5, z], 1.1, dark), beam([0, 1.5, z], [-0.4, 0.2, z], 0.8, dark), box(1.6, 0.4, 0.9, dark, [0.2, 0.2, z]));
+    g.add(beam([-3, 5.5, 0], [-7, 3, 0], 1.4, skin), beam([-7, 3, 0], [-9.5, 2, 0], 0.6, skin));
+    g.add(beam([2.6, 6.5, 0], [3.4, 8.4, 0], 1.6, skin));
+    const head = box(3.4, 1.6, 1.8, skin, [4.4, 9, 0]);
+    g.add(head, box(3, 0.5, 1.6, belly, [4.6, 8, 0]));
+    for (let k = 0; k < 5; k++) g.add(mesh(new THREE.ConeGeometry(0.14, 0.4, 4), 0xffffff, [3.4 + k * 0.5, 8.1, 0.92], [Math.PI, 0, 0]));
+    g.add(ball(0.32, 0xffffff, [4.2, 9.6, 0.9], 8), ball(0.16, 0x222222, [4.3, 9.6, 1.15], 6));
+    for (const z of [-0.6, 0.6]) g.add(beam([3, 5.8, z * 2.4], [3.9, 5.2, z * 2.6], 0.3, skin));
+    for (let k = 0; k < 5; k++) g.add(mesh(new THREE.ConeGeometry(0.3, 0.6, 4), dark, [-2 + k * 1, 7.6 - k * 0.3, 0]));
+    return g;
+  } },
+  stego: { z: -12, r: 6, build: () => {
+    // A stegosaurus with a row of big plates down its back and spikes on its tail.
+    const skin = 0xc89a4a, plate = 0xd85a3a, dark = 0x8a6a30;
+    const body = ball(2.4, skin, [0, 2.8, 0], 14);
+    body.scale.set(1.6, 1, 0.85);
+    const g = group(body);
+    for (const [x, z] of [[-2, 1], [-2, -1], [2, 1], [2, -1]] as const) g.add(cyl(0.45, 0.55, 1.6, dark, [x, 0.8, z], 8));
+    g.add(beam([3.4, 2.8, 0], [5.4, 1.8, 0], 0.7, skin), ball(0.7, skin, [5.6, 1.7, 0], 10), ball(0.12, 0x222222, [5.9, 1.95, 0.5], 6));
+    g.add(beam([-3.4, 3, 0], [-7, 1.6, 0], 0.8, skin));
+    for (let k = 0; k < 7; k++) {
+      const x = -3 + k, h = 1.3 + (3 - Math.abs(k - 3)) * 0.25;
+      g.add(mesh(new THREE.ConeGeometry(h * 0.6, h, 4), plate, [x, 4.6 + h / 2 - Math.abs(k - 3) * 0.3, 0], [0, Math.PI / 4, 0]));
+    }
+    for (const [dy, dz] of [[0.5, 0.4], [0.5, -0.4]] as const) g.add(beam([-6.6, 1.8, 0], [-7.4, 1.8 + dy, dz * 2], 0.15, 0xf4ecd8));
+    return g;
+  } },
+  trike: { z: -10, r: 5, build: () => {
+    // A triceratops: a big frill and three horns, munching ferns.
+    const skin = 0x8a7ab0, frill = 0xe8a040, dark = 0x5a4a80;
+    const body = ball(2, skin, [0, 2.4, 0], 14);
+    body.scale.set(1.5, 1, 0.9);
+    const g = group(body);
+    for (const [x, z] of [[-1.8, 0.9], [-1.8, -0.9], [1.6, 0.9], [1.6, -0.9]] as const) g.add(cyl(0.45, 0.5, 1.4, dark, [x, 0.7, z], 8));
+    g.add(ball(1.1, skin, [3.4, 2.2, 0], 12), mesh(new THREE.CircleGeometry(2, 16), frill, [2.6, 3.1, 0], [0, -Math.PI / 2 + 0.5, 0]));
+    for (const z of [-0.5, 0.5]) g.add(mesh(new THREE.ConeGeometry(0.2, 1.6, 6), 0xf4ecd8, [4.1, 3.2, z], [0, 0, -1.1]));
+    g.add(mesh(new THREE.ConeGeometry(0.15, 0.6, 6), 0xf4ecd8, [4.4, 2.3, 0], [0, 0, -1.3]), ball(0.13, 0x222222, [3.9, 2.6, 0.75], 6));
+    g.add(beam([-2.8, 2.4, 0], [-4.6, 1.4, 0], 0.6, skin));
+    return g;
+  } },
+  bignest: { z: -9, r: 5, build: () => {
+    // A giant nest with eggs, one of them hatching: a baby dinosaur peeking out.
+    const straw = 0xc8a05a, egg = 0xf0e8cc;
+    const g = group(cyl(4, 3, 1.2, straw, [0, 0.6, 0], 18), cyl(3.4, 3.4, 0.2, 0x8a6a3a, [0, 1.15, 0], 18));
+    for (const [x, z] of [[-1.6, -0.5], [0.4, -1.4], [1.8, 0.2]] as const) {
+      const e = ball(1, egg, [x, 2.1, z], 12);
+      e.scale.set(1, 1.35, 1);
+      g.add(e);
+    }
+    const shell = mesh(new THREE.SphereGeometry(1, 12, 8, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55), egg, [-0.2, 2.1, 1.4]);
+    shell.scale.set(1, 1.35, 1);
+    g.add(shell, ball(0.7, 0x8ad06a, [-0.2, 2.6, 1.4], 12), ball(0.14, 0x222222, [0.05, 2.8, 2.0], 6), ball(0.14, 0x222222, [-0.45, 2.8, 2.0], 6));
+    return g;
+  } },
+  ptero: { z: -20, r: 0, on: 'air', build: (r) => {
+    // A couple of pterodactyls gliding high over the valley.
+    const g = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const p = new THREE.Group(), skin = i % 2 ? 0xb07a5a : 0x9a6a8a;
+      const body = ball(0.5, skin, [0, 0, 0], 8);
+      body.scale.set(2, 0.7, 0.7);
+      p.add(body, mesh(new THREE.ConeGeometry(0.3, 1.6, 5), 0xe8b040, [1.6, 0.1, 0], [0, 0, -Math.PI / 2]), mesh(new THREE.ConeGeometry(0.25, 1, 4), skin, [0.6, 0.6, 0], [0, 0, 0.8]));
+      for (const z of [-1, 1]) {
+        const w = mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0.6, 0, 0), new THREE.Vector3(-0.6, 0, 0), new THREE.Vector3(0.2, 0.4, 3.4 * z)]), skin);
+        (w.material as THREE.Material).side = THREE.DoubleSide;
+        p.add(w);
+      }
+      p.position.set(i * 14 - 14 + r() * 4, 18 + r() * 8, -r() * 10);
+      p.scale.setScalar(1.6);
+      g.add(p);
+    }
+    return g;
+  } },
 };
 
 /** Which landmarks each track has, spread along it in order. */
@@ -1282,4 +1381,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'mine-1': ['minehead', 'geode'], 'mine-2': ['cavefall'], 'mine-3': ['geode', 'cathedral'], 'mine-4': ['minehead', 'cavefall'],
   'mine-5': ['cathedral', 'geode'], 'mine-6': ['cavefall', 'minehead'], 'mine-7': ['geode', 'cathedral'], 'mine-8': ['minehead', 'cavefall'],
   'mine-9': ['cathedral', 'geode'], 'mine-10': ['cavefall', 'cathedral'], 'mine-mega': ['cathedral'],
+  'dino-1': ['brachio', 'bignest'], 'dino-2': ['trex', 'ptero'], 'dino-3': ['stego', 'brachio'], 'dino-4': ['trike', 'ptero'],
+  'dino-5': ['bignest', 'trex'], 'dino-6': ['brachio', 'stego'], 'dino-7': ['ptero', 'trike'], 'dino-8': ['trex', 'brachio'],
+  'dino-9': ['stego', 'bignest'], 'dino-10': ['brachio', 'trex'], 'dino-mega': ['brachio'],
 };

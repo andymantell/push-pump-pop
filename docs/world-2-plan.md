@@ -16,11 +16,11 @@ The ground rules, difficulty scale, challenges and par calibration in `level-pla
 | 6 | Funfair | loops chained together, coaster rails | 10 | 6 to 8 | Big Top Halfpipe | built |
 | 7 | Toxic Factory | conveyor belts and goo pits | 10 | 6 to 9 | Smokestack Mega Ramp | built |
 | 8 | Crystal Mine | rail lines and rail-to-rail hops | 10 | 6 to 9 | Mine Shaft Mega Ramp | built |
-| 9 | Dino Valley | giant humps to launch off | 10 | 7 to 9 | mega ramp | planned |
+| 9 | Dino Valley | giant humps to launch off | 10 | 7 to 9 | Long Neck Mega Ramp | built |
 | 10 | Moon Base | low gravity (about 7 instead of 14), bigger features | 10 | 7 to 10 | mega ramp | planned |
 | 11 | Sky Islands | uphill gaps between floating islands | 10 | 8 to 10 | mega ramp | planned |
 
-New pieces still to build: giant humps (Dino), gravity per biome and a tall-air camera (Moon), sky pits (Sky Islands).
+New pieces still to build: gravity per biome and a tall-air camera (Moon), sky pits (Sky Islands).
 
 ## Autumn Farm: mud
 
@@ -201,3 +201,28 @@ or the bots (and players) can't hop on. Gaps are dark mine shafts.
 | 9 | mine-9 | Down the Shaft | 9 | everything | cathedral, geode | deep dark |
 | 10 | mine-10 | Heart of the Mine | 9 | everything, a big final gap | waterfall, cathedral | heart of the mine |
 | bonus | mine-mega | Mine Shaft Mega Ramp | - | - | cathedral | blue seam |
+
+## Dino Valley: giant humps
+
+`hump(h)` is a giant hump shaped like a dinosaur's back: a kicker `2.6h + 1` long up to a lip
+`h` high (tagged 'kicker' and 'hump'), a 2 m top, then a `land()` sized for it. Hit it fast and
+you fly over the top onto the far slope; slow, you roll over it. Sizes 1.6 to 3 pass the
+landings check. Gaps are tar pits (`pitFill: 'water'` in near-black brown, "TAR PIT!"); rails
+are fallen logs (log grind sound). The far scenery is a smoking volcano that erupts in the
+Rumbling volcano and Eruption moods. The top of the track has dinosaur footprints along it and
+the front shows fossils in the rock.
+
+| # | id | Name | Diff | New | Landmarks | Mood |
+|---|----|------|----:|-----|-----------|------|
+| 1 | dino-1 | Dino Humps | 7 | three humps | brachiosaurus, giant nest | prehistoric morning |
+| 2 | dino-2 | Tar Pits | 7 | tar pit gaps | T. rex, pterodactyls | golden |
+| 3 | dino-3 | Stego Spine | 7 | humps in a row | stegosaurus, brachiosaurus | swamp mist |
+| 4 | dino-4 | Log Jam | 7 | log rails, one over the tar | triceratops, pterodactyls | sunset |
+| 5 | dino-5 | Big Back | 8 | bigger humps | giant nest, T. rex | rumbling volcano |
+| 6 | dino-6 | Swamp Run | 8 | four tar pits | brachiosaurus, stegosaurus | tropical rain |
+| 7 | dino-7 | Pterodactyl Ridge | 8 | humps and a drop-off | pterodactyls, triceratops | dusk |
+| 8 | dino-8 | T. rex Alley | 8 | humps and logs | T. rex, brachiosaurus | hazy heat |
+| 9 | dino-9 | Night Herd | 9 | everything | stegosaurus, giant nest | night, fireflies |
+| 10 | dino-10 | Volcano Valley | 9 | the biggest hump, a big final tar pit | brachiosaurus, T. rex | eruption |
+| bonus | dino-mega | Long Neck Mega Ramp | - | - | brachiosaurus | sunset |
+

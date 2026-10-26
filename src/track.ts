@@ -449,6 +449,15 @@ export class TrackBuilder {
     return this.ramp(len, dy);
   }
 
+  /**
+   * A giant hump to launch off, shaped like a dinosaur's back: a steep run up to a lip `h` high,
+   * a short flat top, then a long landing slope down the far side. Tagged 'hump' at the lip.
+   */
+  hump(h: number): this {
+    this.kicker(2.6 * h + 1, h).spot('hump');
+    return this.flat(2).land(Math.round(20 * h + 2), 2.6 * h + 0.2);
+  }
+
   /** A rail climbing a ramp up `dy` (positive) over `len`: grinding it uphill slows you down. */
   uprail(len: number, dy: number, height = 0.6): this {
     this.spot('uprail');

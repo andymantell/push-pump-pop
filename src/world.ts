@@ -315,6 +315,47 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
         for (let i = 0; i < 6; i++) c.fillRect(r() * 256, 34, 4 + r() * 4, 20 + r() * 60);
         break;
       }
+      case 'footprints': {
+        // Packed earth with big three-toed dinosaur footprints plodding along it.
+        speckle(c, 1300, 0.08, 0.05);
+        c.fillStyle = s.seam;
+        for (const [x, y] of [[40, 90], [150, 170]]) {
+          c.globalAlpha = 0.55;
+          c.beginPath(); c.ellipse(x, y, 16, 13, 0, 0, Math.PI * 2); c.fill();
+          for (const a of [-0.55, 0, 0.55]) {
+            c.beginPath();
+            c.ellipse(x + Math.cos(a) * 28, y + Math.sin(a) * 26, 13, 5, a, 0, Math.PI * 2);
+            c.fill();
+          }
+          c.globalAlpha = 1;
+        }
+        break;
+      }
+      case 'fossil': {
+        // Layers of rock with fossils in them: a curly ammonite and a few bones.
+        for (let y = 0; y < 256; y += 18 + Math.floor(r() * 18)) {
+          c.fillStyle = r() > 0.5 ? s.seam : s.accent ?? s.seam;
+          c.fillRect(0, y, 256, 4 + r() * 10);
+        }
+        speckle(c, 500);
+        c.strokeStyle = '#ece2c8';
+        c.lineWidth = 4;
+        const ax = 70 + r() * 40, ay = 80 + r() * 40;
+        c.beginPath();
+        for (let t = 0; t < 14; t += 0.2) c.lineTo(ax + Math.cos(t) * t * 1.6, ay + Math.sin(t) * t * 1.6);
+        c.stroke();
+        c.lineCap = 'round';
+        c.lineWidth = 6;
+        for (let i = 0; i < 2; i++) {
+          const bx = 150 + r() * 60, by = 40 + i * 120 + r() * 40;
+          c.beginPath(); c.moveTo(bx - 18, by); c.lineTo(bx + 18, by - 6); c.stroke();
+          for (const [ex, ey] of [[bx - 18, by], [bx + 18, by - 6]]) {
+            c.beginPath(); c.arc(ex, ey - 4, 4, 0, Math.PI * 2); c.arc(ex, ey + 4, 4, 0, Math.PI * 2); c.fillStyle = '#ece2c8'; c.fill();
+          }
+        }
+        c.lineCap = 'butt';
+        break;
+      }
       case 'cartrock': {
         // Packed rock with a mine-cart track along it: two iron rails on wooden sleepers.
         speckle(c, 900, 0.1, 0.05);
@@ -592,7 +633,7 @@ export class World {
         for (const mat of ([] as THREE.Material[]).concat(mesh.material)) {
           const t = mat as THREE.MeshToonMaterial;
           if (!t.emissive) continue;
-          if (t.name === 'lava' || t.name === 'ember' || t.name === 'pumpkin_glow' || t.name === 'goo_glow' || t.name.startsWith('crystal_glow')) t.emissive.copy(t.color).multiplyScalar(0.8);
+          if (t.name === 'lava' || t.name === 'ember' || t.name === 'pumpkin_glow' || t.name === 'goo_glow' || t.name.startsWith('crystal_glow') || t.name === 'amber_glow') t.emissive.copy(t.color).multiplyScalar(0.8);
           else if (t.name === 'lamp_light' || t.name === 'window_glow') t.emissive.copy(t.color).multiplyScalar(on ? 1 : 0);
         }
       });

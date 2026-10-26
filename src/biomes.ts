@@ -1,6 +1,6 @@
 // A biome sets the look, scenery and feel of a track. Track layouts live in src/tracks.
 
-export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall' | 'covesand' | 'cobbles' | 'fairboards' | 'lattice' | 'grating' | 'hazard' | 'cartrock' | 'timber';
+export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall' | 'covesand' | 'cobbles' | 'fairboards' | 'lattice' | 'grating' | 'hazard' | 'cartrock' | 'timber' | 'footprints' | 'fossil';
 
 export interface Surface {
   kind: SurfaceKind;
@@ -301,12 +301,27 @@ export const BIOMES: Record<string, Biome> = {
     friction: 1, maxSpeed: 17, swatch: '#b07fff',
     sunPos: [-6, 14, 5], lights: true, cave: true, haze: 0.2,
   },
+  dino: {
+    id: 'dino', name: 'Dino Valley', blurb: 'Launch off giant humps in a valley full of dinosaurs.',
+    sky: ['#3a8ad0', '#9ad4e0', '#f2f0c8'], fog: [0xc8e0c0, 60, 190],
+    hemi: [0xf0ffe0, 0x5a7a3a, 1.4], sun: [0xfff2c8, 2.2],
+    top: { kind: 'footprints', base: '#b48a5a', seam: '#7a5a38' },
+    front: { kind: 'fossil', base: '#a0745a', seam: '#7a5440', accent: '#c89a6a' },
+    band: 0x6ab040,
+    ground: [0x5aa040, 0x4a9038, 0x6ab84a], groundShape: 'hills',
+    far: 'volcano', farColors: [0x4a6a4a, 0xff8a30, 0xd8d0c0], clouds: 0xffffff, particles: null,
+    back: [['cycad', 3], ['treefern', 3], ['horsetail', 2], ['dinonest', 1], ['ribcage', 0.8], ['dinoskull', 0.8], ['amberrock', 1], ['fern', 2], ['jungletree', 2]], backZ: [-4, -24],
+    fence: { kind: 'bonefence', z: -3.2, spacing: 2.4 },
+    edge: { kind: 'horsetail', z: -2.1, spacing: 7 },
+    pitFill: 'water', pitFillColor: 0x2e241e, fallText: 'TAR PIT!', sign: '#5a3a1e',
+    friction: 1, maxSpeed: 17, swatch: '#6ab040',
+  },
 };
 
 /** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
 export const WORLDS: string[][] = [
   ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
-  ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair', 'toxic', 'mine'],
+  ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair', 'toxic', 'mine', 'dino'],
 ];
 export const BIOME_ORDER = WORLDS.flat();
 export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));

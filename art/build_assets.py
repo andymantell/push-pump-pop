@@ -1105,6 +1105,9 @@ def build_props():
     build_funfair(out)
     build_toxic(out)
     build_mine(out)
+    build_dino(out)
+    build_moon(out)
+    build_sky(out)
     export(os.path.join(OUT, 'props.glb'), out)
 
 
@@ -2482,6 +2485,242 @@ def build_mine(out):
     out.append(join('winch', [cube(timber, (0.12, 0.12, 1.8), loc=(-0.5, 0, 0.9)), cube(timber, (0.12, 0.12, 1.8), loc=(0.5, 0, 0.9)),
                               cyl(timber_dk, 0.12, 1.1, loc=(0, 0, 1.6), rot=(0, math.pi / 2, 0), verts=10), cyl(iron, 0.01, 0.8, loc=(0, -0.1, 1.15), verts=4),
                               cyl(iron, 0.16, 0.25, loc=(0, -0.1, 0.7), r2=0.2, verts=10), cube(iron, (0.04, 0.3, 0.04), loc=(0.62, 0.15, 1.6))]))
+
+
+def build_dino(out):
+    trunk = mat('cycad_trunk', (130, 96, 62))
+    frond = mat('dino_frond', (70, 160, 60))
+    frond2 = mat('dino_frond_light', (120, 196, 70))
+    frond3 = mat('dino_frond_dark', (40, 120, 60))
+    bone = mat('bone', (236, 226, 200))
+    bone_dk = mat('bone_dark', (196, 182, 150))
+    egg = mat('dino_egg', (240, 232, 205))
+    spot = mat('dino_egg_spot', (120, 170, 90))
+    straw = mat('nest_straw', (196, 160, 90))
+    rock = mat('dino_rock', (150, 128, 108))
+    reed = mat('horsetail', (110, 170, 70))
+    amber = mat('amber_glow', (255, 170, 40))
+
+    # Cycad: a stubby scaly trunk with a burst of stiff fronds on top.
+    cy = [cyl(trunk, 0.32, 1.4, loc=(0, 0, 0.7), r2=0.26, verts=10)]
+    for z in (0.3, 0.6, 0.9, 1.2):
+        cy.append(cyl(trunk, 0.36, 0.1, loc=(0, 0, z), r2=0.3, verts=10))
+    for k in range(10):
+        cy.append(bend_strip(frond if k % 2 else frond2, 1.5, 0.28, 0.35, loc=(0, 0, 1.42), yaw=k * 2 * math.pi / 10, pitch=-0.25))
+    out.append(join('cycad', cy))
+
+    # Tree fern: a tall thin trunk, a big umbrella of drooping fronds.
+    tf = [cyl(trunk, 0.18, 4.2, loc=(0, 0, 2.1), r2=0.14, verts=8)]
+    for k in range(9):
+        tf.append(bend_strip(frond3 if k % 3 == 0 else frond, 2.2, 0.4, 1.1, loc=(0, 0, 4.2), yaw=k * 2 * math.pi / 9, pitch=0.2))
+    out.append(join('treefern', tf))
+
+    # Horsetail reeds: a clump of jointed green stems.
+    hs = []
+    for k in range(7):
+        a, d = k * 0.9, 0.12 + (k % 3) * 0.1
+        h = 0.9 + (k % 4) * 0.3
+        x, y = d * math.cos(a), d * math.sin(a)
+        hs.append(cyl(reed, 0.035, h, loc=(x, y, h / 2), verts=6))
+        for j in range(1, 4):
+            hs.append(cyl(frond3, 0.05, 0.03, loc=(x, y, h * j / 4), verts=6))
+    out.append(join('horsetail', hs))
+
+    # A nest of straw with three big spotted eggs.
+    ns = [cyl(straw, 0.8, 0.3, loc=(0, 0, 0.15), r2=0.6, verts=14)]
+    for i, (x, y) in enumerate(((-0.25, 0.1), (0.25, 0.12), (0, -0.25))):
+        ns.append(sphere(egg, 0.3, loc=(x, y, 0.55), scale=(1, 1, 1.35), segs=14, rings=10))
+        for j in range(3):
+            a = i * 2 + j * 2.1
+            ns.append(sphere(spot, 0.09, loc=(x + 0.27 * math.cos(a), y + 0.27 * math.sin(a), 0.45 + j * 0.15), scale=(1, 1, 0.6), segs=8, rings=5))
+    out.append(join('dinonest', ns))
+
+    # A ribcage half buried in the ground, and a spine running into it.
+    rb = [cyl(bone_dk, 0.1, 2.8, loc=(0.1, 0, 1.25), rot=(0, math.pi / 2 - 0.12, 0), verts=8)]
+    for k in range(6):
+        x, sc = -1.0 + k * 0.4, 1.0 - abs(k - 2) * 0.12
+        top = 1.35 - k * 0.07
+        for side in (-1, 1):
+            pts = [(x, 0, top), (x + 0.05, side * 0.6 * sc, top - 0.2), (x + 0.1, side * 0.8 * sc, top * 0.55), (x + 0.12, side * 0.62 * sc, 0.0)]
+            for a, b in zip(pts, pts[1:]):
+                rb.append(limb(bone, a, b, 0.06, 0.05, verts=6))
+                rb.append(sphere(bone, 0.06, loc=b, segs=6, rings=4))
+    out.append(join('ribcage', rb))
+
+    # A big friendly dinosaur skull lying on its side.
+    sk = [ico(bone, 0.6, loc=(0, 0, 0.45), scale=(1.4, 0.8, 0.8), sub=2, smooth=True),
+          ico(bone, 0.4, loc=(0.75, 0, 0.32), scale=(1.4, 0.7, 0.6), sub=2, smooth=True),
+          sphere(rock, 0.16, loc=(0.1, -0.5, 0.55), segs=10, rings=6)]
+    for k in range(5):
+        sk.append(cyl(bone_dk, 0.04, 0.2, loc=(0.6 + k * 0.12, -0.3, 0.1), r2=0.0, verts=5, rot=(math.pi, 0, 0)))
+    sk.append(cyl(bone_dk, 0.07, 0.5, loc=(-0.3, 0, 0.95), r2=0.0, verts=6, rot=(0, -0.5, 0)))
+    out.append(join('dinoskull', sk))
+
+    # A bone fence: big bones stuck in the ground, 2.4 m apart, with a rope between.
+    out.append(join('bonefence', [cyl(bone, 0.09, 1.3, loc=(-1.2, 0, 0.65), verts=8), sphere(bone, 0.14, loc=(-1.27, 0, 1.33), segs=8, rings=6),
+                                  sphere(bone, 0.14, loc=(-1.13, 0, 1.33), segs=8, rings=6),
+                                  limb(straw, (-1.2, 0, 1.05), (1.2, 0, 1.05), 0.025, 0.025, verts=5)]))
+
+    # A lump of rock with a glowing chunk of amber stuck in it.
+    out.append(join('amberrock', [ico(rock, 0.7, loc=(0, 0, 0.3), scale=(1.3, 1, 0.75), sub=1, jitter=0.35, seed=71),
+                                  ico(amber, 0.25, loc=(0.25, -0.5, 0.45), scale=(1, 0.7, 1.2), sub=1, jitter=0.1, seed=72)]))
+
+
+def build_moon(out):
+    rock = mat('moon_rock', (170, 170, 176))
+    rock_dk = mat('moon_rock_dark', (120, 120, 128))
+    metal = mat('moon_metal', (210, 214, 222))
+    metal_dk = mat('moon_metal_dark', (90, 96, 108))
+    gold = mat('foil_gold', (240, 190, 60))
+    panel = mat('solar_panel', (40, 70, 160))
+    white = mat('white', (245, 245, 245))
+    red = mat('red', (230, 60, 50))
+    orange = mat('suit_orange', (250, 140, 40))
+    visor = mat('visor_glow', (120, 200, 255))
+    beacon = mat('beacon_glow', (120, 255, 160))
+    glow = mat('lamp_light', (255, 243, 176))
+
+    out.append(join('moonrock', [ico(rock, 0.6, loc=(0, 0, 0.25), scale=(1.4, 1.1, 0.7), sub=1, jitter=0.35, seed=81),
+                                 ico(rock_dk, 0.3, loc=(0.7, 0.2, 0.1), sub=1, jitter=0.3, seed=82)]))
+    out.append(join('moonrocks', [ico(rock_dk if k % 2 else rock, 0.2 + (k % 3) * 0.12, loc=(-0.8 + k * 0.35, (k % 2) * 0.3, 0.08), sub=1, jitter=0.3, seed=83 + k) for k in range(6)]))
+
+    # A little crater: a raised rim of dust around a dip.
+    cr = []
+    for k in range(10):
+        a = k * 2 * math.pi / 10
+        cr.append(ico(rock, 0.4, loc=(1.1 * math.cos(a), 0.8 * math.sin(a), 0.05), scale=(1.4, 1, 0.35), sub=1, jitter=0.2, seed=90 + k))
+    cr.append(cyl(rock_dk, 1.0, 0.02, loc=(0, 0, 0.0), verts=16))
+    out.append(join('crater', cr))
+
+    # A lunar lander: gold foil body on four legs, a ladder and a little dish.
+    ld = [cube(gold, (1.4, 1.4, 0.9), loc=(0, 0, 1.3), bevel=0.05), cyl(metal, 0.65, 0.9, loc=(0, 0, 2.2), verts=8),
+          cube(visor, (0.4, 0.04, 0.3), loc=(0, -0.62, 2.3))]
+    for x in (-1, 1):
+        for y in (-1, 1):
+            ld.append(limb(metal, (x * 0.6, y * 0.6, 1.0), (x * 1.2, y * 1.2, 0.08), 0.05, 0.05, verts=6))
+            ld.append(cyl(metal, 0.2, 0.06, loc=(x * 1.2, y * 1.2, 0.03), verts=10))
+    for z in (0.3, 0.55, 0.8):
+        ld.append(cube(metal_dk, (0.4, 0.04, 0.04), loc=(0.9, -0.95, z)))
+    ld.append(cyl(white, 0.3, 0.06, loc=(0.5, 0.3, 2.85), rot=(0.6, 0, 0), r2=0.05, verts=12))
+    out.append(join('lander', ld))
+
+    # A moon buggy: open frame, four big wire wheels, a dish on a pole.
+    rv = [cube(metal, (2.0, 1.0, 0.12), loc=(0, 0, 0.55), bevel=0.02), cube(metal_dk, (0.5, 0.8, 0.5), loc=(-0.3, 0, 0.85)),
+          cube(orange, (0.4, 0.7, 0.1), loc=(0.4, 0, 0.7)), cyl(metal_dk, 0.02, 0.9, loc=(0.8, 0.3, 1.0), verts=4),
+          cyl(white, 0.25, 0.05, loc=(0.8, 0.3, 1.45), rot=(0.4, 0, 0), r2=0.04, verts=12)]
+    for x in (-0.75, 0.75):
+        for y in (-0.6, 0.6):
+            rv.append(cyl(metal_dk, 0.32, 0.18, loc=(x, y, 0.32), rot=(math.pi / 2, 0, 0), verts=14))
+            rv.append(cyl(gold, 0.36, 0.08, loc=(x, y * 0.85, 0.5), rot=(math.pi / 2, 0, 0), verts=14))
+    out.append(join('rover', rv))
+
+    # A satellite dish on a tripod.
+    out.append(join('satdish', [cyl(white, 1.1, 0.15, loc=(0, 0, 2.1), rot=(0.7, 0, 0), r2=0.15, verts=20),
+                                cyl(metal_dk, 0.03, 0.9, loc=(0, -0.4, 2.4), rot=(0.7, 0, 0), verts=4),
+                                limb(metal, (0, 0, 1.9), (0.6, 0.4, 0), 0.05, 0.05), limb(metal, (0, 0, 1.9), (-0.6, 0.4, 0), 0.05, 0.05),
+                                limb(metal, (0, 0, 1.9), (0, -0.7, 0), 0.05, 0.05)]))
+
+    # A big fuel tank on its side in a cradle, striped.
+    out.append(join('fueltank', [cyl(white, 0.6, 2.2, loc=(0, 0, 0.8), rot=(0, math.pi / 2, 0), verts=16), cyl(red, 0.61, 0.2, loc=(0.5, 0, 0.8), rot=(0, math.pi / 2, 0), verts=16),
+                                 cyl(red, 0.61, 0.2, loc=(-0.5, 0, 0.8), rot=(0, math.pi / 2, 0), verts=16),
+                                 cube(metal_dk, (0.15, 1.0, 0.3), loc=(-0.7, 0, 0.15)), cube(metal_dk, (0.15, 1.0, 0.3), loc=(0.7, 0, 0.15))]))
+
+    # A solar panel on a stand.
+    out.append(join('solarpanel', [cyl(metal_dk, 0.05, 1.2, loc=(0, 0, 0.6), verts=6), cube(panel, (2.0, 1.2, 0.05), loc=(0, 0, 1.3), rot=(0.5, 0, 0)),
+                                   cube(metal, (2.05, 0.04, 0.07), loc=(0, -0.53, 1.0), rot=(0.5, 0, 0))]))
+
+    # A flag of the Pumped Space Club (made up): a white flag with a big orange star.
+    fl = [cyl(metal, 0.03, 2.4, loc=(0, 0, 1.2), verts=6), cube(white, (1.2, 0.02, 0.8), loc=(0.62, 0, 2.0)), cyl(metal, 0.02, 1.25, loc=(0.62, 0, 2.41), rot=(0, math.pi / 2, 0), verts=4)]
+    st = []
+    for k in range(5):
+        a = math.pi / 2 + k * 2 * math.pi / 5
+        st.append(cube(orange, (0.08, 0.02, 0.28), loc=(0.62 + 0.12 * math.cos(a), -0.02, 2.0 + 0.12 * math.sin(a)), rot=(0, -a + math.pi / 2, 0)))
+    st.append(cyl(orange, 0.12, 0.02, loc=(0.62, -0.02, 2.0), rot=(math.pi / 2, 0, 0), verts=10))
+    out.append(join('moonflag', fl + st))
+
+    # A lamp post: a slim mast with a lamp and a green beacon on top.
+    out.append(join('moonlamp', [cyl(metal_dk, 0.07, 3.0, loc=(0, 0, 1.5), verts=8), cube(metal, (0.12, 0.6, 0.08), loc=(0, -0.25, 2.9)),
+                                 cyl(glow, 0.14, 0.12, loc=(0, -0.5, 2.82), verts=10), sphere(beacon, 0.09, loc=(0, 0, 3.08), segs=8, rings=6)]))
+
+    # A barrier: a low rail on posts with stripes, 2.4 m apart.
+    out.append(join('moonfence', [cyl(metal_dk, 0.05, 0.9, loc=(-1.2, 0, 0.45), verts=6), cube(white, (2.4, 0.05, 0.12), loc=(0, 0, 0.8)),
+                                  cube(red, (0.3, 0.06, 0.13), loc=(-0.6, 0, 0.8)), cube(red, (0.3, 0.06, 0.13), loc=(0.6, 0, 0.8))]))
+
+    # An astronaut waving hello, in a white suit with a gold visor.
+    asn = [cube(white, (0.6, 0.42, 0.65), loc=(0, 0, 1.1), bevel=0.14), cube(white, (0.5, 0.25, 0.5), loc=(0, 0.28, 1.15), bevel=0.05),
+           sphere(white, 0.27, loc=(0, 0, 1.62), segs=14, rings=10), sphere(gold, 0.2, loc=(0, -0.17, 1.63), scale=(1, 0.6, 0.8), segs=12, rings=8)]
+    for x in (-0.15, 0.15):
+        asn.append(cyl(white, 0.13, 0.75, loc=(x, 0, 0.45), verts=10))
+        asn.append(cube(metal_dk, (0.18, 0.28, 0.1), loc=(x, -0.05, 0.05), bevel=0.03))
+    asn.append(limb(white, (-0.3, 0, 1.25), (-0.45, 0, 0.85), 0.09, 0.08))
+    asn.append(limb(white, (0.3, 0, 1.25), (0.55, 0, 1.75), 0.09, 0.08))
+    asn.append(sphere(white, 0.1, loc=(0.57, 0, 1.82), segs=8, rings=6))
+    asn.append(cube(orange, (0.2, 0.02, 0.1), loc=(0, -0.29, 1.2)))
+    out.append(join('astronaut', asn))
+
+
+def build_sky(out):
+    bark = mat('sky_bark', (150, 110, 80))
+    puff = mat('sky_leaf', (120, 210, 120))
+    puff2 = mat('sky_leaf_light', (170, 230, 140))
+    blossom = mat('sky_blossom', (255, 180, 210))
+    marble = mat('marble', (240, 236, 228))
+    marble_dk = mat('marble_dark', (200, 196, 188))
+    rope = mat('rope', (200, 170, 120))
+    wood = mat('sky_wood', (170, 120, 80))
+    flower_r = mat('flower_red', (240, 80, 90))
+    flower_y = mat('flower_yellow', (255, 214, 70))
+    flower_b = mat('flower_blue', (110, 150, 255))
+    leaf = mat('sky_bush', (80, 170, 90))
+    sail = mat('pinwheel_a', (255, 120, 60))
+    sail2 = mat('pinwheel_b', (80, 170, 255))
+    glow = mat('lamp_light', (255, 243, 176))
+    gold = mat('gold', (250, 200, 40))
+
+    # A round, puffy tree, and one in pink blossom.
+    for name, m1, m2, seed in (('puffytree', puff, puff2, 101), ('blossomtree', blossom, puff2, 105)):
+        t = [cyl(bark, 0.18, 2.4, loc=(0, 0, 1.2), r2=0.12, verts=8)]
+        for i, (x, y, z, r) in enumerate([(0, 0, 3.0, 1.2), (0.7, 0.2, 2.6, 0.8), (-0.7, -0.1, 2.7, 0.85), (0.1, -0.5, 3.5, 0.7)]):
+            t.append(ico(m1 if i % 2 == 0 else m2, r, loc=(x, y, z), sub=2, jitter=0.12, seed=seed + i, smooth=True))
+        out.append(join(name, t))
+
+    # A bush covered in flowers.
+    fb = [ico(leaf, 0.55, loc=(0, 0, 0.35), scale=(1.4, 1.1, 0.8), sub=2, jitter=0.15, seed=110, smooth=True)]
+    for k in range(9):
+        a = k * 2.4
+        fb.append(sphere((flower_r, flower_y, flower_b)[k % 3], 0.11, loc=(0.55 * math.cos(a), 0.42 * math.sin(a), 0.6 + (k % 3) * 0.08), segs=8, rings=5))
+    out.append(join('flowerbush', fb))
+
+    # A broken marble column from an old sky temple.
+    col = [cube(marble_dk, (0.9, 0.9, 0.25), loc=(0, 0, 0.12), bevel=0.03), cyl(marble, 0.32, 2.2, loc=(0, 0, 1.35), verts=14)]
+    for k in range(8):
+        a = k * math.pi / 4
+        col.append(cube(marble_dk, (0.05, 0.05, 2.2), loc=(0.31 * math.cos(a), 0.31 * math.sin(a), 1.35)))
+    col.append(ico(marble, 0.35, loc=(0.6, -0.3, 0.15), scale=(1.2, 1, 0.6), sub=1, jitter=0.2, seed=112))
+    out.append(join('skycolumn', col))
+
+    # A pinwheel on a stick.
+    pw = [cyl(wood, 0.03, 1.8, loc=(0, 0, 0.9), verts=6), sphere(gold, 0.06, loc=(0, -0.05, 1.8), segs=8, rings=6)]
+    for k in range(4):
+        a = k * math.pi / 2
+        pw.append(cube(sail if k % 2 else sail2, (0.35, 0.02, 0.18), loc=(0.2 * math.cos(a), -0.04, 1.8 + 0.2 * math.sin(a)), rot=(0, -a, 0)))
+    out.append(join('pinwheel', pw))
+
+    # A rope fence: wooden posts 2.4 m apart with a sagging rope.
+    rf = [cyl(wood, 0.07, 1.1, loc=(-1.2, 0, 0.55), verts=8)]
+    for k in range(6):
+        t0, t1 = k / 6, (k + 1) / 6
+        z0, z1 = 0.95 - 0.25 * math.sin(math.pi * t0), 0.95 - 0.25 * math.sin(math.pi * t1)
+        rf.append(limb(rope, (-1.2 + 2.4 * t0, 0, z0), (-1.2 + 2.4 * t1, 0, z1), 0.025, 0.025, verts=5))
+    out.append(join('ropefence', rf))
+
+    # A lantern on a curly post.
+    out.append(join('skylamp', [cyl(wood, 0.06, 2.6, loc=(0, 0, 1.3), verts=8), limb(wood, (0, 0, 2.55), (0, -0.4, 2.7), 0.04, 0.04, verts=6),
+                                cyl(glow, 0.12, 0.3, loc=(0, -0.45, 2.38), verts=8), cyl(gold, 0.15, 0.05, loc=(0, -0.45, 2.55), r2=0.05, verts=8)]))
+
+    # A little cloud resting on the ground.
+    out.append(join('groundcloud', [sphere(mat('cloud_white', (250, 250, 255)), r, loc=(x, 0, z), segs=12, rings=8)
+                                    for x, z, r in ((-0.6, 0.4, 0.5), (0, 0.6, 0.7), (0.6, 0.4, 0.5), (0.3, 0.9, 0.45))]))
 
 
 if __name__ == '__main__':

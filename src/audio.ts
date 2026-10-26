@@ -94,7 +94,7 @@ const GROUNDS: Record<Ground, GroundSound> = {
 };
 
 const BIOME_GROUND: Record<string, Ground> = {
-  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'sand', haunted: 'stone', funfair: 'wood', toxic: 'concrete', mine: 'stone',
+  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'sand', haunted: 'stone', funfair: 'wood', toxic: 'concrete', mine: 'stone', dino: 'dirt',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -342,7 +342,7 @@ export class Sound {
   setScene(b: Biome, snow: boolean, bound = snow, scooter = false) {
     this.scooter = scooter;
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
-    this.railSound = b.id === 'jungle' || b.id === 'farm' || b.id === 'pirate' ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
+    this.railSound = b.id === 'jungle' || b.id === 'farm' || b.id === 'pirate' || b.id === 'dino' ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
     this.snow = snow;
     this.bound = bound;
     // Start fresh: nothing the rider did on the last track should sound on this one.
@@ -1110,6 +1110,27 @@ export class Sound {
         every(25, 50, (at) => {
           const p = pan() * 0.6;
           for (let i = 0; i < 3; i++) this.tone(at + i * 0.7, { type: 'square', f: 440, fEnd: 330, gain: 0.006, attack: 0.05, decay: 0.55, glide: 0.5, lp: 1400, to: out, pan: p });
+        });
+        break;
+      }
+      case 'dino': {
+        // A warm humid valley: insects buzzing, odd birds calling, the tar bubbling, a
+        // pterodactyl screeching overhead and now and then a big dinosaur bellowing far off.
+        bed(this.pink, { type: 'bandpass', f: 4200, q: 2 }, 0.025, 6, 0.6, 400);
+        bed(this.brown, { type: 'lowpass', f: 200, q: 0.8 }, 0.05, 9, 0.4);
+        every(2, 6, (at) => {
+          const f = 700 + Math.random() * 500, p = pan();
+          for (let i = 0; i < 2; i++) this.tone(at + i * 0.18, { f, fEnd: f * 1.3, gain: 0.02, attack: 0.01, decay: 0.12, glide: 0.1, to: out, pan: p });
+        });
+        every(3, 8, (at) => {
+          const f = 90 + Math.random() * 60;
+          this.tone(at, { f, fEnd: f * 2, gain: 0.03, attack: 0.01, decay: 0.12, glide: 0.1, to: out, pan: pan() });
+        });
+        every(14, 28, (at) => this.tone(at, { type: 'sawtooth', f: 1800, fEnd: 1100, gain: 0.008, attack: 0.05, decay: 0.7, glide: 0.6, lp: 3200, to: out, pan: pan() }));
+        every(20, 40, (at) => {
+          const p = pan() * 0.7;
+          this.tone(at, { type: 'sawtooth', f: 70, fEnd: 48, gain: 0.03, attack: 0.25, decay: 1.6, glide: 1.4, lp: 420, to: out, pan: p });
+          this.burst(at, { buf: this.brown, type: 'lowpass', f: 260, q: 1, gain: 0.05, attack: 0.25, decay: 1.4, to: out, pan: p });
         });
         break;
       }

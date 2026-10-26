@@ -16,11 +16,12 @@ import { HAUNTED, HAUNTED_PIPE } from './levels/haunted';
 import { FUNFAIR, FUNFAIR_PIPE } from './levels/funfair';
 import { TOXIC, TOXIC_MEGA } from './levels/toxic';
 import { MINE, MINE_MEGA } from './levels/mine';
+import { DINO, DINO_MEGA } from './levels/dino';
 
 export { PIPE_TIME, STOP_AFTER_FINISH } from './levels/common';
 export type { TrackDef } from './levels/common';
 
-export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA];
+export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA, ...DINO, DINO_MEGA];
 
 // Every track's scooter challenges. New tracks get their skateboard ones with scooter tricks
 // swapped in until they have their own (the scooter playtest lists them).
