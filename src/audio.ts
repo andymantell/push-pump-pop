@@ -94,7 +94,7 @@ const GROUNDS: Record<Ground, GroundSound> = {
 };
 
 const BIOME_GROUND: Record<string, Ground> = {
-  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'sand', haunted: 'stone', funfair: 'wood', toxic: 'concrete', mine: 'stone', dino: 'dirt',
+  park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'sand', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'sand', haunted: 'stone', funfair: 'wood', toxic: 'concrete', mine: 'stone', dino: 'dirt', moon: 'sand',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -719,7 +719,7 @@ export class Sound {
   }
 
   /** Into a gap: a splash, a sizzle, or a long way down. */
-  fall(into: 'water' | 'lava' | 'dark' | 'loop') {
+  fall(into: 'water' | 'lava' | 'dark' | 'sky' | 'loop') {
     if (!this.ready()) return;
     const t = this.ctx!.currentTime;
     if (into === 'loop') { this.bail(); return; }
@@ -736,6 +736,10 @@ export class Sound {
       this.tone(at, { f: 80, fEnd: 40, gain: 0.6, decay: 0.3 });
       this.burst(at, { type: 'highpass', f: 3000, q: 0.5, gain: 0.25, attack: 0.02, decay: 1.2 });
       this.burst(at, { buf: this.crackle, type: 'bandpass', f: 2500, q: 0.7, gain: 0.8, attack: 0.02, decay: 1 });
+    } else if (into === 'sky') {
+      // A long whistle down past the islands, and a soft poof into the clouds.
+      this.tone(t, { f: 1500, fEnd: 300, gain: 0.08, attack: 0.05, decay: 1.4, glide: 1.4 });
+      this.burst(t + 1.3, { type: 'lowpass', f: 900, q: 0.5, gain: 0.3, attack: 0.05, decay: 0.6 });
     } else {
       // A cartoon whistle down, and a far-off bump.
       this.tone(t, { f: 1300, fEnd: 350, gain: 0.08, attack: 0.05, decay: 0.9, glide: 0.9 });
@@ -1111,6 +1115,23 @@ export class Sound {
           const p = pan() * 0.6;
           for (let i = 0; i < 3; i++) this.tone(at + i * 0.7, { type: 'square', f: 440, fEnd: 330, gain: 0.006, attack: 0.05, decay: 0.55, glide: 0.5, lp: 1400, to: out, pan: p });
         });
+        break;
+      }
+      case 'moon': {
+        // No air on the moon, so this is the base: a low hum of machinery, radio bleeps and
+        // chatter, the hiss of an airlock, and now and then a rocket rumbling far off.
+        bed(this.brown, { type: 'lowpass', f: 110, q: 1.5 }, 0.06, 8, 0.3);
+        bed(this.pink, { type: 'bandpass', f: 2400, q: 6 }, 0.012, 5, 0.5, 200);
+        every(3, 8, (at) => {
+          const p = pan(), n = 2 + Math.floor(Math.random() * 4);
+          for (let i = 0; i < n; i++) this.tone(at + i * 0.13, { type: 'sine', f: Math.random() < 0.5 ? 1320 : 1760, gain: 0.012, attack: 0.005, decay: 0.08, to: out, pan: p });
+        });
+        every(8, 16, (at) => {
+          const p = pan();
+          for (let i = 0; i < 6; i++) this.tone(at + i * 0.09, { type: 'square', f: 300 + Math.random() * 500, gain: 0.004, attack: 0.005, decay: 0.07, lp: 1800, to: out, pan: p });
+        });
+        every(18, 34, (at) => this.burst(at, { buf: this.pink, type: 'highpass', f: 2200, q: 0.5, gain: 0.04, attack: 0.05, decay: 1.4, to: out, pan: pan() }));
+        every(30, 60, (at) => this.burst(at, { buf: this.brown, type: 'lowpass', f: 160, q: 1, gain: 0.07, attack: 2, decay: 4, to: out, pan: pan() * 0.5 }));
         break;
       }
       case 'dino': {

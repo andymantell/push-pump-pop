@@ -15,7 +15,7 @@
 import { TRACKS, PIPE_TIME, SCOOTER_TODO } from '../src/tracks';
 import { BIOMES, BIOME_ORDER } from '../src/biomes';
 import { requiredCount } from '../src/challenges';
-import { Rider, Swipe, TrickName, GRAVITY, FAKIE_SAFE, FAKIE_FALL } from '../src/rider';
+import { Rider, Swipe, TrickName, FAKIE_SAFE, FAKIE_FALL } from '../src/rider';
 import { Score } from '../src/score';
 import { MegaRun } from '../src/mega';
 import { ChallengeRun, Challenge, members } from '../src/challenges';
@@ -251,7 +251,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   });
   const isPipe = def.kind === 'pipe', isMega = def.kind === 'mega';
   const skater: Figure | null = !legs ? null : SCOOT ? new ScooterRig() : new Skater();
-  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : biome.maxSpeed, pipe: isPipe, mega: isMega, snow: def.biome === 'snow', mountain: def.biome === 'farm' && !SCOOT, scooter: SCOOT };
+  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : biome.maxSpeed, pipe: isPipe, mega: isMega, snow: def.biome === 'snow', mountain: def.biome === 'farm' && !SCOOT, scooter: SCOOT, gravity: biome.gravity };
   if (skater instanceof Skater) skater.setBoard(def.biome === 'snow' ? 'snow' : def.biome === 'farm' ? 'mountain' : 'skate');
   if (skater instanceof ScooterRig) skater.setKind(def.biome === 'snow' ? 'snow' : 'scooter');
   if (isPipe || isMega) r.perch();
@@ -304,7 +304,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   function flight(): { time: number; x: number } {
     let x = r.x, y = r.y, vy = r.vy, tt = 0;
     while (tt < 4) {
-      tt += 0.01; x += r.vx * 0.01; vy -= GRAVITY * 0.01; y += vy * 0.01;
+      tt += 0.01; x += r.vx * 0.01; vy -= r.g * 0.01; y += vy * 0.01;
       if (vy < 0 && y <= track.height(x)) break;
     }
     return { time: tt, x };

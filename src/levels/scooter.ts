@@ -237,6 +237,19 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   'dino-9': set(13000, gaps('Clear every gap'), everyKicker('A trick off every hump'), variety(6)),
   'dino-10': scored(17500, gaps('Clear the final gap', { which: [-1] }), air('Air for 1.4 seconds', { seconds: 1.4 })),
   'dino-mega': scored(22500, drops(), bothAirs()),
+
+  // Moon Base: low gravity.
+  'moon-1': set(10500, air('Air for 1.5 seconds', { seconds: 1.5 }), variety(5), pumps(12)),
+  'moon-2': set(13500, gaps('Clear every gap'), { text: 'A whip and a body trick in one air', kind: 'sameAir', match: ['whip', 'hold'] }, trick('A spin over a crater', 'spin', { overGap: true })),
+  'moon-3': set(8500, air('Air for 2 seconds', { seconds: 2 }), everyKicker('A trick off every kicker'), variety(6)),
+  'moon-4': set(32500, grind('Grind 4 rails', { count: 4 }), grind('Grind a rail over a crater', { rails: [1] }), trick('A body trick over a crater', 'hold', { overGap: true })),
+  'moon-5': set(13500, loop('Ride every loop', 2), gaps('Clear every gap'), air('Air for 1.8 seconds', { seconds: 1.8 })),
+  'moon-6': set(8500, everyKicker('A trick off every hump'), air('Air for 2 seconds', { seconds: 2 }), noLives()),
+  'moon-7': set(7500, gaps('Clear every gap'), trick('A whip off a drop', 'whip', { from: 'dropoff' }), air('Air for 2 seconds', { seconds: 2 })),
+  'moon-8': set(29000, gaps('Clear every gap'), grind('Grind 3 rails', { count: 3 }), variety(6)),
+  'moon-9': set(17000, gaps('Clear every gap'), variety(7), noLives()),
+  'moon-10': scored(23500, gaps('Clear the final gap', { which: [-1] }), air('Air for 2.5 seconds', { seconds: 2.5 })),
+  'moon-pipe': scored(22000, air('Air for 2 seconds', { seconds: 2 }), variety(6)),
 };
 
 /** Skateboard words and tricks, the scooter way. */

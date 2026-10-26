@@ -1,6 +1,6 @@
 // A biome sets the look, scenery and feel of a track. Track layouts live in src/tracks.
 
-export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall' | 'covesand' | 'cobbles' | 'fairboards' | 'lattice' | 'grating' | 'hazard' | 'cartrock' | 'timber' | 'footprints' | 'fossil';
+export type SurfaceKind = 'concrete' | 'planks' | 'tar' | 'windows' | 'snow' | 'ice' | 'strata' | 'stone' | 'basalt' | 'dirt' | 'soil' | 'biscuit' | 'cake' | 'quay' | 'quaywall' | 'covesand' | 'cobbles' | 'fairboards' | 'lattice' | 'grating' | 'hazard' | 'cartrock' | 'timber' | 'footprints' | 'fossil' | 'regolith' | 'craterrock' | 'skypath' | 'islandrock';
 
 export interface Surface {
   kind: SurfaceKind;
@@ -22,8 +22,8 @@ export interface Biome {
   band: number;
   ground: [number, number, number];
   /** How the ground behind the track rises or falls away. */
-  groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat' | 'quay';
-  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour' | 'hollow' | 'fair' | 'factory' | 'cave';
+  groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat' | 'quay' | 'islands';
+  far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour' | 'hollow' | 'fair' | 'factory' | 'cave' | 'skyislands';
   farColors: number[];
   clouds: number | null;
   particles: Particles | null;
@@ -33,12 +33,14 @@ export interface Biome {
   fence?: { kind: string; z: number; spacing: number };
   posts?: { kind: string; z: number; spacing: number };
   edge?: { kind: string; z: number; spacing: number };
-  pitFill: 'dark' | 'water' | 'lava';
+  pitFill: 'dark' | 'water' | 'lava' | 'sky';
   pitFillColor?: number;
   fallText: string;
   sign: string;
   friction: number;
   maxSpeed: number;
+  /** Gravity, if not the usual 14 (the moon's is about half). */
+  gravity?: number;
   /** Colour of the swatch on the level select. */
   swatch: string;
   // Set by a track's mood (src/moods.ts) rather than by the biome itself.
@@ -59,6 +61,8 @@ export interface Biome {
   leafTint?: number;
   /** A big low moon on the horizon (harvest moon). */
   bigMoon?: boolean;
+  /** The Earth hanging in a black sky (on the moon). */
+  earth?: boolean;
   /** Underground: a rock roof with stalactites and glowing crystals instead of a sky. */
   cave?: boolean;
 }
@@ -316,12 +320,45 @@ export const BIOMES: Record<string, Biome> = {
     pitFill: 'water', pitFillColor: 0x2e241e, fallText: 'TAR PIT!', sign: '#5a3a1e',
     friction: 1, maxSpeed: 17, swatch: '#6ab040',
   },
+  moon: {
+    id: 'moon', name: 'Moon Base', blurb: 'Low gravity! Float huge airs over the craters.',
+    sky: ['#000004', '#05060e', '#141826'], fog: [0x10141e, 80, 260],
+    hemi: [0xe0e8ff, 0x3a3a44, 1.2], sun: [0xffffff, 2.6],
+    top: { kind: 'regolith', base: '#b8b8be', seam: '#8a8a92' },
+    front: { kind: 'craterrock', base: '#8a8a92', seam: '#6a6a72', accent: '#a4a4ac' },
+    band: 0xf08a2a,
+    ground: [0x9a9aa2, 0x8a8a92, 0xaaaab2], groundShape: 'hills',
+    far: 'mountains', farColors: [0x6a6a74, 0x9a9aa4, 0x5a5a64], clouds: null, particles: null,
+    back: [['moonrock', 3], ['moonrocks', 3], ['crater', 2], ['satdish', 0.8], ['fueltank', 0.6], ['solarpanel', 1], ['moonflag', 0.4], ['rover', 0.5], ['astronaut', 0.4]], backZ: [-4, -26],
+    fence: { kind: 'moonfence', z: -3.2, spacing: 2.4 },
+    posts: { kind: 'moonlamp', z: -2.6, spacing: 22 },
+    edge: { kind: 'moonrocks', z: -2.1, spacing: 13 },
+    pitFill: 'dark', fallText: 'LOST IN SPACE!', sign: '#2a3a5a',
+    friction: 1, maxSpeed: 17, swatch: '#b8b8be', gravity: 7,
+    stars: true, earth: true, lights: true, sunPos: [-8, 10, 6],
+  },
+  sky: {
+    id: 'sky', name: 'Sky Islands', blurb: 'Jump up from island to island, high above the clouds.',
+    sky: ['#4a9ae8', '#9ad0f8', '#e8f6ff'], fog: [0xd8eeff, 70, 220],
+    hemi: [0xf0f8ff, 0x7aa860, 1.5], sun: [0xfff8e0, 2.2],
+    top: { kind: 'skypath', base: '#d8d0bc', seam: '#a8a090', accent: '#6ab85a' },
+    front: { kind: 'islandrock', base: '#9a7a5a', seam: '#6a5240', accent: '#5aa848' },
+    band: 0x5ab0e8,
+    ground: [0x6ab85a, 0x5aa84a, 0x7ac86a], groundShape: 'islands',
+    far: 'skyislands', farColors: [0x6ab85a, 0x9a7a5a], clouds: 0xffffff, particles: null, cloudCount: 32,
+    back: [['puffytree', 3], ['blossomtree', 1.5], ['flowerbush', 3], ['skycolumn', 1], ['pinwheel', 1], ['groundcloud', 1.5]], backZ: [-4, -8],
+    fence: { kind: 'ropefence', z: -3.2, spacing: 2.4 },
+    posts: { kind: 'skylamp', z: -2.6, spacing: 24 },
+    edge: { kind: 'flowerbush', z: -2.1, spacing: 9 },
+    pitFill: 'sky', fallText: 'WHEEE!', sign: '#3a6a9a',
+    friction: 1, maxSpeed: 17, swatch: '#5ab0e8',
+  },
 };
 
 /** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
 export const WORLDS: string[][] = [
   ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
-  ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair', 'toxic', 'mine', 'dino'],
+  ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair', 'toxic', 'mine', 'dino', 'moon'],
 ];
 export const BIOME_ORDER = WORLDS.flat();
 export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));

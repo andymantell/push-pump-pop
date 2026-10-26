@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Rider, ScooterHold } from './rider';
 import { toon } from './toon';
+import { spaceKit } from './spacesuit';
 import { railY } from './track';
 import { PartName, PART_NAMES } from './skater';
 
@@ -112,6 +113,7 @@ export class ScooterRig {
   private p: Record<PartName, THREE.Object3D>;
   private helmet: THREE.Object3D;
   private snowHead: THREE.Object3D;
+  private space = spaceKit();
   private decks: Record<ScooterKind, THREE.Object3D>;
   private barsParts: Record<ScooterKind, THREE.Object3D>;
   private shadow: THREE.Mesh;
@@ -178,6 +180,7 @@ export class ScooterRig {
     p.pelvis.rotation.y = Math.PI / 2;
     for (const h of [this.helmet, this.snowHead]) { p.torso.add(h); h.position.y = 0.5; }
     p.head.visible = false;
+    p.torso.add(this.space);
     p.torso.add(p.upperArm_L, p.upperArm_R);
     p.upperArm_L.position.set(0.21, 0.44, 0);
     p.upperArm_R.position.set(-0.21, 0.44, 0);
@@ -201,6 +204,9 @@ export class ScooterRig {
   }
 
   get shadowMesh() { return this.shadow; }
+
+  /** The space helmet, on the moon. */
+  setSpace(on: boolean) { this.space.visible = on; }
 
   /** A snow scooter, beanie and goggles on the snow; a scooter and helmet everywhere else. */
   setKind(kind: ScooterKind) {

@@ -1332,6 +1332,80 @@ export const LANDMARKS: Record<string, Landmark> = {
     }
     return g;
   } },
+  // ---- Moon Base
+  domebase: { z: -18, r: 9, build: () => {
+    // The moon base: glass domes joined by tunnels, lit windows, an airlock door.
+    const white = 0xe8eaf0, glass = new THREE.MeshBasicMaterial({ color: 0x9ad8ff, transparent: true, opacity: 0.55 });
+    const g = new THREE.Group();
+    for (const [x, rr] of [[-7, 3.2], [0, 5], [7.5, 3.6]] as const) {
+      g.add(cyl(rr + 0.3, rr + 0.3, 1.2, white, [x, 0.6, 0], 24));
+      g.add(mesh(new THREE.SphereGeometry(rr, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), glass, [x, 1.2, 0]));
+      for (let k = 0; k < 6; k++) g.add(mesh(new THREE.TorusGeometry(rr, 0.08, 4, 20, Math.PI), white, [x, 1.2, 0], [0, (k / 6) * Math.PI, 0]));
+    }
+    g.add(box(4, 2, 2, white, [-3.6, 1, 0]), box(4, 2, 2, white, [3.8, 1, 0]));
+    for (const x of [-3.6, 3.8]) g.add(box(2.4, 0.5, 0.05, glow(0xffe8a0), [x, 1.3, 1.02]));
+    g.add(box(1.4, 1.8, 0.2, 0xf08a2a, [0, 0.9, 5.1]), cyl(0.15, 0.15, 0.1, glow(0x7affa0), [0, 2.0, 5.2], 8, [Math.PI / 2, 0, 0]));
+    g.add(ball(1.4, 0x7ab06a, [0, 2, 0], 10), ball(1, 0x5a9a4a, [1.4, 1.6, 1], 10), cyl(0.15, 0.2, 2, 0x8a6a40, [0, 1.2, 0], 6));
+    const sign = textPanel('MOON BASE', 4, 0.8, '#2a3a5a', '#ffffff');
+    sign.position.set(0, 2.7, 5.2);
+    g.add(sign);
+    return g;
+  } },
+  rocket: { z: -24, r: 8, build: () => {
+    // A big rocket standing on its launch pad, ready to go home, with a gantry beside it.
+    const white = 0xf2f2f4, red = 0xd83a2a, steel = 0x6a707c;
+    const g = group(box(12, 1, 12, 0x5a5a64, [0, 0.5, 0]), cyl(2.4, 2.4, 16, white, [0, 9, 0], 20), mesh(new THREE.ConeGeometry(2.4, 5, 20), red, [0, 19.5, 0]));
+    g.add(cyl(2.45, 2.45, 1.2, red, [0, 6, 0], 20), cyl(2.45, 2.45, 0.6, 0x222226, [0, 13, 0], 20));
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + 0.5;
+      g.add(box(0.3, 4, 2.4, red, [Math.cos(a) * 3, 3, Math.sin(a) * 3], [0, -a, 0]));
+    }
+    g.add(cyl(0.6, 0.6, 0.15, glow(0x9ad8ff), [0, 15, 2.38], 14, [Math.PI / 2, 0, 0]));
+    for (const x of [-5.5, -3.5]) g.add(box(0.3, 18, 0.3, steel, [x, 9.5, -2]));
+    for (let y = 2; y < 19; y += 2.5) g.add(box(2.3, 0.2, 0.3, steel, [-4.5, y, -2]), beam([-5.5, y, -2], [-3.5, y + 2.5, -2], 0.12, steel));
+    g.add(box(2.5, 0.3, 0.4, steel, [-2.6, 15, -1.2]));
+    return g;
+  } },
+  bigdish: { z: -20, r: 8, build: () => {
+    // A giant radio telescope dish, tipped up to listen to the stars.
+    const white = 0xe8eaf0, steel = 0x6a707c;
+    const g = group(box(4, 1, 4, steel, [0, 0.5, 0]), box(1.2, 6, 1.2, white, [0, 4, 0]));
+    const dish = new THREE.Group();
+    dish.add(mesh(new THREE.SphereGeometry(8, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.32), white, [0, -8, 0]));
+    dish.add(beam([0, -0.3, 0], [0, 5, 0], 0.2, steel), ball(0.6, steel, [0, 5.2, 0], 10));
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2;
+      dish.add(beam([Math.cos(a) * 3.8, 0.1, Math.sin(a) * 3.8], [0, 5, 0], 0.12, steel));
+    }
+    dish.position.set(0, 9.5, 0);
+    dish.rotation.set(0.8, 0, 0.3);
+    g.add(dish, ball(0.25, glow(0xff3a2a), [0, 7.2, 0.7], 8));
+    return g;
+  } },
+  biglander: { z: -12, r: 6, build: () => {
+    // A big lunar lander, gold foil and silver, standing on its four legs with the ladder down.
+    const gold = 0xf0be3c, silver = 0xd2d6de;
+    const g = group(box(4, 2.6, 4, gold, [0, 3.6, 0]), cyl(1.9, 2.2, 2.4, silver, [0, 6.1, 0], 8));
+    for (const x of [-1, 1]) for (const z of [-1, 1]) g.add(beam([x * 1.8, 3, z * 1.8], [x * 3.4, 0.2, z * 3.4], 0.18, silver), cyl(0.6, 0.6, 0.15, silver, [x * 3.4, 0.1, z * 3.4], 10));
+    for (let y = 0.6; y < 2.6; y += 0.5) g.add(box(1, 0.1, 0.1, 0x5a5a64, [0, y, 2.6]));
+    g.add(box(1, 0.8, 0.05, glow(0x9ad8ff), [0, 6.4, 1.9]), cyl(0.9, 0.2, 0.3, 0xffffff, [1.6, 7.6, 0], 12, [0.6, 0, 0]));
+    g.add(box(1.4, 0.8, 0.05, 0x5a5a64, [0, 4.2, 2.03]));
+    return g;
+  } },
+  station: { z: -40, r: 0, on: 'air', build: () => {
+    // A space station drifting overhead: a turning ring of modules round a hub, with solar wings.
+    const white = 0xe8eaf0, panel = 0x2a4aa8;
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.TorusGeometry(8, 0.9, 8, 24), white), ball(1.6, white, [0, 0, 0], 12));
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2;
+      g.add(beam([0, 0, 0], [Math.cos(a) * 8, Math.sin(a) * 8, 0], 0.3, white));
+    }
+    for (const x of [-14, 14]) g.add(box(8, 3, 0.1, panel, [x, 0, 0]), beam([Math.sign(x) * 8.5, 0, 0], [Math.sign(x) * 10, 0, 0], 0.2, white));
+    g.position.set(0, 34, 0);
+    g.rotation.set(0.3, 0, 0.2);
+    return group(g);
+  } },
 };
 
 /** Which landmarks each track has, spread along it in order. */
@@ -1384,4 +1458,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'dino-1': ['brachio', 'bignest'], 'dino-2': ['trex', 'ptero'], 'dino-3': ['stego', 'brachio'], 'dino-4': ['trike', 'ptero'],
   'dino-5': ['bignest', 'trex'], 'dino-6': ['brachio', 'stego'], 'dino-7': ['ptero', 'trike'], 'dino-8': ['trex', 'brachio'],
   'dino-9': ['stego', 'bignest'], 'dino-10': ['brachio', 'trex'], 'dino-mega': ['brachio'],
+  'moon-1': ['domebase', 'station'], 'moon-2': ['biglander'], 'moon-3': ['rocket', 'bigdish'], 'moon-4': ['domebase', 'biglander'],
+  'moon-5': ['bigdish', 'station'], 'moon-6': ['rocket', 'domebase'], 'moon-7': ['biglander', 'bigdish'], 'moon-8': ['station', 'rocket'],
+  'moon-9': ['domebase', 'bigdish'], 'moon-10': ['biglander', 'rocket'], 'moon-pipe': ['domebase'],
 };

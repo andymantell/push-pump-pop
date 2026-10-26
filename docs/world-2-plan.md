@@ -17,10 +17,10 @@ The ground rules, difficulty scale, challenges and par calibration in `level-pla
 | 7 | Toxic Factory | conveyor belts and goo pits | 10 | 6 to 9 | Smokestack Mega Ramp | built |
 | 8 | Crystal Mine | rail lines and rail-to-rail hops | 10 | 6 to 9 | Mine Shaft Mega Ramp | built |
 | 9 | Dino Valley | giant humps to launch off | 10 | 7 to 9 | Long Neck Mega Ramp | built |
-| 10 | Moon Base | low gravity (about 7 instead of 14), bigger features | 10 | 7 to 10 | mega ramp | planned |
+| 10 | Moon Base | low gravity (about 7 instead of 14), bigger features | 10 | 7 to 10 | Crater Halfpipe | built |
 | 11 | Sky Islands | uphill gaps between floating islands | 10 | 8 to 10 | mega ramp | planned |
 
-New pieces still to build: gravity per biome and a tall-air camera (Moon), sky pits (Sky Islands).
+New pieces still to build: sky pits (Sky Islands).
 
 ## Autumn Farm: mud
 
@@ -226,3 +226,28 @@ the front shows fossils in the rock.
 | 10 | dino-10 | Volcano Valley | 9 | the biggest hump, a big final tar pit | brachiosaurus, T. rex | eruption |
 | bonus | dino-mega | Long Neck Mega Ramp | - | - | brachiosaurus | sunset |
 
+## Moon Base: low gravity
+
+A biome can set `gravity` (the moon's is 7, half the usual 14). The rider reads it from
+`RiderOptions.gravity` (`rider.g`), and both test bots pass it on, so the landings check sizes
+moon jumps for real moon flights. Airs go twice as high and hang twice as long, so landings
+are longer: `kicker(4, 1.2).flat(2).land(56, 5.6)`, `kicker(5, 1.6).flat(2).land(60, 6.2)`,
+`kicker(6, 2+).flat(2).land(64, 6.6)`, and gaps of 8 to 10 m with `land(44)`. Rollers are 18 m
+long so you don't take off from every crest. On low gravity the camera pulls back with your
+height, like on a mega ramp. The sky is black with stars and the Earth (`earth: true`), and the
+rider wears a glass space helmet (`spaceKit()` in src/spacesuit.ts). The bonus track is a half
+pipe, as the mega ramp's sizes are tuned for normal gravity.
+
+| # | id | Name | Diff | New | Landmarks | Mood |
+|---|----|------|----:|-----|-----------|------|
+| 1 | moon-1 | Moon Walk | 7 | low gravity | moon base, space station | earthrise |
+| 2 | moon-2 | Crater Hops | 7 | four craters | lunar lander | bright side |
+| 3 | moon-3 | Launch Pad | 8 | big kickers | rocket, radio dish | blue shadows |
+| 4 | moon-4 | Space Rails | 8 | rails, one over a crater | moon base, lander | long shadows |
+| 5 | moon-5 | Loop the Moon | 8 | two loops | radio dish, station | starlight |
+| 6 | moon-6 | Moon Humps | 8 | giant humps | rocket, moon base | earthrise |
+| 7 | moon-7 | Crater Drops | 9 | big drop-offs | lander, radio dish | bright side |
+| 8 | moon-8 | Rocket Run | 9 | everything | station, rocket | long shadows |
+| 9 | moon-9 | Dark Side | 10 | five craters and a drop | moon base, radio dish | starlight |
+| 10 | moon-10 | Moonshot | 10 | everything, a 10 m final crater | lander, rocket | blue shadows |
+| bonus | moon-pipe | Crater Halfpipe | - | - | moon base | earthrise |

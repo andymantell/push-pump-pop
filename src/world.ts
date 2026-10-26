@@ -356,6 +356,67 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
         c.lineCap = 'butt';
         break;
       }
+      case 'regolith': {
+        // Grey moon dust, with moon buggy tyre tracks and astronaut boot prints in it.
+        speckle(c, 1600, 0.09, 0.06);
+        c.fillStyle = s.seam;
+        for (const v of [0.28, 0.72]) {
+          for (let x = 0; x < 256; x += 8) {
+            c.globalAlpha = 0.5;
+            c.fillRect(x, v * 256 - 12, 5, 24);
+          }
+        }
+        c.globalAlpha = 0.45;
+        for (let x = 20; x < 256; x += 64) {
+          c.beginPath(); c.ellipse(x, 120, 12, 6, 0, 0, Math.PI * 2); c.fill();
+          c.beginPath(); c.ellipse(x + 32, 140, 12, 6, 0, 0, Math.PI * 2); c.fill();
+        }
+        c.globalAlpha = 1;
+        break;
+      }
+      case 'craterrock': {
+        // Grey moon rock pitted with little craters, each with a lit rim and a shadowed inside.
+        speckle(c, 900, 0.1, 0.05);
+        for (let i = 0; i < 9; i++) {
+          const x = r() * 256, y = r() * 256, rr = 6 + r() * 16;
+          c.fillStyle = s.accent ?? '#fff';
+          c.beginPath(); c.arc(x, y, rr + 2, 0, Math.PI * 2); c.fill();
+          c.fillStyle = s.seam;
+          c.beginPath(); c.arc(x + 1, y + 2, rr, 0, Math.PI * 2); c.fill();
+        }
+        break;
+      }
+      case 'skypath': {
+        // Pale stepping-stone slabs with grass growing between them.
+        c.fillStyle = s.accent ?? '#6ab85a';
+        c.fillRect(0, 0, 256, 256);
+        for (let row = 0; row < 4; row++) {
+          for (let col = 0; col < 4; col++) {
+            const x = col * 64 + (row % 2) * 32 + 4, y = row * 64 + 4;
+            c.fillStyle = r() > 0.5 ? s.base : s.seam;
+            c.beginPath();
+            c.roundRect(x, y, 56, 56, 12);
+            c.fill();
+          }
+        }
+        speckle(c, 500, 0.06, 0.04);
+        break;
+      }
+      case 'islandrock': {
+        // Earth and rock under the island: a band of grass on top, roots and pebbles below.
+        speckle(c, 1000, 0.1, 0.05);
+        c.fillStyle = s.seam;
+        for (let y = 40; y < 256; y += 30 + r() * 30) c.fillRect(0, y, 256, 3 + r() * 5);
+        c.strokeStyle = '#7a5a3a';
+        c.lineWidth = 3;
+        for (let i = 0; i < 6; i++) {
+          const x = r() * 256;
+          c.beginPath(); c.moveTo(x, 0);
+          c.quadraticCurveTo(x + (r() - 0.5) * 40, 40 + r() * 40, x + (r() - 0.5) * 30, 80 + r() * 80);
+          c.stroke();
+        }
+        break;
+      }
       case 'cartrock': {
         // Packed rock with a mine-cart track along it: two iron rails on wooden sleepers.
         speckle(c, 900, 0.1, 0.05);
@@ -633,7 +694,7 @@ export class World {
         for (const mat of ([] as THREE.Material[]).concat(mesh.material)) {
           const t = mat as THREE.MeshToonMaterial;
           if (!t.emissive) continue;
-          if (t.name === 'lava' || t.name === 'ember' || t.name === 'pumpkin_glow' || t.name === 'goo_glow' || t.name.startsWith('crystal_glow') || t.name === 'amber_glow') t.emissive.copy(t.color).multiplyScalar(0.8);
+          if (t.name === 'lava' || t.name === 'ember' || t.name === 'pumpkin_glow' || t.name === 'goo_glow' || t.name.startsWith('crystal_glow') || t.name === 'amber_glow' || t.name === 'visor_glow' || t.name === 'beacon_glow') t.emissive.copy(t.color).multiplyScalar(0.8);
           else if (t.name === 'lamp_light' || t.name === 'window_glow') t.emissive.copy(t.color).multiplyScalar(on ? 1 : 0);
         }
       });
@@ -754,6 +815,12 @@ export class World {
         return near + 0.6 * Math.sin(x * 0.2) * Math.min(1, back / 4) - Math.max(0, back - 8) * 0.35;
       case 'roof':
         return back < 11 ? near : near - 40;
+      case 'islands': {
+        // A strip of grass behind the track, then the edge of the island and a long drop to the
+        // clouds. Over a gap there's no island at all.
+        if (this.track.pits.some((p) => x > p.x0 - 0.5 && x < p.x1 + 0.5)) return near - 40;
+        return back < 7 ? near + 0.3 * Math.sin(x * 0.3) * Math.min(1, back / 3) : near - 40;
+      }
       case 'quay': {
         // A level quay, then the harbour wall down to the water.
         if (back >= 22) return this.seaY(x) - 0.6;
@@ -1258,6 +1325,11 @@ export class World {
 
   private buildPitFills() {
     const b = this.biome;
+    if (b.pitFill === 'sky') {
+      // No bottom: you look straight down to the clouds, which fill the gap below the lips.
+      for (const p of this.track.pits) this.buildGapClouds(p);
+      return;
+    }
     if (b.pitFill === 'dark') {
       for (const p of this.track.pits) this.buildGapFloor(p);
       return;
@@ -1354,6 +1426,28 @@ export class World {
     g.computeVertexNormals();
     this.group.add(new THREE.Mesh(g, mat));
   }
+
+  /** Sky Islands: puffs of cloud down in a gap, hiding its floor, and the sea of clouds below. */
+  private buildGapClouds(p: Pit) {
+    const r = rng(hashString(`${p.x0}`));
+    const w = p.x1 - p.x0;
+    const g = new THREE.Group();
+    for (let i = 0; i < 4 + w; i++) {
+      const s = new THREE.Mesh(new THREE.SphereGeometry(1.6 + r() * 1.4, 10, 8), this.cloudMat);
+      s.position.set(p.x0 - 1 + r() * (w + 2), p.floorY + 1 + r() * 1.6, 3 - r() * 9);
+      g.add(s);
+    }
+    this.group.add(g);
+  }
+
+  private get cloudMat() {
+    if (!this._cloudMat) {
+      this._cloudMat = new THREE.MeshToonMaterial({ color: 0xffffff });
+      this._cloudMat.userData.outlineParameters = { visible: false };
+    }
+    return this._cloudMat;
+  }
+  private _cloudMat?: THREE.MeshToonMaterial;
 
   /** Something to see at the bottom of a dry gap's ravine: a creek, an alley, a crevasse, a gully. */
   private buildGapFloor(p: Pit) {
@@ -1709,6 +1803,44 @@ export class World {
         }
         break;
       }
+      case 'skyislands': {
+        // Floating islands far off, grass on top and rock tapering away underneath, some with
+        // a waterfall pouring off the edge; a sea of clouds far below.
+        for (let x = -60; x < len + 120; x += 26 + r() * 30) {
+          const rad = 6 + r() * 10, y = tr.minY + 8 + r() * 30, z = -70 - r() * 80;
+          const isl = new THREE.Group();
+          isl.add(new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 0.9, 2, 10), hazed(b.farColors[0], 0.2)));
+          const under = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.9, rad * 1.6, 9), hazed(b.farColors[1], 0.2));
+          under.rotation.x = Math.PI;
+          under.position.y = -1 - rad * 0.8;
+          isl.add(under);
+          for (let k = 0; k < 3; k++) {
+            const tree = new THREE.Mesh(new THREE.SphereGeometry(1.4 + r(), 8, 6), hazed(0x4a9a4a, 0.2));
+            tree.position.set((r() - 0.5) * rad, 2, (r() - 0.5) * rad * 0.6);
+            isl.add(tree);
+          }
+          if (r() > 0.5) {
+            const fall = new THREE.Mesh(new THREE.PlaneGeometry(1.4, rad * 2.5), new THREE.MeshBasicMaterial({ color: 0xdff4ff, transparent: true, opacity: 0.8 }));
+            fall.position.set(rad * 0.3, -rad * 1.25, rad * 0.6);
+            isl.add(fall);
+          }
+          isl.position.set(x, y, z);
+          far.add(isl);
+        }
+        const sea = new THREE.Mesh(new THREE.PlaneGeometry(len + 800, 600), new THREE.MeshBasicMaterial({ color: 0xf4faff }));
+        sea.rotation.x = -Math.PI / 2;
+        sea.position.set(len / 2, tr.minY + 3, -280);
+        far.add(sea);
+        const cm = new THREE.MeshToonMaterial({ color: 0xffffff });
+        for (let x = -60; x < len + 120; x += 5 + r() * 6) {
+          for (const z of [12, -14, -40]) {
+            const s = new THREE.Mesh(new THREE.SphereGeometry(4 + r() * 4, 10, 8), cm);
+            s.position.set(x, tr.minY + 2 + r() * 1.5, z - r() * 10);
+            far.add(s);
+          }
+        }
+        break;
+      }
       case 'fields': {
         // Patchwork farmland: rolling hills striped with crop rows, hedges along the top.
         const stripes = b.farColors.map((col, k) => {
@@ -2001,7 +2133,7 @@ export class World {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       this.sky.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85, depthWrite: false })));
-      if (!b.bigMoon) {
+      if (!b.bigMoon && !b.earth) {
         const moon = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshBasicMaterial({ color: 0xfff6dc, fog: false }));
         moon.position.set(-60, 44, -320);
         this.sky.add(moon);
@@ -2019,6 +2151,22 @@ export class World {
         this.sky.add(spot);
       }
       this.sky.add(halo, moon);
+    }
+    if (b.earth) {
+      // The Earth hanging in the black sky: blue sea, green and brown land, white clouds.
+      const at = (x: number, y: number, rr: number, color: number, z: number) => {
+        const m = new THREE.Mesh(new THREE.CircleGeometry(rr, 28), new THREE.MeshBasicMaterial({ color, fog: false }));
+        m.position.set(x, y, z);
+        this.sky.add(m);
+      };
+      const ex = 40, ey = 80;
+      at(ex, ey, 30, 0x9ad8ff, -322);
+      at(ex, ey, 26, 0x2a6ad8, -320);
+      for (const [x, y, rr, c] of [[-8, 6, 9, 0x4aa04a], [6, -6, 7, 0x6ab04a], [10, 10, 5, 0xc8a46a], [-6, -12, 5, 0x4aa04a]] as const) at(ex + x, ey + y, rr, c, -319);
+      for (const [x, y, rr] of [[-14, -2, 4], [2, 14, 5], [14, -2, 3.5], [-2, -18, 3]] as const) at(ex + x, ey + y, rr, 0xffffff, -318.5);
+      const shade = new THREE.Mesh(new THREE.CircleGeometry(26, 28, Math.PI * 0.6, Math.PI), new THREE.MeshBasicMaterial({ color: 0x000010, fog: false, transparent: true, opacity: 0.55 }));
+      shade.position.set(ex, ey, -318);
+      this.sky.add(shade);
     }
     if (b.cave) {
       // The roof of the cavern: a band of dark rock with stalactites hanging down from it.
@@ -2133,6 +2281,24 @@ export class World {
       this.beacons.push(halo);
       this.addLamp(x, y + 3.42 * scale, z, 0xffa830, 28, 11);
     }
+    if (this.biome.lights && kind === 'moonlamp') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(0, 2.82, 0.5);
+      halo.scale.setScalar(1.6);
+      const beacon = new THREE.Sprite(haloMaterial());
+      beacon.position.set(0, 3.08, 0);
+      beacon.scale.setScalar(1);
+      o.add(halo, beacon);
+      this.beacons.push(beacon);
+      this.addLamp(x, y + 2.82 * scale, z + 0.5 * scale, 0xfff0d0, 26, 10);
+    }
+    if (this.biome.lights && kind === 'skylamp') {
+      const halo = new THREE.Sprite(haloMaterial());
+      halo.position.set(0, 2.38, 0.45);
+      halo.scale.setScalar(1.6);
+      o.add(halo);
+      this.addLamp(x, y + 2.38 * scale, z + 0.45 * scale, 0xffd890, 26, 10);
+    }
     if (this.biome.lights && kind === 'minelamp') {
       const halo = new THREE.Sprite(haloMaterial());
       halo.position.set(0, 2.0, 0.44);
@@ -2214,7 +2380,7 @@ export class World {
       }
       if (b.posts.kind === 'liftpylon') this.buildLift(tops);
     }
-    if (b.lights && !['lamp', 'gumlamp', 'docklamp', 'gaslamp', 'fairlamp', 'warnlamp', 'minelamp'].includes(b.posts?.kind ?? '')) this.buildNightLights(end);
+    if (b.lights && !['lamp', 'gumlamp', 'docklamp', 'gaslamp', 'fairlamp', 'warnlamp', 'minelamp', 'moonlamp', 'skylamp'].includes(b.posts?.kind ?? '')) this.buildNightLights(end);
     if (b.edge) for (let x = 6; x < end; x += b.edge.spacing * (0.7 + r() * 0.6)) this.placeProp(b.edge.kind, x, b.edge.z, 1, r() * Math.PI);
     for (const p of this.track.props) this.placeProp(p.kind, p.x, p.z, p.scale, p.rot);
     this.buildBlobs();

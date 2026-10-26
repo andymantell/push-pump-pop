@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { Rider, BoardGrab, GRAVITY } from './rider';
+import { Rider, BoardGrab } from './rider';
 import { toon } from './toon';
+import { spaceKit } from './spacesuit';
 import { railY } from './track';
 
 // Rigid-part skater posed procedurally: two-bone IK keeps the feet on the
@@ -240,6 +241,7 @@ export class Skater {
   private airBefore = 0;
   private landT = -1;
   private landW = 0;
+  private space = spaceKit();
 
   constructor(parts?: Partial<Record<PartName | SnowPartName | MtbPartName, THREE.Object3D>>) {
     const ph = placeholderParts();
@@ -277,6 +279,7 @@ export class Skater {
     this.boardPivot.add(mp.mountainboard);
     p.torso.add(mp.head_helmet);
     mp.head_helmet.position.y = 0.5;
+    p.torso.add(this.space);
     this.setBoard('skate');
 
     const sh = new THREE.Mesh(
@@ -290,6 +293,9 @@ export class Skater {
   }
 
   get shadowMesh() { return this.shadow; }
+
+  /** The space helmet, on the moon. */
+  setSpace(on: boolean) { this.space.visible = on; }
 
   /** Snowboard and beanie on the snow, mountain board and helmet on the farm, skateboard and cap everywhere else. */
   setBoard(kind: BoardKind) {
@@ -580,7 +586,7 @@ export class Skater {
         this.olPopY = r.popY;
         this.olPopX = r.x - r.vx * dt;
         this.olPopSlope = Math.tan(r.angle);
-        this.olS = Math.max(0.8, Math.min(1, r.vy / GRAVITY / OLLIE_PEAK));
+        this.olS = Math.max(0.8, Math.min(1, r.vy / r.g / OLLIE_PEAK));
       }
     }
     const active = !(this.olT < 0 || r.grounded || r.grind || r.loop || r.bailing || r.falling);

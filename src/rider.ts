@@ -218,6 +218,8 @@ export interface RiderOptions {
   mega?: boolean;
   /** Scooter: whips and barspins on the right, body tricks on the left, scooter grinds. */
   scooter?: boolean;
+  /** Gravity, if not the usual (lower on the moon). */
+  gravity?: number;
 }
 
 export class Rider {
@@ -302,6 +304,8 @@ export class Rider {
   /** The gap we last fell into. */
   fallPit: Pit | null = null;
   opts: RiderOptions = { friction: 1, maxSpeed: MAX_SPEED };
+  /** Gravity for this ride. */
+  get g() { return this.opts.gravity ?? GRAVITY; }
 
   constructor(public track: Track, private ev: RiderEvents) {
     this.reset();
@@ -543,7 +547,7 @@ export class Rider {
   /** Riding round a loop: gravity along the curve, and fall off the top if too slow. */
   private stepLoop(dt: number) {
     const lp = this.loop!, L = lp.L;
-    this.v -= (GRAVITY * Math.sin(lp.phi) + LOOP_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v) * dt;
+    this.v -= (this.g * Math.sin(lp.phi) + LOOP_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v) * dt;
     lp.phi += (this.v / L.r) * dt;
     this.x = L.x + L.r * Math.sin(lp.phi);
     this.y = L.y + L.r - L.r * Math.cos(lp.phi);
@@ -562,7 +566,7 @@ export class Rider {
       return;
     }
     // Too slow to stay on (the curve can't hold you up), or rolling back: you fall off.
-    if (this.v * this.v / L.r < -GRAVITY * Math.cos(lp.phi) || this.v <= 0) {
+    if (this.v * this.v / L.r < -this.g * Math.cos(lp.phi) || this.v <= 0) {
       this.loop = null;
       this.vx = this.v * Math.cos(lp.phi);
       this.vy = this.v * Math.sin(lp.phi);
@@ -648,11 +652,11 @@ export class Rider {
     // the first spot far enough on that you'd be on your way down when you get there.
     let xt = Math.max(rail.x0 + 0.4, this.x + this.v * 0.2);
     const T = () => (xt - this.x) / this.v;
-    while (xt < rail.x1 - RAIL_ROOM && railY(rail, xt) - y0 > GRAVITY * T() * T() / 2 * 0.7) xt += 0.1;
+    while (xt < rail.x1 - RAIL_ROOM && railY(rail, xt) - y0 > this.g * T() * T() / 2 * 0.7) xt += 0.1;
     if (xt >= rail.x1 - RAIL_ROOM) return false;
     const t = T();
     this.vx = this.v;
-    this.vy = (railY(rail, xt) - y0 + GRAVITY * t * t / 2) / t;
+    this.vy = (railY(rail, xt) - y0 + this.g * t * t / 2) / t;
     this.popY = this.y;
     this.pops++;
     this.y += 0.02;
@@ -746,7 +750,7 @@ export class Rider {
     if (this.falling) {
       // Tumbling into a pit: no collisions until respawn.
       if (this.grounded) { this.vx = this.v * 0.5; this.vy = 0; this.grounded = false; }
-      this.vy -= GRAVITY * dt;
+      this.vy -= this.g * dt;
       this.x += this.vx * 0.5 * dt;
       this.y += this.vy * dt;
       this.angle -= dt * 3;
@@ -763,7 +767,7 @@ export class Rider {
       const th = Math.atan(this.grindSlope);
       const dir = Math.sign(this.v) || 1;
       this.timeSinceGround = 0;
-      this.v += (-GRAVITY * Math.sin(th) - dir * (GRIND_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v)) * dt;
+      this.v += (-this.g * Math.sin(th) - dir * (GRIND_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v)) * dt;
       this.x += this.v * Math.cos(th) * dt;
       this.grind.t += dt;
       this.angle = th;
@@ -816,7 +820,7 @@ export class Rider {
       const sin = Math.sin(th), cos = Math.cos(th);
       const dir = Math.sign(this.v) || 1;
 
-      let a = -GRAVITY * sin;
+      let a = -this.g * sin;
       a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * this.v * this.v);
       if (tr.inMud(this.x)) a -= dir * (MUD_DRAG + MUD_DRAG_PER_SPEED * Math.abs(this.v));
       const belt = !this.inPipe ? tr.beltAt(this.x) : null;
@@ -839,7 +843,7 @@ export class Rider {
       const braking = this.stopAt !== null && !this.bailing && this.v >= 0;
       if (braking) a -= Math.min(8, Math.max(1.5, this.v * this.v / (2 * Math.max(0.5, this.stopAt! - this.x))));
       if (!braking && !this.bailing && !this.manual && !this.opts.pipe && !this.opts.mega && this.v < MIN_PUSH_SPEED) {
-        a += 4 + GRAVITY * Math.max(0, sin);
+        a += 4 + this.g * Math.max(0, sin);
         this.pushing = true;
       }
 
@@ -854,7 +858,7 @@ export class Rider {
       const face = Math.atan(Math.abs(behind) > this.wall ? k : behind);
       const lookX = this.x + this.v * Math.cos(face) * dt * 3;
       const cliff = tr.height(lookX) < this.y + Math.tan(face) * (lookX - this.x) - 0.15;
-      if ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > GRAVITY * cos * STICK && (this.inPipe || Math.abs(this.v) > 4))) {
+      if ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > this.g * cos * STICK && (this.inPipe || Math.abs(this.v) > 4))) {
         this.vx = this.v * Math.cos(face);
         this.vy = this.v * Math.sin(face);
         if (this.pumpTimer > 0) this.vy += 1.2; // pumping into a lip pops you a little higher
@@ -889,7 +893,7 @@ export class Rider {
       this.timeSinceGround += dt;
       this.airTime += dt;
       const px = this.x, py = this.y;
-      this.vy -= GRAVITY * dt;
+      this.vy -= this.g * dt;
       if (this.airPump > 0) { this.vy -= AIR_PUMP_ACCEL * dt; this.airPump -= dt; }
       this.vx -= Math.sign(this.vx) * AIR_DRAG * this.vx * this.vx * dt;
       this.x += this.vx * dt;

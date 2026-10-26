@@ -227,9 +227,11 @@ function loadTrack(d: TrackDef) {
   // Bound in on a mountain board down the farm's dirt tracks: grabs instead of flips.
   const mountain = d.biome === 'farm' && !scoot;
   // Mega ramps are smooth and fast.
-  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow, mountain, scooter: scoot };
+  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow, mountain, scooter: scoot, gravity: b.gravity };
   skater.setBoard(snow ? 'snow' : mountain ? 'mountain' : 'skate');
   scooter.setKind(snow ? 'snow' : 'scooter');
+  skater.setSpace(d.biome === 'moon');
+  scooter.setSpace(d.biome === 'moon');
   skater.root.visible = !scoot;
   scooter.root.visible = scoot;
   sound.setScene(world.biome, snow, !scoot && (snow || mountain), scoot);
@@ -587,8 +589,8 @@ function updateCamera(dt: number) {
   }
   const spd = rider.speed;
   const portrait = aspect < 1 ? 1 / aspect : 1;
-  // Mega ramps: pull right back for the huge airs, keeping the ground below in view.
-  const high = def.kind === 'mega' ? Math.max(0, rider.y - track.height(rider.x)) : 0;
+  // Mega ramps and low gravity: pull right back for the huge airs, keeping the ground below in view.
+  const high = def.kind === 'mega' || world.biome.gravity ? Math.max(0, rider.y - track.height(rider.x)) : 0;
   const dist = (10 + spd * 0.25 + high * 1.3) * Math.min(1.9, portrait * 0.85 + 0.15);
   const ahead = (2.5 + spd * 0.18) * (aspect < 1 ? 0.45 : 1);
   const ground = track.height(rider.x + ahead);

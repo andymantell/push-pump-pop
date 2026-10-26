@@ -93,7 +93,7 @@ export function ride(trackId: string, pumpRate: number, ollie: boolean, seed: nu
       if (i < 0) loopFell = true;
     },
   });
-  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isMega ? 22 : biome.maxSpeed, mega: isMega, snow: def.biome === 'snow', mountain: def.biome === 'farm' };
+  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isMega ? 22 : biome.maxSpeed, mega: isMega, snow: def.biome === 'snow', mountain: def.biome === 'farm', gravity: biome.gravity };
   if (isMega) r.perch();
   const queue: { at: number; act: 'pump' | 'up' }[] = [];
   let lastPump = -1, lastLip = -1;
