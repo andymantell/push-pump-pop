@@ -7,11 +7,11 @@ for this game and lives in this repository.
 
 | Sound | How it's made |
 | --- | --- |
-| Rolling on concrete (Sunny Park) | Brown noise roar plus a white noise band, with a two-wheel "tk-tk" over each slab joint every 3 m |
+| Rolling on concrete (Sunny Park, Desert) | Brown noise roar plus a white noise band, with a two-wheel "tk-tk" over each slab joint every 3 m |
 | Rolling on boardwalk planks (Beach) | A hollow, resonant low band, and a knock over every gap between boards |
 | Rolling on tar and gravel (Rooftops) | A duller roar with lots of little gravel crackles |
 | Carving snow (Snowy Mountain) | A bright filtered hiss and crunch, no wheel roar (it's a snowboard) |
-| Rolling on sand (Desert) | A gritty, hissy band and dense crackles |
+| Rolling on sand (Pirate Cove, Moon Base) | A gritty, hissy band and dense crackles |
 | Rolling on temple flagstones (Jungle) | A stone roar with uneven, clunky joints |
 | Rolling on lava rock (Volcano) | A heavy, crunchy roar |
 | Landings and bails | A low pitched thump, and a noise burst shaped to the surface |
