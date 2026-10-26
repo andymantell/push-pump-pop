@@ -4,7 +4,10 @@ declare const __BUILD_ID__: string;
 
 export function registerOffline() {
   if (__BUILD_ID__ === 'dev' || !('serviceWorker' in navigator)) return;
-  const go = () => navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => { /* not installable here */ });
+  const go = () => navigator.serviceWorker.register('sw.js', { scope: './' }).then((reg) => {
+    // Browsers only look for a new worker now and then; look whenever the app comes back.
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => { /* offline */ }); });
+  }, () => { /* not installable here */ });
   // After the page has loaded, so it doesn't compete with the first download.
   if (document.readyState === 'complete') go();
   else addEventListener('load', go);

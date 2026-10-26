@@ -34,7 +34,9 @@ async function page(req) {
   const cache = await caches.open(CACHE);
   const home = new URL('./', self.registration.scope).href;
   try {
-    const res = await fetch(req);
+    // Ask the server every time (a quick 304 when nothing changed): GitHub Pages lets
+    // browsers keep the page for 10 minutes, which would reopen an old build.
+    const res = await fetch(req, { cache: 'no-cache' });
     if (res.ok) {
       const html = await res.clone().text();
       await cache.put(home, res.clone());

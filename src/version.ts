@@ -7,12 +7,12 @@ declare const __BUILD_TIME__: string;
 declare const __CHANGELOG__: { time: string; items: string[] }[];
 
 const POLL_MS = 60_000;
+/** How soon to look again when a new build is out but the CDN still hands back the old page. */
+const RETRY_MS = 15_000;
 const MAX_NOTES = 4;
 /** sessionStorage key holding how many reloads we've tried to reach the latest build. */
 const TRIES_KEY = 'push-pump-pop-reload-tries';
 const MAX_TRIES = 3;
-/** A new build must stay the newest this long before we offer it, so a burst of deploys prompts once. */
-const SETTLE_MS = 90_000;
 /** localStorage key remembering the last build this device ran, to tell what's new since. */
 const LAST_KEY = 'push-pump-pop-last-build';
 const MAX_UPDATES = 12;
@@ -135,23 +135,26 @@ export function watchForUpdates(inRun: () => boolean, leaveRun: () => void) {
   });
   document.body.appendChild(box);
 
-  let candidate: string | null = null;
-  let candidateSince = 0;
+  let checking = false;
+  let retry = 0;
   const check = async () => {
-    const v = await fetchVersion();
-    // The live build is this one after all: take down any prompt.
-    if (v?.id === __BUILD_ID__) { latest = null; candidate = null; return; }
-    if (!newer(v) || v.id === latest) return;
-    // Wait for the deploy to settle, then only offer it once a reload would really
-    // load it, so the button never shows for a build we can't get yet.
-    if (v.id !== candidate) { candidate = v.id; candidateSince = Date.now(); }
-    if (Date.now() - candidateSince < SETTLE_MS) { setTimeout(check, SETTLE_MS); return; }
-    if (await servedBuild() !== v.id) return;
-    latest = v.id;
-    if (Array.isArray(v.changelog)) {
-      notes = v.changelog.flatMap((e: { items?: unknown }) => (Array.isArray(e.items) ? e.items : []))
-        .filter((s: unknown): s is string => typeof s === 'string' && !known.has(s));
-    }
+    if (checking) return;
+    checking = true;
+    clearTimeout(retry);
+    try {
+      const v = await fetchVersion();
+      // The live build is this one after all: take down any prompt.
+      if (v?.id === __BUILD_ID__) { latest = null; return; }
+      if (!newer(v) || v.id === latest) return;
+      // Only offer it once a reload would really load it, so the button never shows
+      // for a build we can't get yet. Until then look again soon, not at the next poll.
+      if (await servedBuild() !== v.id) { retry = window.setTimeout(check, RETRY_MS); return; }
+      latest = v.id;
+      if (Array.isArray(v.changelog)) {
+        notes = v.changelog.flatMap((e: { items?: unknown }) => (Array.isArray(e.items) ? e.items : []))
+          .filter((s: unknown): s is string => typeof s === 'string' && !known.has(s));
+      }
+    } finally { checking = false; }
   };
 
   // Just reloaded for an update: make sure it took. If we still have an old build,
@@ -174,7 +177,13 @@ export function watchForUpdates(inRun: () => boolean, leaveRun: () => void) {
   }
   check();
   setInterval(check, POLL_MS);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  // Timers sleep while the app is in the background (an iPad home screen app can sit
+  // there for days), so look the moment it comes back.
+  const wake = () => { if (!document.hidden) check(); };
+  document.addEventListener('visibilitychange', wake);
+  addEventListener('pageshow', wake);
+  addEventListener('focus', wake);
+  addEventListener('online', wake);
 
   // In a run: a small chip up top. On menus: the notes with Reload and Later, or
   // after Later, a small pill at the bottom that opens them again.
