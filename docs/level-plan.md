@@ -240,7 +240,7 @@ optional challenge at least once in 24 runs. Park 1 to 6 required challenges: at
 
 | # | Name | 1 | 2 | 3 |
 |---|------|---|---|---|
-| 1 | Temple Rhythm | ★ Clear both river gaps | ★ One combo across a rhythm set | Score 5,000 |
+| 1 | Temple Rhythm | ★ Clear both river gaps | ★ Trick off the 3 jumps in one combo | Score 5,000 |
 | 2 | Drum Beat | ★ Do 12 good pumps | ★ A trick on every kicker | Finish without losing a life |
 | 3 | Temple Steps | ★ Flip off a step | ★ Land a 4-trick combo | Score 12,000 |
 | 4 | Croc Creek | ★ Clear every river gap | ★ Grab over 3 gaps | Finish without losing a life |

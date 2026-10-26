@@ -9,7 +9,7 @@ export const JUNGLE: TrackDef[] = [
     id: 'jungle-1', biome: 'jungle', name: 'Temple Rhythm', difficulty: 5, par: 46000,
     challenges: [
       { text: 'Clear both river gaps', kind: 'gaps' },
-      { text: 'One combo across a rhythm set', kind: 'combo', across: ['rhythm', 'rhythmend'] },
+      { text: 'Trick off the 3 jumps in one combo', kind: 'combo', across: ['rhythm', 'rhythmend'] },
       { text: 'Score 46,000', kind: 'score', points: 46000 },
     ],
     build: layout(3, 5, (b) => {
@@ -21,7 +21,7 @@ export const JUNGLE: TrackDef[] = [
       b.drop(-0.6).flat(2).drop(-0.6).flat(2).drop(-0.6).flat(4);
       b.rollers(4, 12, 0.91).flat(3);
       // A rhythm set: hop, hop, hop, close enough together to be one combo.
-      b.sign('RHYTHM SET: ONE COMBO').ease(8, -1.5).flat(3);
+      b.sign('3 JUMPS: ONE COMBO').ease(8, -1.5).flat(3);
       b.kicker(4, 1.3).spot('rhythm').flat(3).land(31).flat(1);
       b.kicker(4, 1.3).flat(3).land(27).flat(1);
       b.kicker(4, 1.3).spot('rhythmend').flat(2).land(21).flat(4);

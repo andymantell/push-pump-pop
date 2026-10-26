@@ -103,7 +103,7 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   'desert-mega': scored(17500, drops(), bothAirs()),
 
   // Jungle.
-  'jungle-1': scored(58500, gaps('Clear both river gaps'), combo('One combo across a rhythm set', { across: ['rhythm', 'rhythmend'] })),
+  'jungle-1': scored(58500, gaps('Clear both river gaps'), combo('Trick off the 3 jumps in one combo', { across: ['rhythm', 'rhythmend'] })),
   'jungle-2': set(32000, pumps(12), everyKicker('A whip on every kicker', 'whip'), noLives()),
   'jungle-3': scored(48000, trick('Whip off a step', 'whip', { from: 'stairs' }), tricks(4)),
   'jungle-4': set(15500, gaps('Clear every river gap'), trick('A body trick over 3 gaps', 'hold', { overGap: true, count: 3 }), noLives()),
