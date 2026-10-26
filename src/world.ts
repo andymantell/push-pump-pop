@@ -2664,6 +2664,16 @@ export class World {
   private buildProps() {
     const b = this.biome, r = this.rand;
     const end = this.track.length + 10;
+    // A natural river's far bank: rocks at the water's edge, some half in the water.
+    if (b.river && b.groundShape === 'river') {
+      const edge = -(TRACK_W / 2 + b.river.width);
+      const rock = b.back.some(([k]) => k === 'desertrock') ? 'desertrock' : 'boulder';
+      for (let x = -10; x < end; x += 1.6 + r() * 3) {
+        const z = edge + 0.4 - r() * 1.6;
+        if (this.clearings.some((c) => Math.abs(x - c.x) < c.r && Math.abs(z - c.z) < c.r)) continue;
+        this.placeProp(rock, x, z, 0.5 + r() * 0.7, r() * Math.PI * 2);
+      }
+    }
     // The hillside town: a terrace of painted houses along the street behind the course.
     if (b.id === 'dh-urban') {
       const houses = ['townhouse_a', 'townhouse_b', 'townhouse_c', 'townhouse_d'];
