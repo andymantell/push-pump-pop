@@ -50,7 +50,7 @@ const SKATES_ONLY = new Set<string>([...members('skates'), 'Mute', 'Japan', 'Saf
 /** The tricks in a group this ride can do. */
 /** The moves a kayak can make, for picking from a goal's group (a loop goal also names a backflip). */
 const BOAT_MOVES = new Set<string>(['Boof', 'Air Blunt', 'Pan-Am', 'Back Loop', 'Front Loop', 'McNasty', 'Cartwheel', 'Blunt', 'Splat', 'Bow Stall', 'Stern Stall']);
-const doable = (names: TrickName[]) => (BOAT ? names.filter((n) => BOAT_MOVES.has(n)) : ROLL ? names : names.filter((n) => !SKATES_ONLY.has(n)));
+const doable = (names: TrickName[]) => (BOAT ? names.filter((n) => BOAT_MOVES.has(n)) : names.filter((n) => !BOAT_MOVES.has(n) && (ROLL || !SKATES_ONLY.has(n))));
 /** The swipe on a rail that changes to each grind. */
 const STYLE_SWIPE: Record<string, Swipe | string> = SCOOT ? { Boardslide: 'left', Feeble: 'right', Smith: 'down' }
   : ROLL ? { Soul: 'left', Royale: 'right', Makio: 'down', Unity: 'combo:left' } : { Boardslide: 'left', Nosegrind: 'right', '5-0': 'down' };
