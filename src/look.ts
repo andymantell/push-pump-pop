@@ -67,6 +67,11 @@ export interface Look {
   scooterColour: number;
   barsColour: number;
   scooterWheelColour: number;
+  /** Inline skates: the boot (and the pads), its cuff and straps, the frame (and the snowblades) and the wheels. */
+  skateBootColour: number;
+  skateCuffColour: number;
+  skateFrameColour: number;
+  skateWheelColour: number;
   snowboardColour: number;
   mountainboardColour: number;
   /** The downhill bike's frame. */
@@ -86,6 +91,7 @@ export const DEFAULT_LOOK: Look = {
   shoes: 'low', shoeColour: 0xf5f5f0, soleColour: 0xece6d6, laceColour: 0xe8402a,
   deck: 'none', deckColour: 0xe8402a, deckArtColour: 0xffd23f, gripColour: 0x222226, wheelColour: 0xf5e6a8, truckColour: 0xb8bec6,
   scooterColour: 0x7a4fd8, barsColour: 0xc4cad4, scooterWheelColour: 0xffd23f,
+  skateBootColour: 0x222428, skateCuffColour: 0xe8402a, skateFrameColour: 0x3c3e46, skateWheelColour: 0xffd640,
   snowboardColour: 0x2a7fd4, mountainboardColour: 0x3c9646, bikeColour: 0x18b6b0,
   kayakColour: 0xf2552a, playboatColour: 0x2ab0e0,
 };
@@ -322,6 +328,13 @@ const SLOTS: Record<string, (l: Look) => number> = {
   scooter_bar: (l) => l.barsColour,
   scooter_tyre: (l) => l.scooterWheelColour,
   snowscoot_ski: (l) => l.scooterColour,
+  roller_boot: (l) => l.skateBootColour,
+  roller_cuff: (l) => l.skateCuffColour,
+  roller_frame: (l) => l.skateFrameColour,
+  roller_ski: (l) => l.skateFrameColour,
+  roller_wheel: (l) => l.skateWheelColour,
+  pad_shell: (l) => l.skateBootColour,
+  pad_strap: (l) => l.skateCuffColour,
   snowboard_top: (l) => l.snowboardColour,
   mtb_deck: (l) => l.mountainboardColour,
   mtb_frame: (l) => l.bikeColour,
@@ -390,6 +403,7 @@ export function randomLook(old: Look): Look {
     bottom: pick(BOTTOMS), bottomColour: bright(), legsColour: bright(), sockColour: bright(),
     shoes: pick(SHOES), shoeColour: bright(), laceColour: bright(), soleColour: Math.random() < 0.6 ? 0xf4f4f0 : bright(),
     deck: pick(DECK_ARTS), deckColour: bright(), deckArtColour: bright(), wheelColour: bright(),
-    scooterColour: bright(), barsColour: bright(), scooterWheelColour: bright(), snowboardColour: bright(), mountainboardColour: bright(), bikeColour: bright(), kayakColour: bright(), playboatColour: bright(),
+    scooterColour: bright(), barsColour: bright(), scooterWheelColour: bright(),
+    skateBootColour: Math.random() < 0.5 ? 0x222428 : bright(), skateCuffColour: bright(), skateFrameColour: bright(), skateWheelColour: bright(), snowboardColour: bright(), mountainboardColour: bright(), bikeColour: bright(), kayakColour: bright(), playboatColour: bright(),
   };
 }

@@ -8,6 +8,7 @@ import { World } from './world';
 import { LampLights } from './lighting';
 import { Skater } from './skater';
 import { ScooterRig } from './scooter';
+import { RollerRig } from './roller';
 import { MtbRig } from './mtb';
 import { KayakRig } from './kayak';
 import { RIDES, RideId, rideGoes, savedRide, saveRide, signFor, MTB_WORLD, KAYAK_WORLD } from './ride';
@@ -270,23 +271,26 @@ function loadTrack(d: TrackDef) {
   rider.track = track;
   const isPipe = d.kind === 'pipe', isMega = d.kind === 'mega';
   const snow = d.biome === 'snow';
-  const scoot = ride === 'scooter', bike = ride === 'mtb', boat = ride === 'kayak';
-  // Bound in on a mountain board down the farm's dirt tracks: grabs instead of flips.
-  const mountain = d.biome === 'farm' && ride === 'skate';
+  const scoot = ride === 'scooter', bike = ride === 'mtb', boat = ride === 'kayak', skates = ride === 'roller';
+  // Bound in on a mountain board down the farm's dirt tracks: grabs instead of flips. Off-road skates too.
+  const mountain = d.biome === 'farm' && (ride === 'skate' || skates);
   // Mega ramps are smooth and fast.
-  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow: snow && !bike, mountain, scooter: scoot, mtb: bike, kayak: boat, gravity: b.gravity };
+  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow: snow && !bike, mountain, scooter: scoot, roller: skates, mtb: bike, kayak: boat, gravity: b.gravity };
   kayak.setBoat(isPipe ? 'play' : 'river');
   skater.setBoard(snow ? 'snow' : mountain ? 'mountain' : 'skate');
   scooter.setKind(snow ? 'snow' : 'scooter');
+  roller.setKind(snow ? 'blades' : mountain ? 'offroad' : 'skates');
+  roller.setSpace(d.biome === 'moon');
   skater.setSpace(d.biome === 'moon');
   scooter.setSpace(d.biome === 'moon');
   mtb.setSnow(snow);
   mtb.setSpace(d.biome === 'moon');
   skater.root.visible = ride === 'skate';
   scooter.root.visible = scoot;
+  roller.root.visible = skates;
   mtb.root.visible = bike;
   kayak.root.visible = boat;
-  sound.setScene(world.biome, snow && !bike, ride === 'skate' && (snow || mountain), scoot, bike, boat);
+  sound.setScene(world.biome, snow && !bike, ride === 'skate' && (snow || mountain), scoot, bike, boat, skates);
   rider.reset();
   // Half pipes start up on the coping: the first tap drops you in. A standing wave starts in its trough.
   if ((isPipe && !track.holes.some((h) => h.wave)) || isMega) rider.perch();
@@ -295,9 +299,10 @@ function loadTrack(d: TrackDef) {
 
 const skater = new Skater(assets.parts);
 const scooter = new ScooterRig(assets.parts, skater.shadowMesh);
+const roller = new RollerRig(assets.parts, skater.shadowMesh);
 const mtb = new MtbRig(assets.parts, skater.shadowMesh);
 const kayak = new KayakRig(assets.parts, skater.shadowMesh);
-scene.add(skater.root, scooter.root, mtb.root, kayak.root, skater.shadowMesh);
+scene.add(skater.root, scooter.root, roller.root, mtb.root, kayak.root, skater.shadowMesh);
 // Dressed in the look from the customiser.
 const wardrobe = new Wardrobe(assets.wardrobe);
 let look = loadLook();
@@ -305,9 +310,10 @@ setColours(look);
 function dressRiders() {
   skater.wear(look, wardrobe);
   scooter.wear(look, wardrobe);
+  roller.wear(look, wardrobe);
   mtb.wear(look, wardrobe);
   kayak.wear(look, wardrobe);
-  for (const f of [skater, scooter, mtb, kayak]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+  for (const f of [skater, scooter, roller, mtb, kayak]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
 }
 dressRiders();
 let customiser: Customiser | null = null;
@@ -320,10 +326,10 @@ $('riderbtn').addEventListener('click', () => {
   customiser.show(look);
 });
 /** Whoever's riding. */
-const figure = () => (ride === 'scooter' ? scooter : ride === 'mtb' ? mtb : ride === 'kayak' ? kayak : skater);
+const figure = () => (ride === 'scooter' ? scooter : ride === 'roller' ? roller : ride === 'mtb' ? mtb : ride === 'kayak' ? kayak : skater);
 
 // Big combos are recorded for slow-motion replays: see replay.ts.
-const replays: Replays = new Replays([...skater.joints, ...scooter.joints, ...mtb.joints, ...kayak.joints], camera, skater.shadowMesh);
+const replays: Replays = new Replays([...skater.joints, ...scooter.joints, ...roller.joints, ...mtb.joints, ...kayak.joints], camera, skater.shadowMesh);
 const player = new Player(replays, () => replays.clips);
 const chip = $('replaychip');
 let chipClip: Clip | null = null;
@@ -426,8 +432,8 @@ function start(d: TrackDef = def) {
   // If the iPad has lost motion access, tilt tricks silently stop working: say so.
   window.setTimeout(() => { if (state === 'playing' && tilt.missing) toast('Tilt is off. Tap to turn it back on, then tap <b>Allow</b>'); }, 2000);
   $('trackname').textContent = d.name;
-  $('grabzone').textContent = ride === 'skate' ? 'GRAB' : 'HOLD';
-  $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : ride === 'mtb' || ride === 'kayak' ? 'TRICK' : 'FLIP';
+  $('grabzone').textContent = ride === 'skate' || ride === 'roller' ? 'GRAB' : 'HOLD';
+  $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : ride === 'mtb' || ride === 'kayak' || ride === 'roller' ? 'TRICK' : 'FLIP';
   if (ride === 'kayak') $('grabzone').textContent = 'HOLE MOVES';
   show(null);
   state = 'playing';
@@ -861,7 +867,7 @@ requestAnimationFrame(frame);
 
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
-  rider, score, skater, scooter, mtb, kayak, world: () => world, replays, get ride() { return ride; }, setRide, progress, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
+  rider, score, skater, scooter, roller, mtb, kayak, world: () => world, replays, get ride() { return ride; }, setRide, progress, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
   quality,
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };

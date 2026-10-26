@@ -124,6 +124,10 @@ const GRIND_STYLE: Record<string, { pitch: number; q: number }> = {
   '50-50': { pitch: 1, q: 1 }, '5-0': { pitch: 0.94, q: 1 }, 'Nosegrind': { pitch: 1.08, q: 1 }, 'Boardslide': { pitch: 0.6, q: 0.45 },
   // A scooter's deck end on the rail: a feeble rings higher, a smith a little lower.
   'Feeble': { pitch: 1.12, q: 0.8 }, 'Smith': { pitch: 0.9, q: 0.8 },
+  // Inline skates grind on hard plastic: the frame's H-block, or the soul plate under the boot,
+  // a lower, rougher scrape than metal trucks.
+  'Frontside': { pitch: 0.82, q: 0.55 }, 'Soul': { pitch: 0.74, q: 0.45 }, 'Makio': { pitch: 0.78, q: 0.45 },
+  'Royale': { pitch: 0.7, q: 0.42 }, 'Unity': { pitch: 0.72, q: 0.4 },
 };
 
 const PREF_KEY = 'ppp-sound';
@@ -170,6 +174,8 @@ export class Sound {
   private bound = false;
   /** On a scooter: an aluminium deck and bars that rattle, and whips instead of flips. */
   private scooter = false;
+  /** On inline skates: eight small hard wheels, plastic boots and frames, skating strides. */
+  private skates = false;
   /** On a downhill bike: knobbly tyres, a ticking freewheel, a chain that slaps and shocks that soak up landings. */
   private bike = false;
   /** In a kayak: paddle strokes, splashes and the river. */
@@ -355,8 +361,9 @@ export class Sound {
   }
 
   /** A new track: its surface, rails and ambience. */
-  setScene(b: Biome, snow: boolean, bound = snow, scooter = false, bike = false, kayak = false) {
+  setScene(b: Biome, snow: boolean, bound = snow, scooter = false, bike = false, kayak = false, skates = false) {
     this.scooter = scooter;
+    this.skates = skates;
     this.bike = bike;
     this.kayak = kayak;
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
@@ -388,7 +395,7 @@ export class Sound {
   update(dt: number, r: Rider, active: boolean, ambLevel: number) {
     const ctx = this.ctx!;
     if (!this.ready()) return;
-    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow, this.bound, this.scooter, this.bike, this.kayak); }
+    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow, this.bound, this.scooter, this.bike, this.kayak, this.skates); }
     const t = ctx.currentTime;
     const p = GROUNDS[this.ground];
     const speed = active ? r.speed : 0;
@@ -400,7 +407,9 @@ export class Sound {
     const lvl = rolling ? Math.pow(Math.min(1, speed / 9), 0.8) * (r.manual ? 0.6 : 1) * 0.22 * duck : 0;
     const roll = this.roll!;
     roll.gain.gain.setTargetAtTime(lvl, t, lvl > 0 ? (duck < 1 ? 0.01 : 0.07) : 0.015);
-    roll.rumble.frequency.setTargetAtTime(p.rumble.f + p.rumble.fSpeed * speed, t, 0.1);
+    // Little inline wheels hum higher than a skateboard's.
+    const hum = this.skates && !this.snow ? 1.35 : 1;
+    roll.rumble.frequency.setTargetAtTime((p.rumble.f + p.rumble.fSpeed * speed) * hum, t, 0.1);
     roll.hiss.frequency.setTargetAtTime(p.hiss.f + p.hiss.fSpeed * speed, t, 0.1);
     roll.gritSrc.playbackRate.setTargetAtTime(0.3 + speed / 10, t, 0.1);
 
@@ -449,11 +458,12 @@ export class Sound {
         if (this.pushT >= 1) { this.pushT -= 1; this.stroke(t, 0.6); }
       } else this.pushT = 0.9;
     } else
-    // Pushing: a shoe scuffing the ground on each kick, as the skater's foot plants.
+    // Pushing: a shoe scuffing the ground on each kick, as the skater's foot plants;
+    // on inline skates, the wheels scraping out sideways on each stride.
     if (active && r.pushing && r.grounded && !this.bound) {
-      this.pushT += dt * (this.scooter ? 1.6 : PUSH_RATE);
-      if (this.pushT >= 1) { this.pushT -= 1; this.scuff(t); }
-    } else this.pushT = this.scooter ? 0.7 : PUSH_START;
+      this.pushT += dt * (this.scooter ? 1.6 : this.skates ? 1.1 : PUSH_RATE);
+      if (this.pushT >= 1) { this.pushT -= 1; if (this.skates) this.stride(t); else this.scuff(t); }
+    } else this.pushT = this.scooter ? 0.7 : this.skates ? 0.4 : PUSH_START;
 
     // Bounced off a jelly pad.
     if (r.bounces !== this.bounces) {
@@ -584,6 +594,11 @@ export class Sound {
     this.tone(t, { f: 110, fEnd: 45, gain, decay: 0.12 });
   }
 
+  /** An inline skate pushing out to the side: the wheels scraping across the ground. */
+  private stride(t: number) {
+    this.burst(t, { buf: this.pink, type: 'bandpass', f: 1900, q: 0.9, gain: 0.11, attack: 0.08, decay: 0.22, fEnd: 1200 });
+  }
+
   private scuff(t: number) {
     this.burst(t, { type: 'bandpass', f: 2600, q: 0.8, gain: 0.12, attack: 0.04, decay: 0.12, fEnd: 1800 });
   }
@@ -657,6 +672,13 @@ export class Sound {
       this.burst(t, { type: 'lowpass', f: 900, q: 0.6, gain: 0.5, decay: 0.08 });
       return;
     }
+    if (this.skates) {
+      // A jump: no tail to snap, just the wheels leaving the ground and the boots knocking.
+      const p = GROUNDS[this.ground];
+      this.burst(t, { type: p.land.type, f: p.land.f * 1.6, q: p.land.q, gain: p.land.gain * 0.25, decay: p.land.decay * 0.35 });
+      this.clack(t + 0.02, 900, 3, 0.12);
+      return;
+    }
     const p = GROUNDS[this.ground];
     this.burst(t, { type: 'bandpass', f: 2200, q: 1.2, gain: 0.7, decay: 0.025 });
     this.burst(t, { type: p.land.type, f: p.land.f * 1.5, q: p.land.q, gain: p.land.gain * 0.35, decay: p.land.decay * 0.4 });
@@ -682,6 +704,10 @@ export class Sound {
       this.tone(t, { f: 70, fEnd: 38, gain: 0.5 * s, attack: 0.02, decay: 0.25 });
       this.burst(t + 0.02, { buf: this.pink, type: 'bandpass', f: 500, q: 1.2, gain: 0.25 * s, attack: 0.03, decay: 0.18, fEnd: 250 });
       for (let i = 0; i < 2 + Math.round(s * 2); i++) this.clack(t + 0.06 + i * 0.04, 1600 + Math.random() * 900, 3, 0.1 * s);
+    } else if (this.skates && !this.snow) {
+      // Both skates touching down, one just after the other: little wheels and a plastic knock.
+      for (const [dt, g] of [[0, 0.8], [0.025, 0.7]]) this.burst(t + dt, { type: 'bandpass', f: 1500, q: 1.4, gain: 0.35 * g * s, decay: 0.04 });
+      this.clack(t + 0.01, 700, 3, 0.15 * s);
     } else if (!this.snow) {
       // Back wheels, then front: each a punchy smack of urethane and a ring from the trucks.
       for (const [dt, g] of [[0, 1], [0.035, 0.8]]) this.wheels(t + dt, g * s);
@@ -780,6 +806,12 @@ export class Sound {
   grab() {
     if (!this.ready()) return;
     const t = this.ctx!.currentTime;
+    if (this.skates) {
+      // A hand slapping the hard plastic boot, and a swish of legs.
+      this.burst(t, { type: 'bandpass', f: 700, q: 2, gain: 0.32, decay: 0.03 });
+      this.burst(t, { buf: this.pink, type: 'bandpass', f: 600, q: 1.2, gain: 0.2, attack: 0.04, decay: 0.18, fEnd: 1300 });
+      return;
+    }
     if (this.scooter || this.bike) {
       // Body tricks: no board to grab, just a swish of legs and clothes, and the deck clinking free.
       this.burst(t, { buf: this.pink, type: 'bandpass', f: 600, q: 1.2, gain: 0.3, attack: 0.04, decay: 0.2, fEnd: 1300 });

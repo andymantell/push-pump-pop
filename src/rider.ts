@@ -58,9 +58,15 @@ const RAIL_REACH = 0.7;
 const RAIL_ROOM = 1.2;
 
 /** Held tricks from the left-hand swipes: board grabs on a skateboard, body tricks on a scooter. */
-export type GrabName = BoardGrab | ScooterHold | BikeHold | KayakHold;
+export type GrabName = BoardGrab | ScooterHold | BikeHold | KayakHold | SkateGrab;
 export type BoardGrab = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
 export type ScooterHold = 'Superman' | 'No Footer' | 'Can Can' | 'X-Up';
+/**
+ * On aggressive inline skates: a mute (the opposite hand grabs a skate in front), a japan (a
+ * skate pulled up behind, grabbed behind the back), a safety (the same side hand grabs its own
+ * skate) and a stalefish (reaching behind to the outside of the opposite skate).
+ */
+export type SkateGrab = 'Mute' | 'Japan' | 'Safety' | 'Stalefish';
 /** On a downhill bike: the same body tricks, but hands off the bars instead of an X-Up. */
 export type BikeHold = 'Superman' | 'No Footer' | 'Can Can' | 'No Hander';
 /**
@@ -82,18 +88,32 @@ export type FlipName = 'Backflip' | 'Frontflip' | 'Back Loop' | 'Front Loop';
  */
 export type ComboName = 'Flair' | 'Cash Roll' | 'Misty' | `Misty ${number}` | 'Truckdriver' | 'Bigspin Flip';
 /** Manuals on a skateboard, presses on a snowboard, stalls in a kayak (standing on its stern or bow): nose up first. */
-export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press' | 'Stoppie' | 'Stern Stall' | 'Bow Stall';
-export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind' | 'Feeble' | 'Smith' | 'Skinny' | 'Skinny Manual' | 'Skinny Stoppie';
+export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press' | 'Stoppie' | 'Stern Stall' | 'Bow Stall' | 'Heel Roll' | 'Toe Roll';
+export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind' | 'Feeble' | 'Smith' | 'Skinny' | 'Skinny Manual' | 'Skinny Stoppie' | SkateGrind;
+/**
+ * Aggressive inline grinds: frontside (both skates across the rail, in the gap between the
+ * middle wheels), soul (the front skate across, the back one along the rail on its soul plate),
+ * makio (one skate along it on its soul plate, the other leg up), royale (the back skate along
+ * the rail on its outside, the front one turned back across behind it), unity (legs crossed,
+ * both skates on their outsides).
+ */
+export type SkateGrind = 'Frontside' | 'Soul' | 'Makio' | 'Royale' | 'Unity';
 export type LoopName = 'Loop';
 /** Riding a whole rock garden on a bike without falling off. */
 export type GardenName = 'Rock Garden';
-type BoardTrick = 'Ollie' | 'Bunny Hop' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | '360 Flip' | 'Hardflip' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee' | BikeTrick | KayakTrick;
+type BoardTrick = 'Ollie' | 'Bunny Hop' | SkateTrick | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | '360 Flip' | 'Hardflip' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee' | BikeTrick | KayakTrick;
 /**
  * Kayak air moves off a wave or a drop: a boof (the kayak's ollie, a big stroke that launches the
  * bow), an airscrew (a flat roll right round in the air), a helix (an upside-down 360), and a
  * Pan-Am (the boat thrown up past vertical and back).
  */
 export type KayakTrick = 'Boof' | 'Airscrew' | 'Helix' | 'Pan-Am';
+/**
+ * Aggressive inline airs: a jump (the skates' ollie), a flatspin (a backflip turned on its
+ * side), a misty flip (a frontflip with a 180 in it, so you land backwards) and a rocket air
+ * (legs out straight in front, hands down to the skates).
+ */
+export type SkateTrick = 'Jump' | 'Flatspin' | 'Misty Flip' | 'Rocket Air';
 /** Downhill bike: the bike thrown sideways (whip), laid flat (tabletop), or bars twisted down with the bike tucked under them (turndown). */
 export type BikeTrick = 'Whip' | 'Tabletop' | 'Turndown';
 /** Scooter tricks: the deck whipped round the bars, the bars spun round, or both at once. */
@@ -110,7 +130,7 @@ export interface Trick {
   duration: number;
   points: number;
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
-  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop' | 'whip' | 'bike' | 'garden' | 'kayak' | 'splat';
+  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop' | 'whip' | 'bike' | 'garden' | 'kayak' | 'splat' | 'skates';
   dir: 1 | -1;
   /** Shove-its: half turns the board spins round flat (+ backside, - frontside), on its own or in a flip. */
   shove?: number;
@@ -148,6 +168,11 @@ export const TRICKS: Record<BoardTrick, Trick> = {
   'Airscrew': { name: 'Airscrew', duration: 0.5, points: 500, axis: 'kayak', dir: 1 },
   'Helix': { name: 'Helix', duration: 0.6, points: 650, axis: 'kayak', dir: -1 },
   'Pan-Am': { name: 'Pan-Am', duration: 0.5, points: 550, axis: 'kayak', dir: 1 },
+  // Inline skates: nothing to flip but yourself.
+  'Jump': { name: 'Jump', duration: 0, points: 100, axis: 'none', dir: 1 },
+  'Flatspin': { name: 'Flatspin', duration: 0.6, points: 550, axis: 'skates', dir: 1 },
+  'Misty Flip': { name: 'Misty Flip', duration: 0.7, points: 650, axis: 'skates', dir: -1 },
+  'Rocket Air': { name: 'Rocket Air', duration: 0.5, points: 450, axis: 'skates', dir: 1 },
 };
 
 /** Flip-side swipes while grinding: change grind. */
@@ -162,8 +187,17 @@ const SWIPE_GRIND_SCOOTER: Record<Exclude<Swipe, 'up'>, GrindName> = {
   right: 'Feeble',
   down: 'Smith',
 };
+/** On inline skates: you land in a frontside; swipes turn it into the others (a diagonal down for a unity). */
+const SWIPE_GRIND_SKATES: Record<Exclude<Swipe, 'up'>, GrindName> = {
+  left: 'Soul',
+  right: 'Royale',
+  down: 'Makio',
+};
 /** The fancier grinds are worth more than a plain 50-50. */
-const GRIND_STYLE_POINTS: Record<GrindName, number> = { '50-50': 1, 'Boardslide': 1.2, '5-0': 1.3, 'Nosegrind': 1.4, 'Smith': 1.3, 'Feeble': 1.4, 'Skinny': 1, 'Skinny Manual': 1.6, 'Skinny Stoppie': 1.8 };
+const GRIND_STYLE_POINTS: Record<GrindName, number> = {
+  '50-50': 1, 'Boardslide': 1.2, '5-0': 1.3, 'Nosegrind': 1.4, 'Smith': 1.3, 'Feeble': 1.4, 'Skinny': 1, 'Skinny Manual': 1.6, 'Skinny Stoppie': 1.8,
+  'Frontside': 1, 'Soul': 1.3, 'Makio': 1.4, 'Royale': 1.4, 'Unity': 1.5,
+};
 
 /** Scooter: one turn of a whip, or of a barspin, takes this long. */
 const WHIP_TIME = 0.45;
@@ -245,6 +279,14 @@ const SWIPE_TRICK_BIKE: Record<Swipe, BoardTrick> = {
   down: 'Turndown',
 };
 
+/** Flip-side swipes on inline skates. */
+const SWIPE_TRICK_SKATES: Record<Swipe, BoardTrick> = {
+  up: 'Jump',
+  left: 'Flatspin',
+  right: 'Misty Flip',
+  down: 'Rocket Air',
+};
+
 /** Flip-side swipes in a kayak. */
 const SWIPE_TRICK_KAYAK: Record<Swipe, BoardTrick> = {
   up: 'Boof',
@@ -273,6 +315,13 @@ const SWIPE_HOLD_BIKE: Record<Swipe, GrabName> = {
   down: 'No Footer',
   left: 'Can Can',
   right: 'No Hander',
+};
+/** On inline skates: grabs. */
+const SWIPE_GRAB_SKATES: Record<Swipe, GrabName> = {
+  up: 'Mute',
+  down: 'Japan',
+  left: 'Safety',
+  right: 'Stalefish',
 };
 /** In a kayak, held in a hole: end moves, for as long as you hold on and stay in the hole. */
 const SWIPE_HOLD_KAYAK: Record<Swipe, KayakHold> = {
@@ -393,6 +442,8 @@ export interface RiderOptions {
   mega?: boolean;
   /** Scooter: whips and barspins on the right, body tricks on the left, scooter grinds. */
   scooter?: boolean;
+  /** Aggressive inline skates: flatspins, misty flips and rocket airs on the right, grabs on the left, skate grinds. */
+  roller?: boolean;
   /** Downhill bike: whips, tabletops and turndowns on the right, body tricks on the left, rails ridden as skinnies. */
   mtb?: boolean;
   /** White water kayak: the track is a river; taps are paddle strokes, crashes capsize. */
@@ -619,7 +670,9 @@ export class Rider {
    * or a board you're strapped into, it's just a swipe down.
    */
   comboSwipe(dir: 'left' | 'right') {
-    if (this.grind || this.opts.scooter || this.opts.mtb || this.opts.kayak || this.opts.snow || this.opts.mountain) { this.swipe('down'); return; }
+    // On skates on a rail, a diagonal down crosses your legs into a unity.
+    if (this.grind && this.opts.roller) { this.setGrind('Unity'); return; }
+    if (this.grind || this.opts.scooter || this.opts.mtb || this.opts.kayak || this.opts.snow || this.opts.mountain || this.opts.roller) { this.swipe('down'); return; }
     this.swipe('down', dir === 'left' ? '360 Flip' : 'Hardflip');
   }
 
@@ -632,15 +685,12 @@ export class Rider {
     // A bike on a skinny just rolls along it: only a hop takes it off.
     if (this.grind && dir !== 'up' && this.opts.mtb) return;
     if (this.grind && dir !== 'up') {
-      const style = (this.opts.scooter ? SWIPE_GRIND_SCOOTER : SWIPE_GRIND)[dir];
-      if (style === this.grind.style) return;
-      const rail = this.grind.rail;
-      this.endGrind();
-      this.grind = { rail, t: 0, style };
+      this.setGrind((this.opts.roller ? SWIPE_GRIND_SKATES : this.opts.scooter ? SWIPE_GRIND_SCOOTER : SWIPE_GRIND)[dir]);
       return;
     }
     if (this.opts.scooter && dir !== 'up') { this.whipSwipe(dir); return; }
-    const name = combo ?? (this.opts.scooter ? 'Bunny Hop' : (this.opts.kayak ? SWIPE_TRICK_KAYAK : this.opts.mtb ? SWIPE_TRICK_BIKE : this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir]);
+    // Off-road skates on the farm's dirt: grabs only, no flips.
+    const name = combo ?? (this.opts.scooter ? 'Bunny Hop' : this.opts.roller ? (this.opts.mountain ? 'Jump' : SWIPE_TRICK_SKATES[dir]) : (this.opts.kayak ? SWIPE_TRICK_KAYAK : this.opts.mtb ? SWIPE_TRICK_BIKE : this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir]);
     if (!name) return;
     const hop = TRICKS[name].axis === 'none';
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
@@ -653,6 +703,14 @@ export class Rider {
     if (this.grounded || this.current) return;
     this.current = TRICKS[name];
     this.trickT = 0;
+  }
+
+  /** Change how you're grinding the rail you're on. */
+  private setGrind(style: GrindName) {
+    if (!this.grind || style === this.grind.style) return;
+    const rail = this.grind.rail;
+    this.endGrind();
+    this.grind = { rail, t: 0, style };
   }
 
   /**
@@ -687,6 +745,8 @@ export class Rider {
     }
     if (this.trickProgress < 1) return;
     this.boardYaw += (c.shove ?? 0) * Math.PI;
+    // A misty flip has a 180 in it: you come out of it facing backwards.
+    if (c.name === 'Misty Flip') this.bodyYaw = this.bodyYaw ? 0 : Math.PI;
     this.current = null;
     this.tricksThisAir++;
     this.emit(c);
@@ -891,7 +951,7 @@ export class Rider {
     this.angle = th;
     this.held = null;
     this.ollied = false;
-    this.grind = { rail, t: 0, style: this.opts.mtb ? 'Skinny' : '50-50' };
+    this.grind = { rail, t: 0, style: this.opts.mtb ? 'Skinny' : this.opts.roller ? 'Frontside' : '50-50' };
     this.ev.grind?.(rail);
   }
 
@@ -1028,7 +1088,7 @@ export class Rider {
 
     // A scooter only really goes forwards: ride it backwards and it gets wobblier and wobblier
     // until you fall off, unless you spin a 180 to face forwards again.
-    if (!this.bodyYaw || !(this.opts.scooter || this.opts.mtb)) this.fakieT = 0;
+    if (!this.bodyYaw || !(this.opts.scooter || this.opts.mtb || this.opts.roller)) this.fakieT = 0;
     else if (!this.bailing && (this.grounded || this.grind)) {
       this.fakieT += dt;
       if (this.fakieT >= this.fakieTimes[1] && this.grounded && !this.loop) {
@@ -1098,7 +1158,7 @@ export class Rider {
       if (this.opts.mtb) this.stepGarden(dt);
       if (this.opts.kayak && this.stepWater(dt)) return;
       const want: ManualName | null = this.lean && !this.garden && !this.roll && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.8)
-        ? (this.lean > 0 ? (this.opts.snow ? 'Tail Press' : this.opts.kayak ? 'Stern Stall' : 'Manual') : (this.opts.snow ? 'Nose Press' : this.opts.mtb ? 'Stoppie' : this.opts.kayak ? 'Bow Stall' : 'Nose Manual')) : null;
+        ? (this.lean > 0 ? (this.opts.snow ? 'Tail Press' : this.opts.kayak ? 'Stern Stall' : this.opts.roller ? 'Heel Roll' : 'Manual') : (this.opts.snow ? 'Nose Press' : this.opts.mtb ? 'Stoppie' : this.opts.kayak ? 'Bow Stall' : this.opts.roller ? 'Toe Roll' : 'Nose Manual')) : null;
       if (want !== this.manual) {
         if (this.manual && this.lean) this.manualBlocked = true;
         this.endManual();
@@ -1224,7 +1284,7 @@ export class Rider {
         this.heldT += dt;
         // Grab once the board is free of any flip and the finger has stayed down.
         if (!this.grab && !this.current && this.heldT >= GRAB_HOLD) {
-          this.grab = (this.opts.mtb ? SWIPE_HOLD_BIKE : this.opts.scooter ? SWIPE_HOLD : SWIPE_GRAB)[this.held];
+          this.grab = (this.opts.mtb ? SWIPE_HOLD_BIKE : this.opts.scooter ? SWIPE_HOLD : this.opts.roller ? SWIPE_GRAB_SKATES : SWIPE_GRAB)[this.held];
           this.grabT = 0;
           this.ev.grab?.(this.grab);
         }
@@ -1347,6 +1407,7 @@ export class Rider {
       // Close enough: count it.
       const done = this.current;
       this.boardYaw += (done.shove ?? 0) * Math.PI;
+      if (done.name === 'Misty Flip') this.bodyYaw = this.bodyYaw ? 0 : Math.PI;
       this.current = null;
       this.tricksThisAir++;
       this.emit(done);

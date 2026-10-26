@@ -3,7 +3,7 @@
 // a 360 flip or hardflip, ?grab=up etc.
 // a held grab, ?spin=right a body spin, ?snow=1 the snowboard; ?at=0,0.03,... the frame times
 // in seconds after the pop, ?rail=1 a hop onto a rail, and ?views=side,three-quarter,back the camera angles.
-// ?ride=scooter rides the scooter instead; ?then=left a second swipe 0.12 s after the first
+// ?ride=scooter rides the scooter instead, ?ride=roller inline skates (?kind=offroad on the farm's); ?then=left a second swipe 0.12 s after the first
 // (a double whip, or a grind style once on the rail). ?v=0&swipe=none starts from a standstill,
 // pushing off: ?at= is then seconds from the start.
 import * as THREE from 'three';
@@ -11,6 +11,7 @@ import { loadAssets } from '../src/assets';
 import { Skater } from '../src/skater';
 import { ScooterRig } from '../src/scooter';
 import { MtbRig } from '../src/mtb';
+import { RollerRig } from '../src/roller';
 import { Rider, Swipe } from '../src/rider';
 import { TrackBuilder } from '../src/track';
 
@@ -43,8 +44,10 @@ scene.add(ground);
 const assets = await loadAssets();
 const scoot = q.get('ride') === 'scooter';
 const mtb = q.get('ride') === 'mtb';
-const skater = mtb ? new MtbRig(assets.parts) : scoot ? new ScooterRig(assets.parts) : new Skater(assets.parts);
-if (skater instanceof ScooterRig) skater.setKind(snow ? 'snow' : 'scooter');
+const roller = q.get('ride') === 'roller';
+const skater = mtb ? new MtbRig(assets.parts) : scoot ? new ScooterRig(assets.parts) : roller ? new RollerRig(assets.parts) : new Skater(assets.parts);
+if (skater instanceof RollerRig) skater.setKind(snow ? 'blades' : q.get('kind') === 'offroad' ? 'offroad' : 'skates');
+else if (skater instanceof ScooterRig) skater.setKind(snow ? 'snow' : 'scooter');
 else if (skater instanceof MtbRig) skater.setSnow(snow);
 else skater.setBoard(snow ? 'snow' : 'skate');
 scene.add(skater.root);
@@ -64,7 +67,7 @@ for (const rk of track.gardenRocks) {
 }
 const noop = () => {};
 const r = new Rider(track, { trick: noop, land: noop, bail: noop, pump: noop, fall: noop } as never);
-r.opts = { friction: 1, maxSpeed: 17, snow, scooter: scoot, mtb };
+r.opts = { friction: 1, maxSpeed: 17, snow, scooter: scoot, mtb, roller, mountain: roller && q.get('kind') === 'offroad' };
 const v0 = q.get('v');
 r.v = v0 === null ? 8 : Number(v0);
 const dt = 1 / 120;

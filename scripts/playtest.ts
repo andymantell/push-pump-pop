@@ -14,7 +14,7 @@
 // checked for sudden stops: losing over half your speed in a moment for no reason
 // (not a bail or a fall) feels like hitting an invisible wall. Jumps must land on their
 // landings at any speed (see landings.ts).
-import { TRACKS, PIPE_TIME, SCOOTER_TODO, MTB_TODO } from '../src/tracks';
+import { TRACKS, PIPE_TIME, SCOOTER_TODO, MTB_TODO, ROLLER_TODO } from '../src/tracks';
 import { BIOMES, BIOME_ORDER, worldOf } from '../src/biomes';
 import { requiredCount } from '../src/challenges';
 import { Rider, Swipe, TrickName, FAKIE_SAFE, FAKIE_FALL, BIKE_FAKIE_SAFE, BIKE_FAKIE_FALL } from '../src/rider';
@@ -26,25 +26,28 @@ import * as THREE from 'three';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { Skater } from '../src/skater';
 import { ScooterRig } from '../src/scooter';
+import { RollerRig } from '../src/roller';
 import { MtbRig } from '../src/mtb';
 import { KayakRig } from '../src/kayak';
 import { challengesOf, parOf } from '../src/progress';
 import { RideId, rideGoes } from '../src/ride';
 import { nextLip, landingProblems } from './landings';
 
-const RIDE: RideId = process.argv.includes('--ride=scooter') ? 'scooter' : process.argv.includes('--ride=mtb') ? 'mtb' : process.argv.includes('--ride=kayak') ? 'kayak' : 'skate';
+const RIDE: RideId = process.argv.includes('--ride=scooter') ? 'scooter' : process.argv.includes('--ride=roller') ? 'roller' : process.argv.includes('--ride=mtb') ? 'mtb' : process.argv.includes('--ride=kayak') ? 'kayak' : 'skate';
 const SCOOT = RIDE === 'scooter';
+const ROLL = RIDE === 'roller';
 const BIKE = RIDE === 'mtb';
 const BOAT = RIDE === 'kayak';
 /** Rides that end up backwards and have to spin back round. */
-const TURNS = SCOOT || BIKE;
+const TURNS = SCOOT || BIKE || ROLL;
 const [SAFE, FALL] = BIKE ? [BIKE_FAKIE_SAFE, BIKE_FAKIE_FALL] : [FAKIE_SAFE, FAKIE_FALL];
 /** In a rock garden, the balance the bot lets drift before leaning against it. */
 const GARDEN_SLACK = 0.3;
-type Figure = Skater | ScooterRig | MtbRig | KayakRig;
+type Figure = Skater | ScooterRig | RollerRig | MtbRig | KayakRig;
 const GRINDS = new Set<string>(members('grind'));
 /** The swipe on a rail that changes to each grind. */
-const STYLE_SWIPE: Record<string, Swipe> = SCOOT ? { Boardslide: 'left', Feeble: 'right', Smith: 'down' } : { Boardslide: 'left', Nosegrind: 'right', '5-0': 'down' };
+const STYLE_SWIPE: Record<string, Swipe | string> = SCOOT ? { Boardslide: 'left', Feeble: 'right', Smith: 'down' }
+  : ROLL ? { Soul: 'left', Royale: 'right', Makio: 'down', Unity: 'combo:left' } : { Boardslide: 'left', Nosegrind: 'right', '5-0': 'down' };
 
 /** Runs per track that also pose the skater and check his legs stay above the ground. */
 const LEG_RUNS = 24;
@@ -222,12 +225,23 @@ function trickActs(name: TrickName, hold: number): [string, number][] {
     case 'Front Loop': return [['lean-', 0], ['lean0', 0.2]];
     case 'Flatspin 180': return [['spin:right', 0]];
     case 'Flatspin 360': return [['spin360:right', 0]];
+    // Inline skates: airs on the right, grabs held on the left.
+    case 'Flatspin': return [['flick:left', 0]];
+    case 'Misty Flip': return [['flick:right', 0]];
+    case 'Rocket Air': return [['flick:down', 0]];
+    case 'Mute': return [['grab:up', 0], ['let go', hold]];
+    case 'Japan': return [['grab:down', 0], ['let go', hold]];
+    case 'Safety': return [['grab:left', 0], ['let go', hold]];
+    case 'Stalefish': return [['grab:right', 0], ['let go', hold]];
   }
   return [];
 }
 /** Air time a trick needs to land clean. */
 function trickTime(name: TrickName, hold: number): number {
-  if (['Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'Superman', 'No Footer', 'Can Can', 'X-Up', 'No Hander'].includes(name)) return hold + 0.2;
+  if (['Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'Superman', 'No Footer', 'Can Can', 'X-Up', 'No Hander', 'Mute', 'Japan', 'Safety', 'Stalefish'].includes(name)) return hold + 0.2;
+  if (name === 'Flatspin') return 0.72;
+  if (name === 'Misty Flip') return 0.82;
+  if (name === 'Rocket Air') return 0.62;
   // The bike's thrown about for 0.5 s, and a player leaves room to straighten it up.
   if (name === 'Whip' || name === 'Turndown') return 0.62;
   if (name === 'Tabletop') return 0.67;
@@ -290,11 +304,12 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     fall() { if (TRACE) console.log(`  t=${t.toFixed(1)} x=${r.x.toFixed(1)} FALL was: ${prevState}`); if (alive()) chal.fall(r.x); score.lose(); if (!isMega) { respawnAt = t + 1.2; res.livesLost++; } },
   });
   const isPipe = def.kind === 'pipe', isMega = def.kind === 'mega';
-  const skater: Figure | null = !legs ? null : SCOOT ? new ScooterRig() : BIKE ? new MtbRig() : BOAT ? new KayakRig() : new Skater();
-  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : biome.maxSpeed, pipe: isPipe, mega: isMega, snow: def.biome === 'snow' && !BIKE, mountain: def.biome === 'farm' && RIDE === 'skate', scooter: SCOOT, mtb: BIKE, kayak: BOAT, gravity: biome.gravity };
+  const skater: Figure | null = !legs ? null : SCOOT ? new ScooterRig() : ROLL ? new RollerRig() : BIKE ? new MtbRig() : BOAT ? new KayakRig() : new Skater();
+  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : biome.maxSpeed, pipe: isPipe, mega: isMega, snow: def.biome === 'snow' && !BIKE, mountain: def.biome === 'farm' && (RIDE === 'skate' || ROLL), scooter: SCOOT, roller: ROLL, mtb: BIKE, kayak: BOAT, gravity: biome.gravity };
   if (skater instanceof KayakRig) skater.setBoat(isPipe ? 'play' : 'river');
   if (skater instanceof Skater) skater.setBoard(def.biome === 'snow' ? 'snow' : def.biome === 'farm' ? 'mountain' : 'skate');
   if (skater instanceof ScooterRig) skater.setKind(def.biome === 'snow' ? 'snow' : 'scooter');
+  if (skater instanceof RollerRig) skater.setKind(def.biome === 'snow' ? 'blades' : def.biome === 'farm' ? 'offroad' : 'skates');
   if (skater instanceof MtbRig) skater.setSnow(def.biome === 'snow');
   const onWave = track.holes.some((h) => h.wave);
   if ((isPipe && !onWave) || isMega) r.perch();
@@ -406,6 +421,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       const pool = BOAT ? (['Airscrew', 'Helix', 'Pan-Am', 'Flatspin 180'] as TrickName[])
         : BIKE ? (['Whip', 'Tabletop', 'Turndown', 'Superman', 'No Footer', 'Can Can', 'No Hander', 'FS 180', 'BS 180'] as TrickName[])
         : SCOOT ? (['Tailwhip', 'Barspin', 'Heelwhip', 'Superman', 'No Footer', 'Can Can', 'X-Up', 'FS 180', 'BS 180'] as TrickName[])
+        // Off-road skates on the farm: grabs only.
+        : ROLL ? ((def.biome === 'farm' ? ['Mute', 'Japan', 'Safety', 'Stalefish', 'FS 180', 'BS 180'] : ['Flatspin', 'Misty Flip', 'Rocket Air', 'Mute', 'Japan', 'Safety', 'Stalefish', 'FS 180', 'BS 180']) as TrickName[])
         : (['Kickflip', 'Heelflip', 'Pop Shove-it', 'Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'FS 180', 'BS 180'] as TrickName[])
           .map((n) => (def.biome === 'snow' || def.biome === 'farm' ? ({ Kickflip: 'BS Shifty', Heelflip: 'FS Shifty', 'Pop Shove-it': 'Tuck Knee' } as Record<string, TrickName>)[n] ?? n : n));
       switch (g.kind) {
@@ -430,7 +447,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         }
         default: return undefined;
       }
-      airNames = airNames.filter((n) => n && n !== 'Ollie' && n !== 'Bunny Hop' && n !== 'Boof' && !members('end').includes(n) && n !== 'Splat');
+      airNames = airNames.filter((n) => n && n !== 'Ollie' && n !== 'Bunny Hop' && n !== 'Jump' && n !== 'Boof' && !members('end').includes(n) && n !== 'Splat');
     }
     if (!airNames.length) return true;
     const filters = g as { overGap?: unknown; from?: string; fromRail?: boolean; minTime?: number };
@@ -502,6 +519,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         grindStyled = true;
       } else if (r.grind && r.grind.t < 0.05 && !grindStyled && !(G?.kind === 'grind' && G.seconds) && rand() < 0.5) {
         if (BIKE) { press(rand() < 0.5 ? 'lean+' : 'lean-'); press('lean0', 0.5); }
+        else if (ROLL) press(['left', 'right', 'down', 'combo:left'][Math.floor(rand() * 4)]);
         else press((['left', 'right', 'down'] as const)[Math.floor(rand() * 3)]);
         grindStyled = true;
       }
@@ -555,7 +573,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
           // Balancing, not manualling.
         } else if (wantManual && !rail) {
           const c = G as Challenge & { seconds?: number; name?: string; pad?: boolean };
-          const lean = c.name === 'Nose Manual' || c.name === 'Nose Press' || c.name === 'Stoppie' ? 'lean-' : c.kind === 'combo' ? pickFrom(['lean+', 'lean-']) : 'lean+';
+          const lean = c.name === 'Nose Manual' || c.name === 'Nose Press' || c.name === 'Stoppie' || c.name === 'Toe Roll' ? 'lean-' : c.kind === 'combo' ? pickFrom(['lean+', 'lean-']) : 'lean+';
           const pad = track.pads.find((p) => p.x0 > r.x && p.x0 - r.x < lead + 0.3);
           const hold = (c.seconds ?? 0.6) + 0.35;
           const room = [...Array(Math.ceil(Math.abs(r.v) * (hold + REACTION)) + 1).keys()].every((d) => Math.abs(track.slope(r.x + d * dir)) < 0.08);
@@ -606,10 +624,14 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
           press('let go', 0.3);
         } else if (BIKE && flight().time - REACTION - JITTER < 0.62) {
           // Too short to throw the bike about and straighten it again: a rider just rides it.
+        } else if (ROLL && flight().time - REACTION - JITTER < 0.72) {
+          // Too short for a flatspin: a skater spins (and spins back later) or grabs.
+          press(pick < 0.7 ? 'spin' : 'grab');
+          if (pick >= 0.7) press('let go', 0.25);
         } else if (TURNS && pick < 0.55 && flight().time - REACTION - JITTER < 0.65) {
           // Not enough air to get round and back: a scooter rider would rather not end up backwards.
           press('left');
-        } else if (skater && !SCOOT && pick >= 0.9 && flight().time - REACTION - JITTER > 0.6) {
+        } else if (skater && !SCOOT && !ROLL && pick >= 0.9 && flight().time - REACTION - JITTER > 0.6) {
           // Now and then on a big air while posing the skater, a 360 flip or hardflip, to check his legs through them.
           press(pick < 0.95 ? 'combo:left' : 'combo:right');
         } else press(pick < (BIKE ? 0.3 : 0.55) ? 'spin' : pick < 0.8 ? 'left' : 'down');
@@ -701,6 +723,8 @@ const [shard, shards] = (opt('shard') ?? '1/1').split('/').map(Number);
 const seenOut = opt('seen-out');
 const tricksDir = opt('check-tricks');
 if (SCOOT) console.log('Scooter career');
+if (ROLL) console.log('Inline skates career');
+if (ROLL && ROLLER_TODO.length) console.log(`(no skates challenges written yet for ${ROLLER_TODO.length} tracks, using the skateboard ones swapped over)`);
 if (BIKE) console.log('Mountain bike career');
 if (BOAT) console.log('Kayak career');
 if (BIKE && MTB_TODO.length) console.log(`(no bike challenges written yet for ${MTB_TODO.length} tracks, using the skateboard ones swapped over)`);
@@ -822,10 +846,11 @@ if (tricksDir) {
 }
 if (!only && (shards === 1 || tricksDir)) {
   console.log(`\ntricks landed: ${[...seen].map(([n, c]) => `${n} ${c}`).join(', ')}`);
-  const all = BOAT ? [] : ['Manual', 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360'];
+  const ROLLER_TRICKS = ['Heel Roll', 'Toe Roll', 'Tail Press', 'Nose Press', 'Frontside', 'Soul', 'Royale', 'Makio', 'Unity', 'Flatspin', 'Misty Flip', 'Rocket Air', 'Mute', 'Japan', 'Safety', 'Stalefish'];
+  const all = BOAT ? [] : [...(ROLL ? [] : ['Manual']), 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360'];
   const missing = BOAT ? ['Boof', 'Airscrew', 'Helix', 'Pan-Am', 'Cartwheel', 'Blunt', 'McNasty', 'Space Godzilla', 'Flatspin 180', 'Stern Stall', 'Bow Stall', 'Splat'].filter((n) => !seen.get(n)) : [...all, ...(BIKE
     ? ['Stoppie', 'Whip', 'Tabletop', 'Turndown', 'Superman', 'No Footer', 'Can Can', 'No Hander', 'Skinny']
-    : ['Nose Manual', 'Tail Press', 'Nose Press', '50-50', 'Boardslide']), ...(BIKE ? [] : SCOOT
+    : ROLL ? ROLLER_TRICKS : ['Nose Manual', 'Tail Press', 'Nose Press', '50-50', 'Boardslide']), ...(BIKE || ROLL ? [] : SCOOT
     ? ['Tailwhip', 'Heelwhip', 'Barspin', 'Double Whip', 'Tailwhip Barspin', 'Superman', 'No Footer', 'Can Can', 'X-Up', 'Feeble', 'Smith']
     : ['Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'BS Shifty', 'Tuck Knee', '5-0', 'Nosegrind'])].filter((n) => !seen.get(n));
   if (missing.length) { console.log(`never landed: ${missing.join(', ')}`); failed = true; }

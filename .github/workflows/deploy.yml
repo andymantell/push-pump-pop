@@ -25,7 +25,7 @@ jobs:
       # Let every part finish, so one failure doesn't hide others.
       fail-fast: false
       matrix:
-        ride: [skate, scooter, mtb, kayak]
+        ride: [skate, scooter, roller, mtb, kayak]
         shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +79,7 @@ jobs:
       - run: npm ci
       - name: Check every trick got landed somewhere
         run: |
-          for ride in skate scooter mtb kayak; do
+          for ride in skate scooter roller mtb kayak; do
             npm run playtest:$ride -- --check-tricks=seen/$ride
           done
       - run: npm run build

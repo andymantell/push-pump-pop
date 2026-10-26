@@ -1,4 +1,4 @@
-// What you ride: a skateboard, a scooter, a downhill bike (MTB) or a white water kayak. Each ride is its own career,
+// What you ride: a skateboard, a scooter, aggressive inline (roller) skates, a downhill bike (MTB) or a white water kayak. Each ride is its own career,
 // with its own tricks, challenges, stars and best scores, but tracks open for all at once:
 // completing a track on any ride opens the next one for all of them.
 //
@@ -6,7 +6,7 @@
 // for the bike, the rivers are only for the kayak (which goes nowhere else), and the level
 // select only shows the worlds the picked ride can reach.
 
-export type RideId = 'skate' | 'scooter' | 'mtb' | 'kayak';
+export type RideId = 'skate' | 'scooter' | 'roller' | 'mtb' | 'kayak';
 /** The MTB-only world of downhill courses (index into WORLDS). */
 export const MTB_WORLD = 2;
 /** The kayak's world of rivers: the only world it can paddle. */
@@ -23,6 +23,7 @@ export interface Ride {
 export const RIDES: Ride[] = [
   { id: 'skate', label: 'SKATE', skipWorlds: [MTB_WORLD, KAYAK_WORLD] },
   { id: 'scooter', label: 'SCOOTER', skipWorlds: [MTB_WORLD, KAYAK_WORLD] },
+  { id: 'roller', label: 'ROLLER', skipWorlds: [MTB_WORLD, KAYAK_WORLD] },
   { id: 'mtb', label: 'MTB', skipWorlds: [KAYAK_WORLD] },
   { id: 'kayak', label: 'KAYAK', skipWorlds: [0, 1, MTB_WORLD] },
 ];
@@ -68,7 +69,24 @@ const MTB_SIGNS: Record<string, string> = {
   'FLIP, THEN GRAB': 'WHIP, THEN SUPERMAN',
 };
 
+/** Signs that name skateboard tricks, said the inline skates way. */
+const ROLLER_SIGNS: Record<string, string> = {
+  'SWIPE LEFT: KICKFLIP': 'SWIPE LEFT: FLATSPIN',
+  'SWIPE RIGHT: HEELFLIP': 'SWIPE RIGHT: MISTY FLIP',
+  'SWIPE DOWN: SHOVE-IT': 'SWIPE DOWN: ROCKET AIR',
+  'SWIPE UP: OLLIE': 'SWIPE UP: JUMP',
+  'ANY FLIP!': 'ANY AIR TRICK!',
+  'KICKFLIP IT!': 'FLATSPIN IT!',
+  'HEELFLIP THE STAIRS': 'MISTY FLIP THE STAIRS',
+  'GIANT KICKER: FLIP AND GRAB': 'GIANT KICKER: FLATSPIN AND GRAB',
+  'FLIP, THEN GRAB': 'FLATSPIN, THEN GRAB',
+};
+
 export function signFor(text: string, ride: RideId): string {
+  if (ride === 'roller') {
+    return ROLLER_SIGNS[text] ?? text.replace(/\bOLLIE\b/g, 'JUMP').replace(/(?<!TILT: )\bFLIP\b/g, 'FLATSPIN')
+      .replace(/\bNOSE MANUAL\b/g, 'TOE ROLL').replace(/\bMANUAL\b/g, 'HEEL ROLL');
+  }
   if (ride === 'mtb') {
     return MTB_SIGNS[text] ?? text.replace(/\bOLLIE\b/g, 'HOP').replace(/(?<!TILT: )\bFLIP\b/g, 'WHIP').replace(/\bGRAB\b/g, 'SUPERMAN')
       .replace(/\bGRIND\b/g, 'RIDE').replace(/\bRAIL\b/g, 'SKINNY').replace(/\bRAILS\b/g, 'SKINNIES');

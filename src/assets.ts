@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { PART_NAMES, PartName, SNOW_PART_NAMES, SnowPartName, MTB_PART_NAMES, MtbPartName, SCOOTER_HEAD_NAMES } from './skater';
 import { SCOOTER_PART_NAMES, ScooterPartName } from './scooter';
+import { ROLLER_PART_NAMES, RollerPartName } from './roller';
 import { BIKE_PART_NAMES, BikePartName } from './mtb';
 import { PropKind } from './track';
 import { toonify } from './toon';
@@ -9,7 +10,7 @@ import { toonify } from './toon';
 // Models are built in Blender by art/build_assets.py and exported to public/models.
 
 export interface Assets {
-  parts: Partial<Record<PartName | SnowPartName | MtbPartName | ScooterPartName | BikePartName | (typeof SCOOTER_HEAD_NAMES)[number], THREE.Object3D>>;
+  parts: Partial<Record<PartName | SnowPartName | MtbPartName | ScooterPartName | RollerPartName | BikePartName | (typeof SCOOTER_HEAD_NAMES)[number], THREE.Object3D>>;
   props: Partial<Record<PropKind, THREE.Object3D>>;
   /** The customiser's clothes, hair and hats (see look.ts), or null if they didn't load. */
   wardrobe: THREE.Object3D | null;
@@ -37,11 +38,12 @@ export async function loadAssets(): Promise<Assets> {
   const base = import.meta.env.BASE_URL;
   const assets: Assets = { parts: {}, props: {}, wardrobe: null };
   try {
-    const [skater, props, scooter, mtb, wardrobe] = await Promise.all([
+    const [skater, props, scooter, mtb, roller, wardrobe] = await Promise.all([
       loader.loadAsync(`${base}models/skater.glb`),
       loader.loadAsync(`${base}models/props.glb`),
       loader.loadAsync(`${base}models/scooter.glb`),
       loader.loadAsync(`${base}models/mtb.glb`),
+      loader.loadAsync(`${base}models/roller.glb`),
       // Without the wardrobe the rider just keeps the original clothes.
       loader.loadAsync(`${base}models/wardrobe.glb`).catch((e) => { console.warn('Could not load the wardrobe', e); return null; }),
     ]);
@@ -53,6 +55,11 @@ export async function loadAssets(): Promise<Assets> {
     toonify(props.scene);
     toonify(scooter.scene);
     toonify(mtb.scene);
+    toonify(roller.scene);
+    for (const n of ROLLER_PART_NAMES) {
+      const o = pick(roller.scene, n);
+      if (o) assets.parts[n] = o;
+    }
     for (const n of BIKE_PART_NAMES) {
       const o = pick(mtb.scene, n);
       if (o) assets.parts[n] = o;

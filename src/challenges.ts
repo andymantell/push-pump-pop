@@ -6,7 +6,7 @@ import type { Track, Rail } from './track';
 // playtest alike, and says as soon as each challenge is done.
 
 /** A family of tricks a challenge can ask for instead of one name. 'any' is any air trick but an ollie. */
-export type Group = 'flip' | 'grab' | 'whip' | 'double' | 'hold' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'bike' | 'skinny' | 'kayak' | 'end' | 'any';
+export type Group = 'flip' | 'grab' | 'skates' | 'whip' | 'double' | 'hold' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'bike' | 'skinny' | 'kayak' | 'end' | 'any';
 export type Match = TrickName | Group;
 
 /**
@@ -54,7 +54,9 @@ export type Challenge = { text: string } & (
 
 const GROUPS: Record<Group, TrickName[]> = {
   flip: ['Kickflip', 'Heelflip', 'Pop Shove-it', '360 Flip', 'Hardflip', 'BS Shifty', 'FS Shifty', 'Tuck Knee'],
-  grab: ['Indy', 'Melon', 'Nosegrab', 'Tailgrab'],
+  grab: ['Indy', 'Melon', 'Nosegrab', 'Tailgrab', 'Mute', 'Japan', 'Safety', 'Stalefish'],
+  // Inline skates: airs on the right (their grabs are in grab).
+  skates: ['Flatspin', 'Misty Flip', 'Rocket Air'],
   // Scooter: whips and barspins on the right, body tricks held on the left.
   whip: ['Tailwhip', 'Heelwhip', 'Barspin', 'Double Whip', 'Double Heelwhip', 'Double Barspin', 'Tailwhip Barspin', 'Heelwhip Barspin'],
   double: ['Double Whip', 'Double Heelwhip', 'Double Barspin', 'Tailwhip Barspin', 'Heelwhip Barspin'],
@@ -69,12 +71,12 @@ const GROUPS: Record<Group, TrickName[]> = {
   '180': ['FS 180', 'BS 180', 'Flatspin 180'],
   '360': ['FS 360', 'BS 360', 'Flatspin 360'],
   bodyflip: ['Backflip', 'Frontflip', 'Back Loop', 'Front Loop'],
-  grind: ['50-50', 'Boardslide', '5-0', 'Nosegrind', 'Feeble', 'Smith', 'Skinny', 'Skinny Manual', 'Skinny Stoppie'],
-  manual: ['Manual', 'Nose Manual', 'Tail Press', 'Nose Press', 'Stoppie', 'Stern Stall', 'Bow Stall'],
+  grind: ['50-50', 'Boardslide', '5-0', 'Nosegrind', 'Feeble', 'Smith', 'Skinny', 'Skinny Manual', 'Skinny Stoppie', 'Frontside', 'Soul', 'Makio', 'Royale', 'Unity'],
+  manual: ['Manual', 'Nose Manual', 'Tail Press', 'Nose Press', 'Stoppie', 'Stern Stall', 'Bow Stall', 'Heel Roll', 'Toe Roll'],
   loop: ['Loop'],
   any: [],
 };
-GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.whip, ...GROUPS.bike, ...GROUPS.kayak, ...GROUPS.end, ...GROUPS.hold, ...GROUPS.spin, ...GROUPS.bodyflip];
+GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.skates, ...GROUPS.whip, ...GROUPS.bike, ...GROUPS.kayak, ...GROUPS.end, ...GROUPS.hold, ...GROUPS.spin, ...GROUPS.bodyflip];
 
 export function matches(m: Match, name: TrickName): boolean {
   return m in GROUPS ? GROUPS[m as Group].includes(name) : m === name;
@@ -105,6 +107,7 @@ export function icon(c: Challenge): string {
   if (m) {
     if (matches(m, 'Indy') || m === 'grab' || members(m).every((n) => GROUPS.grab.includes(n))) return '&#9995;';
     if (members(m).every((n) => GROUPS.hold.includes(n))) return '&#129464;';
+    if (members(m).every((n) => GROUPS.skates.includes(n))) return '&#128764;';
     if (members(m).every((n) => GROUPS.whip.includes(n) || GROUPS.bike.includes(n))) return '&#128260;';
     if (members(m).every((n) => GROUPS.kayak.includes(n) || GROUPS.end.includes(n) || n === 'Splat' || n === 'Boof')) return '&#128758;';
     if (m === 'Bunny Hop') return '&#128756;';

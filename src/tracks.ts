@@ -12,6 +12,7 @@ import { CANDY, CANDY_PIPE } from './levels/candy';
 import { DOCKS } from './levels/docks';
 import { SCOOTER, scooterFallback } from './levels/scooter';
 import { MTB, mtbFallback } from './levels/mtb';
+import { ROLLER, rollerFallback } from './levels/roller';
 import { PIRATE, PIRATE_PIPE } from './levels/pirate';
 import { HAUNTED, HAUNTED_PIPE } from './levels/haunted';
 import { FUNFAIR, FUNFAIR_PIPE } from './levels/funfair';
@@ -41,6 +42,9 @@ export const isRiver = (biome: string) => biome.startsWith('kayak-');
 // swapped in until they have their own (the scooter playtest lists them).
 for (const t of TRACKS) if (!isRiver(t.biome)) t.scooter = SCOOTER[t.id] ?? scooterFallback(t);
 export const SCOOTER_TODO = TRACKS.filter((t) => !SCOOTER[t.id] && !t.biome.startsWith('dh-') && !isRiver(t.biome)).map((t) => t.id);
+// The inline skates' too.
+for (const t of TRACKS) if (!isRiver(t.biome) && !t.biome.startsWith('dh-')) t.roller = ROLLER[t.id] ?? rollerFallback(t);
+export const ROLLER_TODO = TRACKS.filter((t) => !ROLLER[t.id] && !t.biome.startsWith('dh-') && !isRiver(t.biome)).map((t) => t.id);
 // And the downhill bike's, the same way.
 // The bike's own downhill courses are written for it: their challenges are the MTB ones.
 for (const t of TRACKS) if (!isRiver(t.biome)) t.mtb = MTB[t.id] ?? (t.biome.startsWith('dh-') ? { par: t.par ?? 0, challenges: t.challenges ?? [] } : mtbFallback(t));

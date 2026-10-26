@@ -82,6 +82,7 @@ npm run dev      # local dev server
 npm run build    # type check and build to dist/
 npm test                 # human-speed bot plays every track on both rides; fails if one is too hard
 npx tsx scripts/playtest.ts --ride=scooter [track]   # just the scooter career
+npx tsx scripts/playtest.ts --ride=roller [track]    # just the inline skates career
 npx tsx scripts/playtest.ts --ride=mtb [track]       # just the MTB career
 npx tsx scripts/playtest.ts --ride=kayak [track]     # just the kayak career
 npm run playtest:skate -- --shard=2/4                # every 4th track from the 2nd (CI runs 4 parts per career side by side)

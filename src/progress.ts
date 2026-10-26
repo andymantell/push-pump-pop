@@ -23,6 +23,8 @@ export interface Level {
   challenges?: unknown[];
   /** The scooter career's par and challenges for this track. */
   scooter?: { par?: number; challenges?: unknown[] };
+  /** The inline skates career's. */
+  roller?: { par?: number; challenges?: unknown[] };
   /** The downhill bike career's. */
   mtb?: { par?: number; challenges?: unknown[] };
   /** The kayak's (its rivers only). */
@@ -30,7 +32,7 @@ export interface Level {
 }
 
 /** A track's challenges on a ride. */
-export function challengesOf<T>(l: { challenges?: T[]; scooter?: { challenges?: T[] }; mtb?: { challenges?: T[] }; kayak?: { challenges?: T[] } }, ride: RideId): T[] {
+export function challengesOf<T>(l: { challenges?: T[]; scooter?: { challenges?: T[] }; roller?: { challenges?: T[] }; mtb?: { challenges?: T[] }; kayak?: { challenges?: T[] } }, ride: RideId): T[] {
   return (ride === 'skate' ? l.challenges : l[ride]?.challenges) ?? [];
 }
 /** A track's par on a ride. */

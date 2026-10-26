@@ -1039,6 +1039,191 @@ def build_scooter():
     export(os.path.join(OUT, 'scooter.glb'), parts)
 
 
+# ---------------------------------------------------------------- inline skates
+
+# Skate space: like a shoe, the ankle at the origin and the toes towards -Y, hanging off the
+# rider's shoe joint (whose shoe is hidden). These numbers are mirrored in src/roller.ts:
+# the ground is ROLLER_GROUND below the ankle on each kind of skate.
+ROLLER_GROUND = {'skates': 0.165, 'blades': 0.15, 'offroad': 0.22}
+ROLLER_TOE, ROLLER_HEEL = -0.2, 0.11
+
+
+def roller_boot(boot_m, cuff_m, strap_m, lace_m, buckle_m, sole_z):
+    """An aggressive skate boot: a hard shell round the foot down to `sole_z`, high at the heel,
+    with laces and an instep strap. The cuff is its own part (roller_cuff), on the shin."""
+    plan = [  # y, half width, height of the shell above its sole
+        (0.115, 0.04, 0.15), (0.105, 0.058, 0.17), (0.07, 0.066, 0.17), (0.0, 0.068, 0.15),
+        (-0.06, 0.068, 0.11), (-0.12, 0.068, 0.085), (-0.165, 0.062, 0.07), (-0.195, 0.05, 0.055),
+        (-0.212, 0.03, 0.04), (-0.218, 0.012, 0.03),
+    ]
+    bits = [loft(boot_m, [(y, w, h / 2, 0, sole_z + h / 2, 3.4) for y, w, h in plan], axis='y', name='shell')]
+    # Laces down the front and a strap across the instep.
+    for i in range(4):
+        y = -0.03 - i * 0.03
+        bits.append(cube(lace_m, (0.06, 0.008, 0.008), loc=(0, y, sole_z + 0.128 - i * 0.012), rot=(-0.3, 0, 0), bevel=0.003))
+    bits.append(loft(strap_m, [(-0.07, 0.072, 0.072, 0, sole_z + 0.065, 2.8), (-0.04, 0.072, 0.074, 0, sole_z + 0.07, 2.8)], segs=24, cap0=False, cap1=False, name='instep'))
+    return bits
+
+
+def build_roller():
+    """Inline skates for each kind of track, and knee and elbow pads; written to roller.glb.
+
+    * roller_skate: aggressive skates, four small hard wheels in a short frame, a gap (the
+      H-block) between the middle two for grinding, and a wide soul plate on the outside.
+    * roller_blade: snowblades, a short ski under the boot.
+    * roller_offroad: off-road skates, two big knobbly air tyres in a long frame.
+    """
+    reset()
+    boot_m = mat('roller_boot', (34, 36, 42))
+    cuff_m = mat('roller_cuff', (232, 64, 42))
+    strap_m = mat('roller_strap', (24, 24, 28))
+    lace_m = mat('roller_lace', (236, 236, 230))
+    buckle_m = mat('roller_buckle', (190, 196, 204))
+    frame_m = mat('roller_frame', (60, 62, 70))
+    plate_m = mat('roller_plate', (46, 48, 54))
+    wheel_m = mat('roller_wheel', (255, 214, 64))
+    core_m = mat('roller_core', (70, 72, 78))
+    ski_m = mat('roller_ski', (42, 127, 212))
+    ski_base = mat('snowscoot_base', (244, 244, 244))
+    tyre_m = mat('roller_tyre', (40, 40, 44))
+    pad_m = mat('pad_shell', (34, 36, 42))
+    pad_strap = mat('pad_strap', (232, 64, 42))
+    parts = []
+
+    # --- aggressive skates
+    g = ROLLER_GROUND['skates']
+    sole = -0.105
+    bits = roller_boot(boot_m, cuff_m, strap_m, lace_m, buckle_m, sole)
+    # Soul plate: a wide flat plate under the boot, sticking out on both sides, flat on the outside.
+    bits.append(cube(plate_m, (0.15, 0.27, 0.022), loc=(0, -0.045, sole - 0.006), bevel=0.008))
+    R = 0.029
+    wz = -g + R
+    wheels_y = (0.085, 0.03, -0.12, -0.175)
+    # Frame: two side plates round the wheels, with the H-block between the middle wheels.
+    for s in (1, -1):
+        bits.append(cube(frame_m, (0.008, 0.3, 0.05), loc=(s * 0.022, -0.045, wz + 0.012), bevel=0.004))
+    bits.append(cube(plate_m, (0.052, 0.08, 0.032), loc=(0, -0.045, wz + 0.03), bevel=0.006))
+    for y in wheels_y:
+        bits.append(cyl(wheel_m, R, 0.026, loc=(0, y, wz), rot=(0, math.pi / 2, 0), verts=22, bevel=0.007))
+        bits.append(cyl(core_m, R * 0.55, 0.03, loc=(0, y, wz), rot=(0, math.pi / 2, 0), verts=16))
+    # Axle bolts.
+    for y in wheels_y:
+        for s in (1, -1):
+            bits.append(cyl(buckle_m, 0.007, 0.004, loc=(s * 0.028, y, wz), rot=(0, math.pi / 2, 0), verts=8))
+    parts.append(join('roller_skate', bits))
+
+    # --- snowblades: a short ski, turned up at both ends, under a binding plate.
+    g = ROLLER_GROUND['blades']
+    sole = -0.1
+    bits = roller_boot(boot_m, cuff_m, strap_m, lace_m, buckle_m, sole)
+    bits.append(cube(plate_m, (0.13, 0.28, 0.03), loc=(0, -0.045, sole - 0.01), bevel=0.008))
+    bits.append(cube(frame_m, (0.08, 0.2, 0.025), loc=(0, -0.045, -g + 0.03), bevel=0.006))
+    nx, ny, T, L0, L1, W = 40, 6, 0.014, 0.27, -0.37, 0.085
+    bm = bmesh.new()
+    top, bot = [], []
+    for i in range(nx + 1):
+        u = i / nx
+        y = L0 + (L1 - L0) * u
+        tip = max(0.0, (u - 0.82) / 0.18)
+        tail = max(0.0, (0.15 - u) / 0.15)
+        rise = 0.05 * tip ** 1.6 + 0.035 * tail ** 1.6
+        end = max(tip, tail)
+        half = max(W / 2 * math.sqrt(max(0.0, 1 - (max(0.0, end - 0.5) / 0.5) ** 2)), 0.004)
+        rt, rb = [], []
+        for j in range(ny + 1):
+            x = (j / ny * 2 - 1) * half
+            rt.append(bm.verts.new((x, y, -g + rise + T)))
+            rb.append(bm.verts.new((x, y, -g + rise)))
+        top.append(rt)
+        bot.append(rb)
+    for i in range(nx):
+        for j in range(ny):
+            bm.faces.new((top[i][j], top[i + 1][j], top[i + 1][j + 1], top[i][j + 1]))
+            bm.faces.new((bot[i][j], bot[i][j + 1], bot[i + 1][j + 1], bot[i + 1][j]))
+    for i in range(nx):
+        bm.faces.new((top[i][0], bot[i][0], bot[i + 1][0], top[i + 1][0]))
+        bm.faces.new((top[i][ny], top[i + 1][ny], bot[i + 1][ny], bot[i][ny]))
+    for i in (0, nx):
+        for j in range(ny):
+            f = (top[i][j], top[i][j + 1], bot[i][j + 1], bot[i][j])
+            bm.faces.new(f if i == nx else f[::-1])
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    for f in bm.faces:
+        f.material_index = 0 if f.normal.z > -0.3 else 1
+    me = bpy.data.meshes.new('blade')
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new('blade', me)
+    bpy.context.collection.objects.link(o)
+    o.data.materials.append(ski_m)
+    o.data.materials.append(ski_base)
+    for p in o.data.polygons:
+        p.use_smooth = True
+    bits.append(o)
+    parts.append(join('roller_blade', bits))
+
+    # --- off-road skates: two big knobbly tyres in a long frame.
+    g = ROLLER_GROUND['offroad']
+    sole = -0.11
+    bits = roller_boot(boot_m, cuff_m, strap_m, lace_m, buckle_m, sole)
+    bits.append(cube(plate_m, (0.12, 0.26, 0.024), loc=(0, -0.045, sole - 0.008), bevel=0.008))
+    R = 0.075
+    wz = -g + R
+    for y in (0.17, -0.27):
+        bits.append(cyl(tyre_m, R, 0.04, loc=(0, y, wz), rot=(0, math.pi / 2, 0), verts=28, bevel=0.014))
+        bits.append(cyl(wheel_m, R * 0.5, 0.044, loc=(0, y, wz), rot=(0, math.pi / 2, 0), verts=18))
+        bits.append(cyl(buckle_m, 0.012, 0.07, loc=(0, y, wz), rot=(0, math.pi / 2, 0), verts=10))
+        # Knobs round the tread.
+        for k in range(16):
+            a = k * math.pi * 2 / 16
+            bits.append(cube(tyre_m, (0.03, 0.012, 0.01), loc=(0, y + (R + 0.002) * math.cos(a), wz + (R + 0.002) * math.sin(a)), rot=(a, 0, 0), bevel=0.002))
+    for s in (1, -1):
+        # Frame rails from axle to axle, rising to the boot in the middle.
+        bits.append(cube(frame_m, (0.01, 0.47, 0.03), loc=(s * 0.032, -0.05, wz + 0.005), bevel=0.005))
+        for y in (0.04, -0.13):
+            bits.append(cube(frame_m, (0.01, 0.03, 0.07), loc=(s * 0.032, y, wz + 0.045), bevel=0.004))
+    # A heel brake.
+    bits.append(cube(strap_m, (0.04, 0.05, 0.045), loc=(0, 0.25, wz + 0.03), rot=(0.4, 0, 0), bevel=0.008))
+    parts.append(join('roller_offroad', bits))
+
+    # --- the cuff: a tall shell round the ankle and lower shin, hinged at the ankle so it leans
+    # with the shin. Hung off the shin at the ankle (origin), up +Z, the front at -Y.
+    bits = [loft(cuff_m, [
+        (-0.03, 0.084, 0.09, 0, 0.012, 2.6), (0.0, 0.09, 0.094, 0, 0.012, 2.6), (0.06, 0.094, 0.096, 0, 0.014, 2.6),
+        (0.12, 0.094, 0.096, 0, 0.014, 2.6), (0.14, 0.09, 0.092, 0, 0.014, 2.4),
+    ], segs=28, cap0=False, cap1=False, name='cuff')]
+    # Liner showing at the top.
+    bits.append(loft(lace_m, [(0.135, 0.087, 0.089, 0, 0.014, 2.4), (0.155, 0.082, 0.084, 0, 0.014, 2.4)], segs=28, cap0=False, cap1=False, name='liner'))
+    # Hinge bolts at the ankle, each side.
+    for s in (1, -1):
+        bits.append(cyl(buckle_m, 0.016, 0.012, loc=(s * 0.095, 0.01, 0.0), rot=(0, math.pi / 2, 0), verts=14))
+    # Power strap round the top, and its buckle at the front.
+    bits.append(loft(strap_m, [(0.085, 0.098, 0.1, 0, 0.014, 2.6), (0.11, 0.098, 0.1, 0, 0.014, 2.6)], segs=28, cap0=False, cap1=False, name='strap'))
+    bits.append(cube(buckle_m, (0.05, 0.016, 0.03), loc=(0, -0.088, 0.098), bevel=0.005))
+    parts.append(join('roller_cuff', bits))
+
+    # --- pads. Knee: a hard cap on the front of the knee (-Y), on a padded sleeve, hung off the shin's top.
+    bits = [sphere(pad_m, 0.062, loc=(0, -0.052, -0.035), scale=(1.05, 0.62, 1.2), segs=24, rings=14)]
+    bits.append(loft(pad_strap, [(-0.12, 0.074, 0.074, 0, -0.008, 2.2), (-0.1, 0.075, 0.075, 0, -0.008, 2.2)], segs=20, axis='z', cap0=False, cap1=False, name='kstrap'))
+    bits.append(loft(pad_strap, [(0.02, 0.075, 0.075, 0, -0.006, 2.2), (0.04, 0.074, 0.074, 0, -0.006, 2.2)], segs=20, axis='z', cap0=False, cap1=False, name='kstrap'))
+    bits.append(cube(pad_strap, (0.05, 0.01, 0.014), loc=(0, -0.09, -0.035), bevel=0.004))
+    parts.append(join('pad_knee', bits))
+    # Elbow: a smaller cap on the back of the elbow (+Y), hung off the forearm's top.
+    bits = [sphere(pad_m, 0.042, loc=(0, 0.03, -0.015), scale=(1.05, 0.62, 1.25), segs=20, rings=12)]
+    bits.append(loft(pad_strap, [(-0.07, 0.05, 0.048, 0, 0.0, 2.2), (-0.055, 0.05, 0.048, 0, 0.0, 2.2)], segs=18, axis='z', cap0=False, cap1=False, name='estrap'))
+    bits.append(loft(pad_strap, [(0.03, 0.055, 0.054, 0, 0.0, 2.2), (0.045, 0.055, 0.054, 0, 0.0, 2.2)], segs=18, axis='z', cap0=False, cap1=False, name='estrap'))
+    parts.append(join('pad_elbow', bits))
+
+    bpy.context.scene.cursor.location = (0, 0, 0)
+    for o in parts:
+        bpy.ops.object.select_all(action='DESELECT')
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+    export(os.path.join(OUT, 'roller.glb'), parts)
+
+
 # ---------------------------------------------------------------- downhill bike
 
 # Bike space (Blender): X forward, Z up, the drive side (-Y) facing the camera, origin on the
@@ -3532,11 +3717,13 @@ def build_downhill(out):
 
 if __name__ == '__main__':
     import sys
-    which = sys.argv[1:] or ['skater', 'scooter', 'mtb', 'props']
+    which = sys.argv[1:] or ['skater', 'scooter', 'roller', 'mtb', 'props']
     if 'skater' in which:
         build_skater()
     if 'scooter' in which:
         build_scooter()
+    if 'roller' in which:
+        build_roller()
     if 'mtb' in which:
         build_mtb()
     if 'props' in which:
