@@ -271,6 +271,16 @@ export class River {
     this.emitters = emittersAlong(tr, wy);
     this.flecks = new Flecks(white, wy, this.dir, -z0 - rv.width * 0.5);
     this.group.add(this.flecks.points);
+    // On a standing wave, spray falling back onto the face joins the foam pile churning there.
+    const wave = tr.holes.find((h) => h.wave)?.wave;
+    if (wave) {
+      this.flecks.wave = wave;
+      this.splashes.landing = (x, y, z) => {
+        if (x < wave.crest - 0.3 || x > wave.trough || y > this.wy[Math.max(0, Math.round(x / DX))]) return false;
+        this.flecks.loop(x, z);
+        return true;
+      };
+    }
   }
 
   /** The river bed under sample i, seen through the front: deeper under big water and drops. */
@@ -313,6 +323,8 @@ export class River {
         }
         const f = e.foam * step * this.splashes.share;
         for (let k = Math.floor(f + Math.random()); k > 0; k--) this.flecks.spawn(e.x + (Math.random() - 0.5) * e.len, 1.2 - Math.random() * (this.width + 2.4));
+        const l = (e.loop ?? 0) * step * this.splashes.share;
+        for (let k = Math.floor(l + Math.random()); k > 0; k--) this.flecks.loop(e.x + (Math.random() - 0.5) * e.len, 1.2 - Math.random() * (this.width + 2.4));
       }
     }
     this.flecks.update(dt);
@@ -334,6 +346,8 @@ class Splashes {
   private next = 0;
   /** Share of drops to throw, from the quality setting. */
   share = 1;
+  /** Called as a falling drop passes (x, y, z): true takes the drop away. */
+  landing?: (x: number, y: number, z: number) => boolean;
   private static readonly N = 1400;
 
   constructor(color: THREE.Color, size = 0.24, private gravity = 14, opacity = 1) {
@@ -389,13 +403,14 @@ class Splashes {
       this.pos[i * 3] += this.vel[i * 3] * dt;
       this.pos[i * 3 + 1] += this.vel[i * 3 + 1] * dt;
       this.pos[i * 3 + 2] += this.vel[i * 3 + 2] * dt;
+      if (this.landing && this.vel[i * 3 + 1] < 0 && this.landing(this.pos[i * 3], this.pos[i * 3 + 1], this.pos[i * 3 + 2])) { this.life[i] = 0; this.pos[i * 3 + 1] = -9999; }
     }
     (this.points.geometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
   }
 }
 
 /** A spot where the water breaks: how much spray and foam it sheds each second, and how. */
-interface Emitter { x: number; len: number; spray: number; foam: number; mist: number; up: number; vx: number }
+interface Emitter { x: number; len: number; spray: number; foam: number; mist: number; up: number; vx: number; loop?: number }
 
 /** Every spot along a river where the water breaks: drops, holes, waves, rocks and wave crests. */
 function emittersAlong(tr: Track, wy: Float32Array): Emitter[] {
@@ -414,6 +429,7 @@ function emittersAlong(tr: Track, wy: Float32Array): Emitter[] {
       // A standing wave breaks over its crest and tumbles back down the face (upstream, +x).
       out.push({ x: h.wave.crest + 0.4, len: 1.2, spray: 110, foam: 12, mist: 3, up: 2.6, vx: 1.6 });
       out.push({ x: h.wave.crest - 2, len: 2.5, spray: 0, foam: 30, mist: 0, up: 0, vx: 0 });
+      out.push({ x: (h.wave.crest + h.wave.trough) / 2, len: h.wave.trough - h.wave.crest, spray: 0, foam: 0, loop: 40, mist: 0, up: 0, vx: 0 });
       continue;
     }
     const mid = h.x0 + (h.x1 - h.x0) * 0.4;
@@ -437,8 +453,12 @@ class Flecks {
   private pos: Float32Array;
   private life: Float32Array;
   private speed: Float32Array;
+  /** Where each fleck is round a standing wave's loop (0 to 1), or -1 floating free. */
+  private phase: Float32Array;
   private next = 0;
   share = 1;
+  /** The standing wave, if any: foam on its face goes round and round. */
+  wave?: { crest: number; trough: number };
   private static readonly N = 1200;
 
   constructor(color: THREE.Color, private wy: Float32Array, private dir: number, _mid: number) {
@@ -446,6 +466,7 @@ class Flecks {
     this.pos = new Float32Array(N * 3).fill(-9999);
     this.life = new Float32Array(N);
     this.speed = new Float32Array(N);
+    this.phase = new Float32Array(N).fill(-1);
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
     const tex = canvasTexture(32, 32, (c) => {
@@ -466,6 +487,25 @@ class Flecks {
     this.pos.set([x, this.at(x) + 0.03, z], i * 3);
     this.life[i] = 2.5 + Math.random() * 2.5;
     this.speed[i] = FLOW * (0.8 + Math.random() * 0.5) * this.dir;
+    this.phase[i] = -1;
+  }
+
+  /**
+   * A fleck caught in a standing wave's foam pile at x: it tumbles back down the face from the
+   * crest towards the trough, then the current carries it back up the face to the crest, round
+   * and round, until a few wash out over the crest and away.
+   */
+  loop(x: number, z: number) {
+    const w = this.wave;
+    if (!w) return;
+    const i = this.next;
+    this.next = (this.next + 1) % Flecks.N;
+    const s = Math.max(0, Math.min(1, (x - w.crest) / (w.trough - w.crest)));
+    this.phase[i] = s * 0.5;
+    this.pos.set([x, this.at(x) + 0.03, z], i * 3);
+    this.life[i] = 3 + Math.random() * 4;
+    // Time round the loop, in seconds.
+    this.speed[i] = 1.6 + Math.random() * 1.2;
   }
 
   private at(x: number) {
@@ -479,6 +519,22 @@ class Flecks {
       if (this.life[i] <= 0) continue;
       this.life[i] -= dt;
       if (this.life[i] <= 0) { this.pos[i * 3 + 1] = -9999; continue; }
+      const w = this.wave;
+      if (w && this.phase[i] >= 0) {
+        let u = this.phase[i] + dt / this.speed[i];
+        if (u >= 1) {
+          // Back at the crest: most go round again, a few wash out over it and away.
+          if (Math.random() < 0.25) { this.phase[i] = -1; this.speed[i] = FLOW * (0.8 + Math.random() * 0.5) * this.dir; continue; }
+          u -= 1;
+        }
+        this.phase[i] = u;
+        // Over the top of the pile, tumbling down the face; then back up it along the surface.
+        const s = u < 0.5 ? u / 0.5 : 1 - (u - 0.5) / 0.5;
+        const x = w.crest + (w.trough - w.crest) * (u < 0.5 ? s * s * (3 - 2 * s) : s);
+        this.pos[i * 3] = x;
+        this.pos[i * 3 + 1] = this.at(x) + 0.03 + (u < 0.5 ? 0.35 * Math.sin(Math.PI * s) : 0);
+        continue;
+      }
       const x = this.pos[i * 3] + this.speed[i] * dt;
       this.pos[i * 3] = x;
       this.pos[i * 3 + 1] = this.at(x) + 0.03;
