@@ -9,7 +9,7 @@ export const DESERT: TrackDef[] = [
     id: 'desert-1', biome: 'desert', name: 'Dry Gulch', difficulty: 4, par: 14500,
     challenges: [
       { text: 'Do 8 good pumps', kind: 'pumps', count: 8 },
-      { text: 'Climb out of every gully first time', kind: 'climb' },
+      { text: 'Air off a gully lip', kind: 'air', from: 'lip', seconds: 0.4 },
       { text: 'Score 14,500', kind: 'score', points: 14500 },
     ],
     build: layout(4, 5, (b) => {

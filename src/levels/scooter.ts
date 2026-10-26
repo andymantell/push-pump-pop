@@ -91,7 +91,7 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   'snow-mega': scored(23000, drops(), bothAirs()),
 
   // Desert.
-  'desert-1': scored(19000, pumps(8), climb()),
+  'desert-1': scored(19000, pumps(8), air('Air off a gully lip', { from: 'lip', seconds: 0.4 })),
   'desert-2': set(1000, climb(), air('Air off a gully lip', { from: 'lip', seconds: 0.4 }), noLives()),
   'desert-3': scored(27000, trick('Bunny hop off a gully kicker', 'Bunny Hop', { from: 'kicker' }), combo('Whip + body trick combo', { include: ['whip', 'hold'] })),
   'desert-4': set(9000, gaps('Clear every gap'), trick('Spin over a gap', 'spin', { overGap: true }), noLives()),

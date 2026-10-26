@@ -18,7 +18,7 @@ import { requiredCount } from '../src/challenges';
 import { Rider, Swipe, TrickName, FAKIE_SAFE, FAKIE_FALL } from '../src/rider';
 import { Score } from '../src/score';
 import { MegaRun } from '../src/mega';
-import { ChallengeRun, Challenge, members } from '../src/challenges';
+import { ChallengeRun, Challenge, members, offSpot } from '../src/challenges';
 import { Track, Rail, railY } from '../src/track';
 import * as THREE from 'three';
 import { Skater } from '../src/skater';
@@ -347,7 +347,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     const filters = g as { overGap?: unknown; from?: string; fromRail?: boolean; minTime?: number };
     const f = flight();
     if (filters.overGap && !track.pits.some((p) => p.x0 > takeoffX - 0.6 && p.x1 < f.x)) return true;
-    if (filters.from && !track.spots.some((sp) => sp.tag === filters.from && takeoffX > sp.x - 2.5 && takeoffX < sp.x + 1)) return true;
+    if (filters.from && !track.spots.some((sp) => sp.tag === filters.from && offSpot(sp, takeoffX))) return true;
     const hold = Math.max(0.3, (filters.minTime ?? 0) + 0.15);
     // Two tricks in one air: the second a moment later, as a thumb can't do both at once.
     // With two to do, wait until the taps before the ollie are out of the tap-rate window.
