@@ -450,11 +450,13 @@ export class Skater {
     const prog = r.trickProgress;
     const trick = r.current;
     this.boardPivot.position.y = 0.08 + this.lift;
-    this.boardPivot.rotation.set(0, r.boardYaw, 0);
+    // Yaw outside the flip, so a 360 flip or hardflip rolls along the board while it spins round.
+    this.boardPivot.rotation.set(0, r.boardYaw, 0, 'YXZ');
     // Popping out of an ollie, the board only starts to flip once it's off the ground.
     const popped = 1 - this.ol.hold;
-    if (trick && trick.axis === 'flip') this.boardPivot.rotation.x = trick.dir * flipEase(prog) * popped * Math.PI * 2;
-    if (trick && trick.axis === 'spin') this.boardPivot.rotation.y = r.boardYaw + flipEase(prog) * popped * Math.PI;
+    // Turning round flat, the flip runs the other way along the board to look the same from outside.
+    if (trick && trick.axis === 'flip') this.boardPivot.rotation.x = trick.dir * Math.cos(r.boardYaw) * flipEase(prog) * popped * Math.PI * 2;
+    if (trick?.shove) this.boardPivot.rotation.y = r.boardYaw + trick.shove * flipEase(prog) * popped * Math.PI;
     // Shifty: twist the board across and back, feet still strapped to it.
     // A boardslide turns the board across the rail, the deck resting on it.
     // Smoothed like flipLift, so a shifty that lands at 80% round doesn't snap the feet back.

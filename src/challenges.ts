@@ -53,7 +53,7 @@ export type Challenge = { text: string } & (
 );
 
 const GROUPS: Record<Group, TrickName[]> = {
-  flip: ['Kickflip', 'Heelflip', 'Pop Shove-it', 'BS Shifty', 'FS Shifty', 'Tuck Knee'],
+  flip: ['Kickflip', 'Heelflip', 'Pop Shove-it', '360 Flip', 'Hardflip', 'BS Shifty', 'FS Shifty', 'Tuck Knee'],
   grab: ['Indy', 'Melon', 'Nosegrab', 'Tailgrab'],
   // Scooter: whips and barspins on the right, body tricks held on the left.
   whip: ['Tailwhip', 'Heelwhip', 'Barspin', 'Double Whip', 'Double Heelwhip', 'Double Barspin', 'Tailwhip Barspin', 'Heelwhip Barspin'],

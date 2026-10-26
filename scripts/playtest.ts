@@ -165,6 +165,8 @@ function trickActs(name: TrickName, hold: number): [string, number][] {
     case 'Kickflip': case 'BS Shifty': return [['flick:left', 0]];
     case 'Heelflip': case 'FS Shifty': return [['flick:right', 0]];
     case 'Pop Shove-it': case 'Tuck Knee': return [['flick:down', 0]];
+    case '360 Flip': return [['combo:left', 0]];
+    case 'Hardflip': return [['combo:right', 0]];
     case 'Indy': return [['grab:up', 0], ['let go', hold]];
     case 'Melon': return [['grab:down', 0], ['let go', hold]];
     case 'Nosegrab': return [['grab:left', 0], ['let go', hold]];
@@ -199,6 +201,7 @@ function trickTime(name: TrickName, hold: number): number {
   if (name.endsWith('360')) return 0.75;
   if (name === 'Backflip' || name === 'Frontflip') return 0.72;
   if (name === 'Ollie') return 0;
+  if (name === '360 Flip' || name === 'Hardflip') return 0.55;
   return 0.42;
 }
 
@@ -386,6 +389,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       else if (kind === 'spin' && arg) r.spinSwipe(arg as 'left' | 'right');
       else if (kind === 'spin360') { r.spinSwipe(arg as 'left' | 'right'); r.spinMore(); }
       else if (kind === 'flick') { r.swipe(arg); r.release(); }
+      else if (kind === 'combo') { r.comboSwipe(arg as 'left' | 'right'); r.release(); }
       else if (act === 'grab') r.grabSwipe((['up', 'down', 'left', 'right'] as const)[Math.floor(rand() * 4)]);
       else if (act === 'spin') {
         r.spinSwipe(rand() > 0.5 ? 'left' : 'right');
@@ -494,6 +498,9 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         } else if (SCOOT && pick < 0.55 && flight().time - REACTION - JITTER < 0.65) {
           // Not enough air to get round and back: a scooter rider would rather not end up backwards.
           press('left');
+        } else if (skater && !SCOOT && pick >= 0.9 && flight().time - REACTION - JITTER > 0.6) {
+          // Now and then on a big air while posing the skater, a 360 flip or hardflip, to check his legs through them.
+          press(pick < 0.95 ? 'combo:left' : 'combo:right');
         } else press(pick < 0.55 ? 'spin' : pick < 0.8 ? 'left' : 'down');
         trickPlanned = true;
       }

@@ -343,6 +343,7 @@ const input = new Input(canvas);
 const canRide = () => state === 'playing' && resumeTimer <= 0 && lives.controllable && !(def.kind === 'mega' && mega.ending);
 input.onPump = () => { if (canRide()) { rider.pump(); figure().pumpKick(); } };
 input.onSwipe = (d) => { if (canRide()) rider.swipe(d); };
+input.onCombo = (d) => { if (canRide()) rider.comboSwipe(d); };
 input.onGrab = (d) => { if (canRide()) rider.grabSwipe(d); };
 input.onRelease = () => { if (canRide()) rider.release(); };
 input.onSpin = (d) => { if (canRide()) rider.spinSwipe(d); };

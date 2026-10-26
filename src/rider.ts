@@ -67,7 +67,7 @@ export type FlipName = 'Backflip' | 'Frontflip';
 export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press';
 export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind' | 'Feeble' | 'Smith';
 export type LoopName = 'Loop';
-type BoardTrick = 'Ollie' | 'Bunny Hop' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee';
+type BoardTrick = 'Ollie' | 'Bunny Hop' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | '360 Flip' | 'Hardflip' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee';
 /** Scooter tricks: the deck whipped round the bars, the bars spun round, or both at once. */
 export type WhipName = 'Tailwhip' | 'Double Whip' | 'Heelwhip' | 'Double Heelwhip' | 'Barspin' | 'Double Barspin' | 'Tailwhip Barspin' | 'Heelwhip Barspin';
 export type TrickName = BoardTrick | WhipName | GrabName | SpinName | FlipName | ManualName | GrindName | LoopName;
@@ -82,6 +82,8 @@ export interface Trick {
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
   axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop' | 'whip';
   dir: 1 | -1;
+  /** Shove-its: half turns the board spins round flat (+ backside, - frontside), on its own or in a flip. */
+  shove?: number;
   /** Scooter whips: turns of the deck round the bars (+ tailwhip, - heelwhip), and of the bars. */
   whip?: number;
   bars?: number;
@@ -93,7 +95,10 @@ export const TRICKS: Record<BoardTrick, Trick> = {
   'Bunny Hop': { name: 'Bunny Hop', duration: 0, points: 100, axis: 'none', dir: 1 },
   'Kickflip': { name: 'Kickflip', duration: 0.42, points: 500, axis: 'flip', dir: 1 },
   'Heelflip': { name: 'Heelflip', duration: 0.42, points: 500, axis: 'flip', dir: -1 },
-  'Pop Shove-it': { name: 'Pop Shove-it', duration: 0.4, points: 400, axis: 'spin', dir: 1 },
+  'Pop Shove-it': { name: 'Pop Shove-it', duration: 0.4, points: 400, axis: 'spin', dir: 1, shove: 1 },
+  // A kickflip with a shove-it in it: all the way round backside (a tre flip), or half round frontside.
+  '360 Flip': { name: '360 Flip', duration: 0.55, points: 1000, axis: 'flip', dir: 1, shove: 2 },
+  'Hardflip': { name: 'Hardflip', duration: 0.5, points: 850, axis: 'flip', dir: 1, shove: -1 },
   // Snowboard: your feet are strapped in, so the board twists or tucks up with you.
   'BS Shifty': { name: 'BS Shifty', duration: 0.42, points: 450, axis: 'shifty', dir: -1 },
   'FS Shifty': { name: 'FS Shifty', duration: 0.42, points: 450, axis: 'shifty', dir: 1 },
@@ -400,7 +405,16 @@ export class Rider {
     }
   }
 
-  swipe(dir: Swipe) {
+  /**
+   * Swipe down and to one side: a 360 flip (left) or a hardflip (right). On a rail, a scooter,
+   * or a board you're strapped into, it's just a swipe down.
+   */
+  comboSwipe(dir: 'left' | 'right') {
+    if (this.grind || this.opts.scooter || this.opts.snow || this.opts.mountain) { this.swipe('down'); return; }
+    this.swipe('down', dir === 'left' ? '360 Flip' : 'Hardflip');
+  }
+
+  swipe(dir: Swipe, combo?: '360 Flip' | 'Hardflip') {
     if (this.perched || this.dropT >= 0) return;
     if (this.bailing || this.grab) return;
     // On a rail the flip-side swipes change how you grind it (up still ollies off).
@@ -413,7 +427,7 @@ export class Rider {
       return;
     }
     if (this.opts.scooter && dir !== 'up') { this.whipSwipe(dir); return; }
-    const name = this.opts.scooter ? 'Bunny Hop' : (this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir];
+    const name = combo ?? (this.opts.scooter ? 'Bunny Hop' : (this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir]);
     if (!name) return;
     const hop = TRICKS[name].axis === 'none';
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
@@ -459,7 +473,7 @@ export class Rider {
       this.barsT = Math.min(c.bars ?? 0, this.barsT + dt / BARS_TIME);
     }
     if (this.trickProgress < 1) return;
-    if (c.axis === 'spin') this.boardYaw += Math.PI;
+    this.boardYaw += (c.shove ?? 0) * Math.PI;
     this.current = null;
     this.tricksThisAir++;
     this.ev.trick(c);
@@ -1027,7 +1041,7 @@ export class Rider {
     if (this.current) {
       // Close enough: count it.
       const done = this.current;
-      if (done.axis === 'spin') this.boardYaw += Math.PI;
+      this.boardYaw += (done.shove ?? 0) * Math.PI;
       this.current = null;
       this.tricksThisAir++;
       this.ev.trick(done);

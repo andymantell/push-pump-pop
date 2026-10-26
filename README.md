@@ -13,6 +13,8 @@ A mobile-friendly side-on skateboarding game inspired by Pumped BMX, built with 
 | Kickflip | Swipe left | Left arrow / A |
 | Heelflip | Swipe right | Right arrow / D |
 | Pop shove-it | Swipe down | Down arrow / S |
+| 360 flip (tre flip) | Swipe down and to the left, on a slant | C |
+| Hardflip | Swipe down and to the right, on a slant | V |
 | Grab (Indy, Melon, Nosegrab, Tailgrab) | On the left half of the screen, swipe up, down, left or right and keep holding | Hold I / K / J / L |
 | Spin (FS/BS 180, 360) | Swipe left or right along the bottom of the screen; a longer swipe makes a 360 | Z / X (press again for a 360) |
 | Manual / Nose manual | Tilt the device like a steering wheel on the ground: right side up, or right side down | Hold Q / E |

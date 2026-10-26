@@ -1,5 +1,6 @@
 // Filmstrip of a trick from the real physics, for judging animation: `npm run dev`, then
-// open /art/ollie.html. ?swipe=up|left|right|down|none picks the flip-side swipe, ?grab=up etc.
+// open /art/ollie.html. ?swipe=up|left|right|down|none picks the flip-side swipe, ?combo=left|right
+// a 360 flip or hardflip, ?grab=up etc.
 // a held grab, ?spin=right a body spin, ?snow=1 the snowboard; ?at=0,0.03,... the frame times
 // in seconds after the pop, ?rail=1 a hop onto a rail, and ?views=side,three-quarter,back the camera angles.
 // ?ride=scooter rides the scooter instead; ?then=left a second swipe 0.12 s after the first
@@ -58,8 +59,9 @@ const dt = 1 / 120;
 const step = () => { r.update(dt); skater.update(dt, r, (x) => track.height(x), (x) => track.slope(x)); };
 if (v0 === null) for (let i = 0; i < 120; i++) step();
 while (rail && r.x < track.rails[0].x0 - r.v * 0.45) step();
-const swipe = q.get('swipe'), grab = q.get('grab'), spin = q.get('spin');
-if (grab) r.grabSwipe(grab as Swipe);
+const swipe = q.get('swipe'), grab = q.get('grab'), spin = q.get('spin'), combo = q.get('combo');
+if (combo) { r.comboSwipe(combo as 'left' | 'right'); r.release(); }
+else if (grab) r.grabSwipe(grab as Swipe);
 else if (spin) r.spinSwipe(spin as 'left' | 'right');
 else if (swipe !== 'none') { r.swipe((swipe ?? 'up') as Swipe); r.release(); }
 let t = 0;
