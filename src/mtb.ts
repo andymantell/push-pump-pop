@@ -3,7 +3,7 @@ import { Rider, BikeHold } from './rider';
 import { toon } from './toon';
 import { spaceKit } from './spacesuit';
 import { railY } from './track';
-import { PartName, PART_NAMES } from './skater';
+import { PartName, PART_NAMES, elbowBackBend, reachArm } from './skater';
 import { Look, Wardrobe, bodyPieces, headPieces, dress, markModels, paint } from './look';
 
 // The downhill bike and its rider: the same kid as the skater, in a full-face helmet and
@@ -314,6 +314,11 @@ export class MtbRig {
       dress(this.helmet, headPieces(look, 'fullface'), w, look);
     }
     paint(this.root);
+  }
+
+  /** The worst wrong-way elbow bend of the two arms, in radians (for the playtest). */
+  elbowBackBend() {
+    return Math.max(elbowBackBend(this.p.forearm_L), elbowBackBend(this.p.forearm_R));
   }
 
   /** World positions of the points that should never go below the ground: knees, heels and toes. */
@@ -704,18 +709,9 @@ export class MtbRig {
 
   /** Two-bone IK for an arm, in the torso's space. */
   private arm(upper: THREE.Object3D, fore: THREE.Object3D, hand: THREE.Vector3, pole: THREE.Vector3) {
-    const d = hand.clone().sub(upper.position);
-    let len = d.length();
-    const max = UPPER_ARM + FOREARM - 0.002;
-    if (len > max) { d.multiplyScalar(max / len); len = max; }
-    const u = d.clone().normalize();
-    const cosA = (UPPER_ARM * UPPER_ARM + len * len - FOREARM * FOREARM) / (2 * UPPER_ARM * len);
-    const a = Math.acos(Math.max(-1, Math.min(1, cosA)));
-    const perp = pole.clone().sub(u.clone().multiplyScalar(pole.dot(u))).normalize();
-    const elbow = u.clone().multiplyScalar(Math.cos(a) * UPPER_ARM).add(perp.multiplyScalar(Math.sin(a) * UPPER_ARM));
-    upper.quaternion.setFromUnitVectors(DOWN, elbow.clone().normalize());
-    const foreDir = d.clone().sub(elbow).normalize().applyQuaternion(upper.quaternion.clone().invert());
-    fore.quaternion.setFromUnitVectors(DOWN, foreDir);
+    const q = reachArm(upper.position, hand, pole);
+    upper.quaternion.copy(q.upper);
+    fore.quaternion.copy(q.fore);
   }
 }
 

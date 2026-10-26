@@ -51,6 +51,61 @@ const PUSH_TURN = 1.2;
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const DOWN = v3(0, -1, 0);
+
+/**
+ * How far an elbow bends the wrong way, in radians: 0 for a real elbow. The forearm is
+ * a child of the upper arm, which hangs down its own -y with the front of the arm on +z,
+ * so a real elbow folds the forearm towards +z (or out to the side, turning the upper
+ * arm in or out), never towards -z.
+ */
+export function elbowBackBend(fore: THREE.Object3D) {
+  return backBend(DOWN.clone().applyQuaternion(fore.quaternion));
+}
+
+const backBend = (foreDir: THREE.Vector3) => Math.asin(Math.max(0, Math.min(1, -foreDir.z)));
+
+/**
+ * Two-bone IK for an arm, in the torso's space: the upper arm's and forearm's rotations
+ * to put the hand on target with the elbow towards the pole. Where that would bend the
+ * elbow backwards, the elbow swings round the shoulder-hand line, a little at a time,
+ * until it bends the right way, so it rides that limit smoothly instead of popping.
+ * A hand pulled in close behind the shoulder can't be reached that way at all (the
+ * scooter's grips can end up there in a spinning flip): it reaches just in front instead.
+ */
+export function reachArm(shoulder: THREE.Vector3, hand: THREE.Vector3, pole: THREE.Vector3) {
+  let best = solveArm(shoulder, hand, pole);
+  for (let ahead = 0.03; best.back > 0.03 && ahead <= 0.3; ahead += 0.03) {
+    const next = solveArm(shoulder, hand.clone().setZ(hand.z + ahead), pole);
+    if (next.back < best.back) best = next;
+  }
+  return best;
+}
+
+function solveArm(shoulder: THREE.Vector3, hand: THREE.Vector3, pole: THREE.Vector3) {
+  const d = hand.clone().sub(shoulder);
+  let len = d.length();
+  const max = UPPER_ARM + FOREARM - 0.002;
+  if (len > max) { d.multiplyScalar(max / len); len = max; }
+  const u = d.clone().normalize();
+  const cosA = (UPPER_ARM * UPPER_ARM + len * len - FOREARM * FOREARM) / (2 * UPPER_ARM * len);
+  const a = Math.acos(Math.max(-1, Math.min(1, cosA)));
+  const p0 = pole.clone().sub(u.clone().multiplyScalar(pole.dot(u))).normalize();
+  const p1 = u.clone().cross(p0);
+  const best = { upper: new THREE.Quaternion(), fore: new THREE.Quaternion(), back: Infinity };
+  for (let k = 0; k <= 36; k++) {
+    for (const sign of k ? [1, -1] : [1]) {
+      const phi = sign * k * Math.PI / 36;
+      const perp = p0.clone().multiplyScalar(Math.cos(phi)).add(p1.clone().multiplyScalar(Math.sin(phi)));
+      const elbow = u.clone().multiplyScalar(Math.cos(a) * UPPER_ARM).add(perp.multiplyScalar(Math.sin(a) * UPPER_ARM));
+      const qU = new THREE.Quaternion().setFromUnitVectors(DOWN, elbow.clone().normalize());
+      const foreDir = d.clone().sub(elbow).normalize().applyQuaternion(qU.clone().invert());
+      const back = backBend(foreDir);
+      if (back < best.back) { best.back = back; best.upper.copy(qU); best.fore.setFromUnitVectors(DOWN, foreDir); }
+      if (back < 0.03) return best;
+    }
+  }
+  return best;
+}
 const UP = v3(0, 1, 0);
 const smooth = (a: number, b: number, t: number) => {
   const u = Math.max(0, Math.min(1, (t - a) / (b - a)));
@@ -334,6 +389,11 @@ export class Skater {
     this.mtbParts.head_helmet.visible = kind === 'mountain';
   }
 
+  /** The worst wrong-way elbow bend of the two arms, in radians (for the playtest). */
+  elbowBackBend() {
+    return Math.max(elbowBackBend(this.p.forearm_L), elbowBackBend(this.p.forearm_R));
+  }
+
   /** World positions of the points that should never go below the ground: knees, heels and toes. */
   legPoints(): THREE.Vector3[] {
     const p = this.p;
@@ -580,8 +640,9 @@ export class Skater {
     const swing = Math.sin(this.pushT * Math.PI * 2) * 0.75 * this.pushW;
     p.upperArm_L.rotation.set(0.25 + swing, 0, 0.35 + this.armRaise * 0.9);
     p.upperArm_R.rotation.set(0.25 - swing, 0, -(0.35 + this.armRaise * 0.9));
-    p.forearm_L.rotation.set(0.6, 0, -0.3 - this.armRaise * 0.3);
-    p.forearm_R.rotation.set(0.6, 0, 0.3 + this.armRaise * 0.3);
+    // Elbows bend the forearms forwards (-x here): the other way bends them backwards.
+    p.forearm_L.rotation.set(-0.5, 0, -0.3 - this.armRaise * 0.3);
+    p.forearm_R.rotation.set(-0.5, 0, 0.3 + this.armRaise * 0.3);
     if (gw > 0.01) this.grabArm(grab, gw);
 
     // Bail: tumble off, board flies ahead, then snap back.
@@ -719,20 +780,7 @@ export class Skater {
     this.body.updateMatrixWorld(true);
     // Target and pole in the torso's space, where the shoulder lives.
     const hand = p.torso.worldToLocal(this.p.deck.localToWorld(g.at.clone()));
-    const s = upper.position.clone();
-    const d = hand.sub(s);
-    let len = d.length();
-    const max = UPPER_ARM + FOREARM - 0.002;
-    if (len > max) { d.multiplyScalar(max / len); len = max; }
-    const u = d.clone().normalize();
-    const cosA = (UPPER_ARM * UPPER_ARM + len * len - FOREARM * FOREARM) / (2 * UPPER_ARM * len);
-    const a = Math.acos(Math.max(-1, Math.min(1, cosA)));
-    const pole = g.elbow.clone();
-    const perp = pole.sub(u.clone().multiplyScalar(pole.dot(u))).normalize();
-    const elbow = u.clone().multiplyScalar(Math.cos(a) * UPPER_ARM).add(perp.multiplyScalar(Math.sin(a) * UPPER_ARM));
-    const qU = new THREE.Quaternion().setFromUnitVectors(DOWN, elbow.clone().normalize());
-    const foreDir = d.clone().sub(elbow).normalize().applyQuaternion(qU.clone().invert());
-    const qF = new THREE.Quaternion().setFromUnitVectors(DOWN, foreDir);
+    const { upper: qU, fore: qF } = reachArm(upper.position, hand, g.elbow);
     upper.quaternion.slerp(qU, w);
     fore.quaternion.slerp(qF, w);
   }

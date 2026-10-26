@@ -48,6 +48,10 @@ const LEG_RUNS = 24;
 const LEG_SINK = 0.04;
 /** How far a knee, heel or toe may move against the body in one frame. */
 const LEG_JUMP = 0.12;
+/** How far an elbow may bend the wrong way (radians): about as far as a real one can. */
+const ELBOW_BACK = 10 * Math.PI / 180;
+/** Where an elbow bent backwards: rider state -> worst case seen. */
+const elbowHits = new Map<string, { depth: number; where: string }>();
 /** Where legs went through the ground: rider state -> worst case seen. */
 const legHits = new Map<string, { depth: number; where: string }>();
 
@@ -128,6 +132,9 @@ function rng(seed: number) {
 
 function checkLegs(skater: Figure, r: Rider, track: Track, trackId: string, t: number) {
   skater.update(DT, r, (x) => track.height(x), (x) => track.slope(x));
+  // Elbows only bend one way, whatever the rider is doing (bails included).
+  const back = skater.elbowBackBend();
+  if (back > ELBOW_BACK) note(state(r), back, r, track, trackId, t, elbowHits);
   // Tumbling into a gap goes below the ground on purpose, and the respawn after it is a jump cut.
   if (r.falling) { lastLegs.delete(skater); return; }
   // Crashing into the far wall of a gap you didn't clear isn't a pose to judge.
@@ -160,10 +167,10 @@ function state(r: Rider) {
   ].filter(Boolean).join(' ');
 }
 
-function note(key: string, size: number, r: Rider, track: Track, trackId: string, t: number) {
-  const prev = legHits.get(key);
+function note(key: string, size: number, r: Rider, track: Track, trackId: string, t: number, hits = legHits) {
+  const prev = hits.get(key);
   if (!prev || size > prev.depth) {
-    legHits.set(key, { depth: size, where: `${trackId} x=${r.x.toFixed(1)} t=${t.toFixed(2)} slope=${track.slope(r.x).toFixed(2)} curv=${track.curvature(r.x).toFixed(2)} v=${r.v.toFixed(1)}` });
+    hits.set(key, { depth: size, where: `${trackId} x=${r.x.toFixed(1)} t=${t.toFixed(2)} slope=${track.slope(r.x).toFixed(2)} curv=${track.curvature(r.x).toFixed(2)} v=${r.v.toFixed(1)}` });
   }
 }
 
@@ -729,6 +736,15 @@ if (legHits.size) {
   console.log('\nleg glitches (sink: into the ground, jump: snapping between frames):');
   for (const [state, h] of [...legHits].sort((a, b) => b[1].depth - a[1].depth)) {
     console.log(`  ${(h.depth * 100).toFixed(0).padStart(3)} cm  ${state.padEnd(34)} ${h.where}`);
+  }
+}
+
+// Nor should an elbow ever bend backwards.
+if (elbowHits.size) {
+  failed = true;
+  console.log('\nelbows bending backwards:');
+  for (const [state, h] of [...elbowHits].sort((a, b) => b[1].depth - a[1].depth)) {
+    console.log(`  ${(h.depth * 180 / Math.PI).toFixed(0).padStart(3)} deg ${state.padEnd(34)} ${h.where}`);
   }
 }
 
