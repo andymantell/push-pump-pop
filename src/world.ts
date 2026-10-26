@@ -487,8 +487,11 @@ function surfaceTexture(s: Surface): THREE.CanvasTexture {
   });
 }
 
-/** A butte: stacked rock bands sharing one ragged outline, with a flat top. */
-function mesaShape(x: number, y: number, z: number, rad: number, h: number, r: () => number, bands: THREE.Material[], top: THREE.Material) {
+/**
+ * A butte: stacked rock bands sharing one ragged outline, with a flat top. Its bottom band
+ * reaches `foot` further down, so its base is out of sight wherever the ground dips.
+ */
+function mesaShape(x: number, y: number, z: number, rad: number, h: number, r: () => number, bands: THREE.Material[], top: THREE.Material, foot = 0) {
   const g = new THREE.Group();
   const SEG = 11;
   const wob = Array.from({ length: SEG }, () => 0.8 + r() * 0.35);
@@ -497,7 +500,8 @@ function mesaShape(x: number, y: number, z: number, rad: number, h: number, r: (
   for (let i = 0; i < n; i++) {
     const lh = (h / n) * (0.7 + r() * 0.6);
     const r0 = rad * (1.25 - (i / n) * 0.35), r1 = rad * (1.25 - ((i + 1) / n) * 0.35);
-    const geo = new THREE.CylinderGeometry(r1, r0, lh, SEG, 1, i < n - 1);
+    const down = i === 0 ? foot : 0;
+    const geo = new THREE.CylinderGeometry(r1, r0 + down * 0.1, lh + down, SEG, 1, i < n - 1);
     const p = geo.getAttribute('position') as THREE.BufferAttribute;
     for (let k = 0; k < p.count; k++) {
       const ang = Math.atan2(p.getZ(k), p.getX(k));
@@ -508,7 +512,7 @@ function mesaShape(x: number, y: number, z: number, rad: number, h: number, r: (
     geo.computeVertexNormals();
     const mats = i < n - 1 ? bands[i % bands.length] : [bands[i % bands.length], top, top];
     const m = new THREE.Mesh(geo, mats);
-    m.position.y = yy + lh / 2;
+    m.position.y = yy + (lh - down) / 2;
     g.add(m);
     yy += lh;
   }
@@ -2022,11 +2026,19 @@ export class World {
         break;
       case 'mesas': {
         // Flat-topped buttes in bands of rock, wider than tall.
+        // They stand out past the end of the ground, on a desert floor well below the lowest
+        // point of the track, so none hangs in the sky behind a tall ramp or a ravine.
         const bands = [0xc9784a, 0xe09a64, 0xa85a34, 0xd98a58];
+        const floor = tr.minY - 12;
+        const sand = new THREE.Mesh(new THREE.PlaneGeometry(len + 900, 600), new THREE.MeshBasicMaterial({ color: new THREE.Color(b.ground[1]).lerp(fog, 0.25) }));
+        sand.rotation.x = -Math.PI / 2;
+        sand.position.set(len / 2, floor, -380);
+        far.add(sand);
         for (let x = -60; x < len + 150; x += 30 + r() * 35) {
           const z = -95 - r() * 70;
           const rad = 8 + r() * 14, h = 14 + r() * 18;
-          far.add(mesaShape(x, this.groundY(x, -40) - 4, z, rad, h, r, bands.map((c) => hazed(c, 0.15 + (-z - 95) / 400)), hazed(0xe8b07a, 0.15)));
+          const y = this.groundY(x, -40) - 4;
+          far.add(mesaShape(x, y, z, rad, h, r, bands.map((c) => hazed(c, 0.15 + (-z - 95) / 400)), hazed(0xe8b07a, 0.15), Math.max(0, y - floor)));
         }
         break;
       }
@@ -2344,7 +2356,11 @@ export class World {
       const lm = LANDMARKS[name];
       if (!lm) return;
       let x = tr.startX + (end - tr.startX) * (names.length === 1 ? 0.45 : 0.28 + i * 0.44);
-      if (lm.on !== 'sea' && lm.on !== 'air') for (let k = 0; k < 40 && this.nearRavine(x, lm.z, Math.max(1, lm.r * 0.6)); k++) x += 2;
+      // Clear of the whole footprint, corners too (the ravines widen as they go back), so no
+      // leg or wall hangs out over a ravine.
+      const rr = lm.r + 2;
+      const overRavine = (x: number) => this.nearRavine(x, lm.z, rr) || [[rr, rr], [-rr, rr], [rr, -rr], [-rr, -rr]].some(([dx, dz]) => this.ravineAt(x + dx * 0.7, lm.z + dz * 0.7));
+      if (lm.on !== 'sea' && lm.on !== 'air') for (let k = 0; k < 40 && overRavine(x); k++) x += 2;
       const o = lm.build(this.rand);
       let y: number;
       if (lm.on === 'sea') y = this.biome.groundShape === 'quay' ? this.seaY(x) : tr.minY - 3;
