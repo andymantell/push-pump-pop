@@ -340,6 +340,8 @@ const KAYAK_STROKE = 0.3;
 export const ROLL_TIME = 2.2, ROLL_TAPS = 3;
 /** Holes slow you down while you're in them. */
 const HOLE_DRAG = 1.2;
+/** Drag in a hole while an end move is held: the boat is wheeling, not running. */
+const END_DRAG = 4;
 /**
  * A sticky hole grabs a kayak going slower than this through its trough, and holds it, surfing
  * back and forth, until enough strokes (STICKY_TAPS, and they wear off) paddle it out, or until
@@ -1128,7 +1130,8 @@ export class Rider {
       a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * (this.fastBike ? BIKE_DRAG : 1) * this.v * this.v);
       if (tr.inMud(this.x)) a -= dir * (MUD_DRAG + MUD_DRAG_PER_SPEED * Math.abs(this.v));
       if (this.garden) a -= dir * GARDEN_DRAG;
-      if (this.opts.kayak && tr.holeAt(this.x)) a -= dir * HOLE_DRAG;
+      // An end move digs the boat into the hole's foam and holds it back.
+      if (this.opts.kayak && tr.holeAt(this.x)) a -= dir * (this.grab ? END_DRAG : HOLE_DRAG);
       const belt = !this.inPipe ? tr.beltAt(this.x) : null;
       if (belt && belt.speed > this.v) a += Math.min(BELT_PUSH, BELT_GRIP * (belt.speed - this.v));
       else if (belt && belt.speed < 0 && this.v > BELT_CRAWL) a -= BELT_DRAG;
@@ -1167,7 +1170,11 @@ export class Rider {
       const face = Math.atan(Math.abs(behind) > this.wall ? k : behind);
       const lookX = this.x + this.v * Math.cos(face) * dt * 3;
       const cliff = tr.height(lookX) < this.y + Math.tan(face) * (lookX - this.x) - 0.15;
-      if ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > this.g * cos * STICK && (this.inPipe || Math.abs(this.v) > 4))) {
+      // A hole is water, not a ramp: the boat runs down into it and through the foam pile
+      // without taking off (a standing wave's crest still throws you).
+      const inHole = tr.holeAt(this.x) ?? tr.holeAt(lookX);
+      const pinned = this.opts.kayak && !!inHole && !inHole.wave;
+      if (!pinned && ((cliff && Math.abs(this.v) > 1) || (kappa > 0 && this.v * this.v * kappa > this.g * cos * STICK && (this.inPipe || Math.abs(this.v) > 4)))) {
         this.vx = this.v * Math.cos(face);
         this.vy = this.v * Math.sin(face);
         if (this.pumpTimer > 0) this.vy += 1.2; // pumping into a lip pops you a little higher

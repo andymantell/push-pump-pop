@@ -7,7 +7,7 @@ import { TrackDef, layout, wave } from './common';
 
 export const KAYAK_CREEK: TrackDef[] = [
   {
-    id: 'kayak-creek-1', biome: 'kayak-creek', name: 'Into the Woods', difficulty: 2, par: 12500,
+    id: 'kayak-creek-1', biome: 'kayak-creek', name: 'Into the Woods', difficulty: 2, par: 13000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Boof off a boulder', kind: 'trick', match: 'Boof', from: 'dropoff' },
@@ -51,7 +51,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-creek-4', biome: 'kayak-creek', name: 'Falls Pool', difficulty: 3, par: 13500,
+    id: 'kayak-creek-4', biome: 'kayak-creek', name: 'Falls Pool', difficulty: 3, par: 21500,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Air for 1 second', kind: 'air', seconds: 1 },
@@ -65,7 +65,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-creek-5', biome: 'kayak-creek', name: 'Leaf Fall', difficulty: 3, par: 16500,
+    id: 'kayak-creek-5', biome: 'kayak-creek', name: 'Leaf Fall', difficulty: 3, par: 17500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
@@ -79,7 +79,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-creek-6', biome: 'kayak-creek', name: 'Foggy Ledges', difficulty: 3, par: 29000,
+    id: 'kayak-creek-6', biome: 'kayak-creek', name: 'Foggy Ledges', difficulty: 3, par: 39500,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Boof 3 ledges', kind: 'trick', match: 'Boof', from: 'dropoff', count: 3 },
@@ -95,7 +95,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-creek-7', biome: 'kayak-creek', name: 'Golden Slides', difficulty: 4, par: 12000,
+    id: 'kayak-creek-7', biome: 'kayak-creek', name: 'Golden Slides', difficulty: 4, par: 19000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.2 seconds', kind: 'air', seconds: 1.2 },
@@ -110,7 +110,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-creek-8', biome: 'kayak-creek', name: 'Flood Water', difficulty: 4, par: 11000,
+    id: 'kayak-creek-8', biome: 'kayak-creek', name: 'Flood Water', difficulty: 4, par: 18500,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Do 3 end moves', kind: 'trick', match: 'end', count: 3 },
@@ -125,7 +125,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-creek-9', biome: 'kayak-creek', name: 'Sunset Run', difficulty: 4, par: 32500,
+    id: 'kayak-creek-9', biome: 'kayak-creek', name: 'Sunset Run', difficulty: 4, par: 31000,
     challenges: [
       { text: 'Land a 4-trick combo', kind: 'combo', tricks: 4 },
       { text: 'Land 6 different tricks', kind: 'variety', count: 6 },
@@ -140,7 +140,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-creek-10', biome: 'kayak-creek', name: 'The Big Drop', difficulty: 5, par: 17500,
+    id: 'kayak-creek-10', biome: 'kayak-creek', name: 'The Big Drop', difficulty: 5, par: 30500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.2 seconds', kind: 'air', seconds: 1.2 },

@@ -2731,9 +2731,12 @@ export class World {
 
   /** After dark, worlds without street lamps get lamps (towns) or burning torches (the wild). */
   private buildNightLights(end: number) {
-    const wild = ['desert', 'jungle', 'volcano', 'snow', 'farm', 'pirate', 'dh-mud', 'dh-rocky', 'dh-shore'].includes(this.biome.id);
+    const wild = ['desert', 'jungle', 'volcano', 'snow', 'farm', 'pirate', 'dh-mud', 'dh-rocky', 'dh-shore', 'kayak-creek', 'kayak-canyon', 'kayak-gorge'].includes(this.biome.id);
+    // By a river, the lights stand on the far bank, not in the water.
+    const rv = this.biome.river;
+    const bank = (z: number) => rv ? -(TRACK_W / 2 + rv.width + (this.biome.groundShape === 'channel' ? 0.8 : 1.6)) : z;
     if (!wild) {
-      for (let x = 9; x < end; x += 18) this.placeProp('lamp', x, -2.6);
+      for (let x = 9; x < end; x += 18) this.placeProp('lamp', x, bank(-2.6));
       return;
     }
     const wood = toon(0x6a4628), flame = new THREE.MeshBasicMaterial({ color: 0xffb030 }), core = new THREE.MeshBasicMaterial({ color: 0xfff0a0 });
@@ -2750,7 +2753,7 @@ export class World {
     f2.position.y = 2.48;
     torch.add(pole, bowl, f1, f2);
     for (let x = 9; x < end; x += 16) {
-      const z = -2.4, y = this.groundY(x, z);
+      const z = bank(-2.4), y = this.groundY(x, z);
       if (this.nearRavine(x, z, 0.5)) continue;
       const t = torch.clone();
       t.position.set(x, y, z);

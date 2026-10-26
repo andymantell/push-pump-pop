@@ -57,7 +57,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-4', biome: 'kayak-centre', name: 'Play Hole', difficulty: 2, par: 8000,
+    id: 'kayak-centre-4', biome: 'kayak-centre', name: 'Play Hole', difficulty: 2, par: 13000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Do an end move in a hole', kind: 'trick', match: 'end' },
@@ -73,7 +73,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-5', biome: 'kayak-centre', name: 'Slalom Gates', difficulty: 3, par: 16500,
+    id: 'kayak-centre-5', biome: 'kayak-centre', name: 'Slalom Gates', difficulty: 3, par: 19000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Splat 2 rocks', kind: 'trick', match: 'Splat', count: 2 },
@@ -88,7 +88,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-6', biome: 'kayak-centre', name: 'Sticky Hole', difficulty: 3, par: 9000,
+    id: 'kayak-centre-6', biome: 'kayak-centre', name: 'Sticky Hole', difficulty: 3, par: 15000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Finish without a swim', kind: 'noLives' },
@@ -103,7 +103,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-7', biome: 'kayak-centre', name: 'Boof Line', difficulty: 3, par: 13500,
+    id: 'kayak-centre-7', biome: 'kayak-centre', name: 'Boof Line', difficulty: 3, par: 12500,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Air trick off a weir', kind: 'trick', match: 'kayak', from: 'dropoff' },
@@ -119,7 +119,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-8', biome: 'kayak-centre', name: 'Big Weir', difficulty: 4, par: 13500,
+    id: 'kayak-centre-8', biome: 'kayak-centre', name: 'Big Weir', difficulty: 4, par: 14500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.1 seconds', kind: 'air', seconds: 1.1 },
@@ -134,7 +134,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-9', biome: 'kayak-centre', name: 'Spin Pools', difficulty: 4, par: 22000,
+    id: 'kayak-centre-9', biome: 'kayak-centre', name: 'Spin Pools', difficulty: 4, par: 18500,
     challenges: [
       { text: 'Flatspin on the water', kind: 'trick', match: 'Flatspin 180' },
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
@@ -150,7 +150,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-10', biome: 'kayak-centre', name: 'Grand Final', difficulty: 5, par: 23500,
+    id: 'kayak-centre-10', biome: 'kayak-centre', name: 'Grand Final', difficulty: 5, par: 29500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Land a 4-trick combo', kind: 'combo', tricks: 4 },
@@ -170,7 +170,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
 
 /** The standing wave at the bottom of the course, surfed in a playboat. */
 export const KAYAK_CENTRE_WAVE: TrackDef = {
-  id: 'kayak-centre-wave', biome: 'kayak-centre', name: 'The Centre Wave', kind: 'pipe', par: 8000,
+  id: 'kayak-centre-wave', biome: 'kayak-centre', name: 'The Centre Wave', kind: 'pipe', par: 8500,
   challenges: [
     { text: 'Score 5,000', kind: 'score', points: 5000 },
     { text: 'Cartwheel for 1 second', kind: 'trick', match: 'Cartwheel', minTime: 1 },

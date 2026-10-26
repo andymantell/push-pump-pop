@@ -10,7 +10,7 @@ the next biome; the first river is open from the start):
 
 1. **Whitewater Centre** (`kayak-centre`): a man-made concrete slalom course. Built.
 2. **Forest Creek** (`kayak-creek`): a narrow rocky creek under conifers. Built.
-3. **Canyon River** (`kayak-canyon`): a wide river between red canyon walls.
+3. **Canyon River** (`kayak-canyon`): a wide river between red canyon walls. Built: big wave trains, ledges and wide play holes with calm pools before them.
 4. **Waterfall Gorge** (`kayak-gorge`): a jungle gorge of waterfalls.
 
 Each river has three challenges, pars from the kayak bot (p75), and three lives (a swim costs one).
@@ -70,3 +70,5 @@ Auto quality turns the spray down on slow devices.
   (mood, landmarks, trackside detail, lighting, ambience, screenshot review, landings and playtest gates).
 - A proper white water helmet model (it borrows the skate helmet for now).
 - Slalom gates and more landmarks on the Whitewater Centre.
+
+Holes are water, not ramps: a kayak never takes off inside a hole (only a standing wave's crest throws it), and an end move adds drag so the boat wheels in the hole instead of running through it.

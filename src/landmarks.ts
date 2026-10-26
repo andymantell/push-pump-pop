@@ -1841,6 +1841,51 @@ export const LANDMARKS: Record<string, Landmark> = {
     g.add(beam([1.1, 3.1, 0.2], [1.25, 3.8, 0.2], 0.12, grey), ball(0.17, 0xe8ecee, [1.3, 3.9, 0.2], 8), beam([1.4, 3.9, 0.2], [1.85, 3.85, 0.2], 0.05, 0xe0b040));
     return g;
   } },
+  // ---- Canyon River
+  raftcamp: { z: -18, r: 7, build: () => {
+    // A rafting trip's beach camp: big yellow rafts pulled up, a shade tarp and a camp kitchen.
+    const g = new THREE.Group();
+    for (const [x, rot, c] of [[-4, 0.2, 0xf2c02a], [2.5, -0.15, 0xe8502a]] as const) {
+      const raft = new THREE.Group();
+      for (const dz of [-1, 1]) {
+        const tube = cyl(0.45, 0.45, 4.6, c, [0, 0.45, dz], 12, [0, 0, Math.PI / 2]);
+        raft.add(tube, ball(0.45, c, [2.3, 0.45, dz], 10), ball(0.45, c, [-2.3, 0.45, dz], 10));
+      }
+      raft.add(box(4.4, 0.2, 2, 0x3a3a40, [0, 0.2, 0]), box(0.15, 0.15, 2.6, 0xe0d8c8, [0.8, 0.85, 0]));
+      raft.rotation.y = rot;
+      raft.position.x = x;
+      g.add(raft);
+    }
+    // The tarp on poles, and a table with a stove.
+    for (const [x, z] of [[-1, -3], [5, -3], [-1, -6], [5, -6]]) g.add(cyl(0.05, 0.05, 2.6, 0x8a8a8a, [x, 1.3, z], 6));
+    g.add(box(6.4, 0.06, 3.4, 0x3a8ad8, [2, 2.6, -4.5], [0.12, 0, 0]));
+    g.add(box(2, 0.1, 1, 0xd8d0c0, [2, 0.9, -4.5]), box(0.5, 0.3, 0.4, 0x2a2a2e, [2.4, 1.1, -4.5]));
+    return g;
+  } },
+  cliffdwelling: { z: -26, r: 9, build: () => {
+    // Ancient stone houses tucked in an alcove high in the canyon wall, reached by a ladder.
+    const rock = 0xb0603a, rock2 = 0xc8805a, stone = 0xd8a878, door = 0x3a2418;
+    const g = group(box(18, 16, 6, rock, [0, 8, -1.5]));
+    // The alcove: a shadowed hollow in the cliff face.
+    g.add(box(12, 5, 0.3, 0x5a2a18, [0, 9.5, 1.6]), box(13, 0.8, 3, rock2, [0, 6.6, 2.6]));
+    for (const [x, w, h] of [[-4, 3, 2.6], [-0.8, 2.6, 3.4], [2.4, 3, 2.4], [4.8, 1.6, 3.8]] as const) {
+      g.add(box(w, h, 2, stone, [x, 7 + h / 2, 2.6]), box(0.5, 0.8, 0.1, door, [x, 7.5, 3.65]));
+    }
+    g.add(beam([6.5, 0, 4], [6.2, 7.2, 3.5], 0.1, 0x8a6a42), beam([7.1, 0, 4], [6.8, 7.2, 3.5], 0.1, 0x8a6a42));
+    for (let k = 1; k < 9; k++) g.add(box(0.7, 0.08, 0.08, 0x8a6a42, [6.65 - k * 0.035, k * 0.8, 4 - k * 0.06]));
+    return g;
+  } },
+  condorrock: { z: -16, r: 4, build: () => {
+    // A tall red rock spire with a condor perched on top, wings half open.
+    const g = group(cyl(1.2, 2.2, 10, 0xb86a3e, [0, 5, 0], 7), cyl(1.5, 1.2, 1.2, 0xc8805a, [0, 10.4, 0], 7));
+    const bird = new THREE.Group();
+    const body = ball(0.4, 0x22222a, [0, 0, 0], 8);
+    body.scale.set(1.4, 0.9, 0.9);
+    bird.add(body, ball(0.18, 0xd8a090, [0.55, 0.25, 0], 8), box(0.08, 0.35, 0.08, 0x22222a, [0.4, 0.05, 0]));
+    for (const s of [1, -1]) bird.add(box(1.4, 0.05, 0.5, 0x22222a, [-0.1, 0.25, s * 0.8], [s * 0.4, 0, 0]));
+    bird.position.set(0, 11.5, 0);
+    return g.add(bird), g;
+  } },
   startgate: { z: -6, r: 4, build: () => {
     // The race's inflatable arch and a timing screen.
     const g = new THREE.Group();
@@ -1930,4 +1975,7 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'kayak-creek-1': ['kayakcamp', 'heronrock'], 'kayak-creek-2': ['watermill'], 'kayak-creek-3': ['heronrock', 'logcabin'], 'kayak-creek-4': ['waterfall'],
   'kayak-creek-5': ['watermill', 'kayakcamp'], 'kayak-creek-6': ['bigoak', 'heronrock'], 'kayak-creek-7': ['logcabin', 'waterfall'], 'kayak-creek-8': ['kayakcamp', 'watermill'],
   'kayak-creek-9': ['heronrock', 'bigoak'], 'kayak-creek-10': ['waterfall', 'watermill'], 'kayak-creek-wave': ['kayakcamp'],
+  'kayak-canyon-1': ['raftcamp', 'arch'], 'kayak-canyon-2': ['cliffdwelling'], 'kayak-canyon-3': ['condorrock', 'raftcamp'], 'kayak-canyon-4': ['hoodoos'],
+  'kayak-canyon-5': ['arch', 'cliffdwelling'], 'kayak-canyon-6': ['raftcamp', 'condorrock'], 'kayak-canyon-7': ['cliffdwelling', 'hoodoos'], 'kayak-canyon-8': ['arch', 'raftcamp'],
+  'kayak-canyon-9': ['condorrock', 'cliffdwelling'], 'kayak-canyon-10': ['hoodoos', 'arch'], 'kayak-canyon-wave': ['raftcamp'],
 };

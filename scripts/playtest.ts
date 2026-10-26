@@ -381,7 +381,9 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
 
   /** No lip or rail coming up within `range` metres: safe to tilt for a manual (a tilt in the air is a flip). */
   function clearAhead(range: number) {
-    return nextLip(track, r.x, Math.max(6, range)) === null && !track.rails.some((rl) => rl.x0 > r.x && rl.x0 - r.x < Math.max(6, range) + 2);
+    return nextLip(track, r.x, Math.max(6, range)) === null && !track.rails.some((rl) => rl.x0 > r.x && rl.x0 - r.x < Math.max(6, range) + 2)
+      // A kayaker saves the hole ahead for an end move rather than stalling into it.
+      && !(BOAT && track.holes.some((h) => h.x1 > r.x && h.x0 - r.x < Math.max(6, range) + 2));
   }
   /** Where and when the current air comes down, roughly. */
   function flight(): { time: number; x: number } {
