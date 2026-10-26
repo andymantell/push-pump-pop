@@ -71,6 +71,9 @@ export interface Look {
   mountainboardColour: number;
   /** The downhill bike's frame. */
   bikeColour: number;
+  /** The river kayak, and the playboat on standing waves. */
+  kayakColour: number;
+  playboatColour: number;
 }
 
 /** The kid as he was before the customiser: blue hoodie, jeans, red cap. */
@@ -84,6 +87,7 @@ export const DEFAULT_LOOK: Look = {
   deck: 'none', deckColour: 0xe8402a, deckArtColour: 0xffd23f, gripColour: 0x222226, wheelColour: 0xf5e6a8, truckColour: 0xb8bec6,
   scooterColour: 0x7a4fd8, barsColour: 0xc4cad4, scooterWheelColour: 0xffd23f,
   snowboardColour: 0x2a7fd4, mountainboardColour: 0x3c9646, bikeColour: 0x18b6b0,
+  kayakColour: 0xf2552a, playboatColour: 0x2ab0e0,
 };
 
 // ---------------------------------------------------------------- palettes
@@ -321,6 +325,8 @@ const SLOTS: Record<string, (l: Look) => number> = {
   mtb_deck: (l) => l.mountainboardColour,
   mtb_frame: (l) => l.bikeColour,
   mtb_frame_dark: (l) => darker(l.bikeColour),
+  kayak_hull: (l) => l.kayakColour,
+  playboat_hull: (l) => l.playboatColour,
 };
 
 const textures = new Map<string, THREE.CanvasTexture>();
@@ -383,6 +389,6 @@ export function randomLook(old: Look): Look {
     bottom: pick(BOTTOMS), bottomColour: bright(), legsColour: bright(), sockColour: bright(),
     shoes: pick(SHOES), shoeColour: bright(), laceColour: bright(), soleColour: Math.random() < 0.6 ? 0xf4f4f0 : bright(),
     deck: pick(DECK_ARTS), deckColour: bright(), deckArtColour: bright(), wheelColour: bright(),
-    scooterColour: bright(), barsColour: bright(), scooterWheelColour: bright(), snowboardColour: bright(), mountainboardColour: bright(), bikeColour: bright(),
+    scooterColour: bright(), barsColour: bright(), scooterWheelColour: bright(), snowboardColour: bright(), mountainboardColour: bright(), bikeColour: bright(), kayakColour: bright(), playboatColour: bright(),
   };
 }

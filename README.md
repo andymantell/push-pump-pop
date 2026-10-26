@@ -60,6 +60,20 @@ Rails are wooden skinnies on the bike. Rock gardens knock your weight forwards a
 
 You get three lives per track. Each bail or fall into a gap costs one, and losing the third means starting the track again: the game freezes behind the Out of Lives screen and ignores taps, swipes and tilt until you do. Half-pipe bonus levels are timed and have no lives.
 
+### Kayak career
+
+Pick **KAYAK** for a white water kayak (`src/kayak.ts`: a half slice river runner, and a playboat on standing waves), with its own challenges and stars and a world only it reaches, **RIVERS** (`src/levels/kayak-*.ts`, plan in `docs/kayak-plan.md`). The water is drawn by `src/river.ts`. Each biome's bonus level is a standing wave instead of a half pipe.
+
+| Action | Touch | Keyboard |
+| --- | --- | --- |
+| Paddle stroke (Splat at a marked rock) | Tap | Space |
+| Boof / Airscrew / Helix / Pan-Am | Swipe up / left / right / down | Arrows / WASD |
+| Cartwheel, Blunt, McNasty, Space Godzilla (in a hole) | On the left half, swipe up, down, left or right and keep holding | Hold I / K / J / L |
+| Flatspin | Swipe sideways along the bottom | Z / X |
+| Stern Stall / Bow Stall; Back Loop / Front Loop in the air | Tilt | Hold Q / E |
+
+A bad landing capsizes you: tap fast to Eskimo roll back up, or you swim and lose a life. Sticky holes hold a slow boat until you tap your way out.
+
 ## Development
 
 ```sh
@@ -69,6 +83,7 @@ npm run build    # type check and build to dist/
 npm test                 # human-speed bot plays every track on both rides; fails if one is too hard
 npx tsx scripts/playtest.ts --ride=scooter [track]   # just the scooter career
 npx tsx scripts/playtest.ts --ride=mtb [track]       # just the MTB career
+npx tsx scripts/playtest.ts --ride=kayak [track]     # just the kayak career
 npm run playtest:skate -- --shard=2/4                # every 4th track from the 2nd (CI runs 4 parts per career side by side)
 npx tsx scripts/sim.ts   # quick physics stats per track, for tuning
 ```

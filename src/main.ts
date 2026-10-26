@@ -9,7 +9,8 @@ import { LampLights } from './lighting';
 import { Skater } from './skater';
 import { ScooterRig } from './scooter';
 import { MtbRig } from './mtb';
-import { RIDES, RideId, rideGoes, savedRide, saveRide, signFor, MTB_WORLD } from './ride';
+import { KayakRig } from './kayak';
+import { RIDES, RideId, rideGoes, savedRide, saveRide, signFor, MTB_WORLD, KAYAK_WORLD } from './ride';
 import { challengesOf, parOf } from './progress';
 import { loadAssets } from './assets';
 import { TRACKS, TrackDef, PIPE_TIME, STOP_AFTER_FINISH } from './tracks';
@@ -29,7 +30,7 @@ import { Wardrobe, loadLook, setColours } from './look';
 import { Customiser } from './customiser';
 
 const $ = (id: string) => document.getElementById(id)!;
-const progress = new Progress(TRACKS, BIOME_ORDER, (() => { try { return localStorage; } catch { return null; } })(), WORLDS[MTB_WORLD]?.slice(0, 1) ?? []);
+const progress = new Progress(TRACKS, BIOME_ORDER, (() => { try { return localStorage; } catch { return null; } })(), [...WORLDS[MTB_WORLD]?.slice(0, 1) ?? [], ...WORLDS[KAYAK_WORLD]?.slice(0, 1) ?? []]);
 progress.migrate();
 /** Skateboard, scooter or downhill bike: each has its own stars, see ride.ts. */
 let ride: RideId = savedRide();
@@ -154,6 +155,8 @@ const rider = new Rider(track, {
   loop(done) { if (!done) sound.enterLoop(); },
   land({ airTime, smooth, peakY }) {
     sound.land(airTime);
+    // Splashdown.
+    if (ride === 'kayak') world.splash(rider.x, rider.y, 14 + Math.round(airTime * 30), 2.5 + airTime * 5, rider.v * 0.3);
     chal.land(rider.x);
     // Coming down backwards on a scooter or a bike.
     if (ride !== 'skate' && rider.backwards && !rider.bailing) score.addBonus('Fakie', 100);
@@ -169,10 +172,18 @@ const rider = new Rider(track, {
     sound.bail(); chal.bail(); score.lose();
     // Thrown off in a rock garden: over the bars, or off the back.
     const tipped = ride === 'mtb' && Math.abs(rider.balance) >= 1;
-    popup(tipped ? (rider.balance > 0 ? 'OVER THE BARS!' : 'LOOPED OUT!') : 'BAIL!', 'bad');
+    popup(tipped ? (rider.balance > 0 ? 'OVER THE BARS!' : 'LOOPED OUT!') : ride === 'kayak' ? 'SWIM!' : 'BAIL!', 'bad');
     loseLife();
   },
-  pump(good) { sound.pump(good); chal.pump(good); if (good) popup('Pump!', 'good'); },
+  pump(good) {
+    sound.pump(good); chal.pump(good);
+    if (good) popup(ride === 'kayak' ? 'Stroke!' : 'Pump!', 'good');
+    if (ride === 'kayak' && rider.grounded) world.splash(rider.x + 0.3, rider.y, 5, 2, -2);
+  },
+  // A kayak going over: no life lost yet, but the combo's gone. Tap to roll back up.
+  capsize() { sound.capsize(); score.lose(); popup('CAPSIZED!', 'bad'); world.splash(rider.x, rider.y, 24, 3.5); },
+  rolled() { sound.rolled(); popup('ROLLED UP!', 'good'); world.splash(rider.x, rider.y, 12, 2.5); },
+  stuck(caught) { if (caught) popup('STUCK IN THE HOLE!', 'bad'); else { popup('PADDLED OUT!', 'good'); world.splash(rider.x, rider.y, 16, 3); } },
   fall() {
     sound.fall(rider.loopFall ? 'loop' : world.biome.pitFill);
     chal.fall(rider.x); score.lose(); popup(rider.loopFall ? 'WIPEOUT!' : world.biome.fallText, 'bad');
@@ -258,11 +269,12 @@ function loadTrack(d: TrackDef) {
   rider.track = track;
   const isPipe = d.kind === 'pipe', isMega = d.kind === 'mega';
   const snow = d.biome === 'snow';
-  const scoot = ride === 'scooter', bike = ride === 'mtb';
+  const scoot = ride === 'scooter', bike = ride === 'mtb', boat = ride === 'kayak';
   // Bound in on a mountain board down the farm's dirt tracks: grabs instead of flips.
   const mountain = d.biome === 'farm' && ride === 'skate';
   // Mega ramps are smooth and fast.
-  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow: snow && !bike, mountain, scooter: scoot, mtb: bike, gravity: b.gravity };
+  rider.opts = { friction: isMega ? 0.6 : b.friction, maxSpeed: isPipe ? 12.5 : isMega ? 22 : b.maxSpeed, pipe: isPipe, mega: isMega, snow: snow && !bike, mountain, scooter: scoot, mtb: bike, kayak: boat, gravity: b.gravity };
+  kayak.setBoat(isPipe ? 'play' : 'river');
   skater.setBoard(snow ? 'snow' : mountain ? 'mountain' : 'skate');
   scooter.setKind(snow ? 'snow' : 'scooter');
   skater.setSpace(d.biome === 'moon');
@@ -272,7 +284,8 @@ function loadTrack(d: TrackDef) {
   skater.root.visible = ride === 'skate';
   scooter.root.visible = scoot;
   mtb.root.visible = bike;
-  sound.setScene(world.biome, snow && !bike, ride === 'skate' && (snow || mountain), scoot, bike);
+  kayak.root.visible = boat;
+  sound.setScene(world.biome, snow && !bike, ride === 'skate' && (snow || mountain), scoot, bike, boat);
   rider.reset();
   // Half pipes start up on the coping: the first tap drops you in.
   if (isPipe || isMega) rider.perch();
@@ -282,7 +295,8 @@ function loadTrack(d: TrackDef) {
 const skater = new Skater(assets.parts);
 const scooter = new ScooterRig(assets.parts, skater.shadowMesh);
 const mtb = new MtbRig(assets.parts, skater.shadowMesh);
-scene.add(skater.root, scooter.root, mtb.root, skater.shadowMesh);
+const kayak = new KayakRig(assets.parts, skater.shadowMesh);
+scene.add(skater.root, scooter.root, mtb.root, kayak.root, skater.shadowMesh);
 // Dressed in the look from the customiser.
 const wardrobe = new Wardrobe(assets.wardrobe);
 let look = loadLook();
@@ -291,7 +305,8 @@ function dressRiders() {
   skater.wear(look, wardrobe);
   scooter.wear(look, wardrobe);
   mtb.wear(look, wardrobe);
-  for (const f of [skater, scooter, mtb]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+  kayak.wear(look, wardrobe);
+  for (const f of [skater, scooter, mtb, kayak]) f.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
 }
 dressRiders();
 let customiser: Customiser | null = null;
@@ -304,10 +319,10 @@ $('riderbtn').addEventListener('click', () => {
   customiser.show(look);
 });
 /** Whoever's riding. */
-const figure = () => (ride === 'scooter' ? scooter : ride === 'mtb' ? mtb : skater);
+const figure = () => (ride === 'scooter' ? scooter : ride === 'mtb' ? mtb : ride === 'kayak' ? kayak : skater);
 
 // Big combos are recorded for slow-motion replays: see replay.ts.
-const replays: Replays = new Replays([...skater.joints, ...scooter.joints, ...mtb.joints], camera, skater.shadowMesh);
+const replays: Replays = new Replays([...skater.joints, ...scooter.joints, ...mtb.joints, ...kayak.joints], camera, skater.shadowMesh);
 const player = new Player(replays, () => replays.clips);
 const chip = $('replaychip');
 let chipClip: Clip | null = null;
@@ -411,7 +426,8 @@ function start(d: TrackDef = def) {
   window.setTimeout(() => { if (state === 'playing' && tilt.missing) toast('Tilt is off. Tap to turn it back on, then tap <b>Allow</b>'); }, 2000);
   $('trackname').textContent = d.name;
   $('grabzone').textContent = ride === 'skate' ? 'GRAB' : 'HOLD';
-  $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : ride === 'mtb' ? 'TRICK' : 'FLIP';
+  $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : ride === 'mtb' || ride === 'kayak' ? 'TRICK' : 'FLIP';
+  if (ride === 'kayak') $('grabzone').textContent = 'HOLE MOVES';
   show(null);
   state = 'playing';
 }
@@ -468,7 +484,7 @@ function openSelect(world: number | null = selWorld) {
   for (const w of worlds) {
     const btn = document.createElement('button');
     btn.className = 'small' + (w.i === world ? ' on' : '') + (w.open ? '' : ' locked');
-    btn.innerHTML = `${w.open ? '' : '&#128274; '}${w.i === MTB_WORLD ? 'DOWNHILL' : `WORLD ${w.i + 1}`}`;
+    btn.innerHTML = `${w.open ? '' : '&#128274; '}${w.i === MTB_WORLD ? 'DOWNHILL' : w.i === KAYAK_WORLD ? 'RIVERS' : `WORLD ${w.i + 1}`}`;
     btn.addEventListener('click', () => { sound.click(); openSelect(w.i); if (!w.open) toast(`&#128274; Complete track 5 of <b>${BIOMES[WORLDS[w.i - 1].at(-1)!].name}</b> to open World ${w.i + 1}`); });
     tabs.appendChild(btn);
   }
@@ -817,8 +833,10 @@ function frame(now: number) {
   const cue = state === 'playing' && !!def.tutorial && rider.grounded && !rider.bailing && rider.pumpTimer === 0
     && track.slope(rider.x + rider.v * 0.12) * Math.sign(rider.v || 1) < -0.12;
   const dropIn = state === 'playing' && rider.perched;
-  hud.cue.textContent = dropIn ? 'TAP TO DROP IN' : 'TAP!';
-  hud.cue.classList.toggle('on', cue || dropIn);
+  // Upside down in a kayak, or held in a sticky hole: tap, tap, tap!
+  const rescue = state === 'playing' && (!!rider.roll || !!rider.stuck);
+  hud.cue.textContent = dropIn ? 'TAP TO DROP IN' : rider.roll ? 'TAP TAP TAP TO ROLL UP!' : rider.stuck ? 'TAP TO PADDLE OUT!' : 'TAP!';
+  hud.cue.classList.toggle('on', cue || dropIn || rescue);
   $('zones').classList.toggle('hidden', state !== 'playing');
   // Rock gardens: the balance marker, forward to the right.
   const bal = $('balance');
@@ -842,7 +860,7 @@ requestAnimationFrame(frame);
 
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
-  rider, score, skater, scooter, mtb, replays, get ride() { return ride; }, setRide, progress, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
+  rider, score, skater, scooter, mtb, kayak, world: () => world, replays, get ride() { return ride; }, setRide, progress, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
   quality,
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };

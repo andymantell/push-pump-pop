@@ -23,6 +23,8 @@ export interface TrackDef {
   scooter?: { par: number; challenges: Challenge[] };
   /** The downhill bike career's (src/levels/mtb.ts, joined on in tracks.ts). */
   mtb?: { par: number; challenges: Challenge[] };
+  /** The kayak career's: only on its own rivers, written for it. */
+  kayak?: { par: number; challenges: Challenge[] };
   build: () => Track;
 }
 
@@ -68,6 +70,23 @@ export function pipe(radius: number, flatLen: number): () => Track {
     // Long decks, so the camera never sees past the ends.
     const deck = 16;
     b.halfpipe(radius, flatLen, deck);
+    const centre = deck + radius * 0.96 + flatLen / 2;
+    return b.build(centre, Infinity);
+  };
+}
+
+/**
+ * A standing wave bonus level for the kayak: a river feature you surf in place, rocking back and
+ * forth between the green face and the foam pile and launching off them, for PIPE_TIME seconds.
+ * It rides like a half pipe, and the whole trough counts as a hole for end moves.
+ */
+export function wave(radius: number, flatLen: number): () => Track {
+  return () => {
+    const b = new TrackBuilder(0);
+    const deck = 16;
+    const x0 = b.x + deck;
+    b.halfpipe(radius, flatLen, deck);
+    b.holes.push({ x0, x1: b.x - deck, sticky: false, wave: true });
     const centre = deck + radius * 0.96 + flatLen / 2;
     return b.build(centre, Infinity);
   };

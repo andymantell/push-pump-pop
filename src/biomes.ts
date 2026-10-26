@@ -22,7 +22,12 @@ export interface Biome {
   band: number;
   ground: [number, number, number];
   /** How the ground behind the track rises or falls away. */
-  groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat' | 'quay' | 'islands';
+  groundShape: 'hills' | 'shore' | 'roof' | 'mountain' | 'flat' | 'quay' | 'islands' | 'river' | 'channel';
+  /**
+   * A river for the kayak: the track is the water's surface, with more river behind it and
+   * banks beyond (concrete walls for a 'channel'). Colours of the water and of its foam.
+   */
+  river?: { water: number; deep: number; foam: number; bed: number; width: number };
   far: 'hills' | 'sea' | 'skyline' | 'mountains' | 'mesas' | 'volcano' | 'fields' | 'scoops' | 'harbour' | 'hollow' | 'fair' | 'factory' | 'cave' | 'skyislands' | 'hilltown' | 'woods' | 'conifers';
   farColors: number[];
   clouds: number | null;
@@ -421,12 +426,75 @@ export const BIOMES: Record<string, Biome> = {
   },
 };
 
+// The kayak's rivers (KAYAK_WORLD in ride.ts): only the kayak goes here. The track is the
+// water: wave trains to pump, holes, drops and waterfalls, all running downhill.
+Object.assign(BIOMES, {
+  'kayak-centre': {
+    id: 'kayak-centre', name: 'Whitewater Centre', blurb: 'A concrete course with pumps, fake rocks and gentle waves. Learn to paddle.',
+    sky: ['#3a94dc', '#8ccdf2', '#dcf0fa'], fog: [0xc8e6f6, 60, 200],
+    hemi: [0xe8f4ff, 0x7a9a7a, 1.45], sun: [0xffffff, 2.3],
+    top: { kind: 'concrete', base: '#2a9ad0', seam: 'rgba(255,255,255,0.3)' },
+    front: { kind: 'concrete', base: '#a8a49c', seam: 'rgba(0,0,0,0.12)' },
+    band: 0xe84a3a,
+    ground: [0x7ab85a, 0x68a44c, 0x8cc46a], groundShape: 'channel',
+    river: { water: 0x2c9fd4, deep: 0x1a5a8a, foam: 0xf4fbff, bed: 0x9a968e, width: 9 },
+    far: 'hills', farColors: [0x8cc7a0, 0x7ab894], clouds: 0xffffff, particles: null,
+    back: [['tree', 3], ['pine', 1.5], ['bush', 2], ['spectators', 0.8]], backZ: [-12, -30],
+    pitFill: 'water', fallText: 'SPLASH!', sign: '#1a4a6a',
+    friction: 1, maxSpeed: 15, swatch: '#2c9fd4',
+  },
+  'kayak-creek': {
+    id: 'kayak-creek', name: 'Forest Creek', blurb: 'A steep, rocky creek through the woods. Boof the boulders!',
+    sky: ['#4a8acc', '#9ac8e4', '#e0eee8'], fog: [0xc8dcd4, 40, 160],
+    hemi: [0xe8f4e4, 0x4a6a3a, 1.4], sun: [0xfff4dc, 2.0],
+    top: { kind: 'concrete', base: '#3a8a9a', seam: 'rgba(255,255,255,0.3)' },
+    front: { kind: 'stone', base: '#6a6a62', seam: '#4a4a44', accent: '#8a8a7e' },
+    band: 0x5a9a3a,
+    ground: [0x4a7a3a, 0x3e6a30, 0x5a8a44], groundShape: 'river',
+    river: { water: 0x3a8e9a, deep: 0x1e4a52, foam: 0xf0f8f4, bed: 0x6a6a5e, width: 7 },
+    far: 'conifers', farColors: [0x2e5a3a, 0x3a6a44, 0x24503a], clouds: 0xf0f4f0, particles: 'leaves',
+    back: [['pine', 3], ['beech', 2], ['mossylog', 1], ['fern', 2], ['boulder', 1.5], ['stump', 0.6], ['toadstools', 0.6]], backZ: [-10, -26],
+    pitFill: 'water', fallText: 'SPLASH!', sign: '#3a5a2a',
+    friction: 1, maxSpeed: 15, swatch: '#3a8e9a', leafTint: 0x6a9a3a,
+  },
+  'kayak-canyon': {
+    id: 'kayak-canyon', name: 'Canyon River', blurb: 'Big water between red cliffs: huge wave trains and holes to play in.',
+    sky: ['#2a7ad0', '#86c0ea', '#f4e4cc'], fog: [0xf0dcc0, 70, 240],
+    hemi: [0xfff0dc, 0xb0704a, 1.5], sun: [0xfff0d4, 2.5],
+    top: { kind: 'concrete', base: '#3a8a7a', seam: 'rgba(255,255,255,0.3)' },
+    front: { kind: 'strata', base: '#b0603a', seam: '#8a4428', accent: '#c8805a' },
+    band: 0xd8783a,
+    ground: [0xc87a4a, 0xb86a3e, 0xd88a5a], groundShape: 'river',
+    river: { water: 0x3a8c78, deep: 0x1e4a44, foam: 0xfaf6ee, bed: 0x8a5a3a, width: 12 },
+    far: 'mesas', farColors: [0xc8704a, 0xd8885a, 0xa85a3a], clouds: 0xffffff, particles: null,
+    back: [['desertrock', 3], ['boulders', 2], ['barrelcactus', 1], ['scree', 1], ['tent', 0.3]], backZ: [-12, -30],
+    pitFill: 'water', fallText: 'SPLASH!', sign: '#7a3a1e',
+    friction: 1, maxSpeed: 16, swatch: '#c8704a',
+  },
+  'kayak-gorge': {
+    id: 'kayak-gorge', name: 'Waterfall Gorge', blurb: 'A jungle gorge of tall waterfalls. Fly off the top!',
+    sky: ['#3a9ad0', '#8ad0e0', '#e4f4e0'], fog: [0xc8e8d8, 40, 170],
+    hemi: [0xe8fff0, 0x3a6a3a, 1.45], sun: [0xfffae0, 2.2],
+    top: { kind: 'concrete', base: '#2a9a8a', seam: 'rgba(255,255,255,0.3)' },
+    front: { kind: 'stone', base: '#5a6a5a', seam: '#3e4a3e', accent: '#7a8a6a' },
+    band: 0x3aaa5a,
+    ground: [0x3a8a3a, 0x2e7a30, 0x4a9a44], groundShape: 'river',
+    river: { water: 0x2a9a8c, deep: 0x16524a, foam: 0xf4fffa, bed: 0x5a6a52, width: 8 },
+    far: 'hills', farColors: [0x3a7a4a, 0x4a8a54], clouds: 0xffffff, particles: null,
+    back: [['jungletree', 3], ['palm', 1.5], ['fern', 2], ['treefern', 1.5], ['cycad', 1], ['boulder', 1], ['parrot', 0.4]], backZ: [-10, -26],
+    pitFill: 'water', fallText: 'SPLASH!', sign: '#2a5a3a',
+    friction: 1, maxSpeed: 16, swatch: '#2a9a5a',
+  },
+} satisfies Record<string, Biome>);
+
 /** The worlds, each a list of biomes in play order. World 2 opens once Volcano 5 is complete. */
 export const WORLDS: string[][] = [
   ['park', 'beach', 'rooftops', 'snow', 'desert', 'jungle', 'volcano'],
   ['farm', 'candy', 'docks', 'pirate', 'haunted', 'funfair', 'toxic', 'mine', 'dino', 'moon', 'sky'],
   // The downhill bike's own world (MTB_WORLD in ride.ts): only the MTB goes here.
   ['dh-urban', 'dh-mud', 'dh-rocky', 'dh-shore'],
+  // The kayak's rivers (KAYAK_WORLD in ride.ts): only the kayak goes here.
+  ['kayak-centre', 'kayak-creek', 'kayak-canyon', 'kayak-gorge'],
 ];
 export const BIOME_ORDER = WORLDS.flat();
 export const worldOf = (biome: string) => WORLDS.findIndex((w) => w.includes(biome));

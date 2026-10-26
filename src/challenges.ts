@@ -6,7 +6,7 @@ import type { Track, Rail } from './track';
 // playtest alike, and says as soon as each challenge is done.
 
 /** A family of tricks a challenge can ask for instead of one name. 'any' is any air trick but an ollie. */
-export type Group = 'flip' | 'grab' | 'whip' | 'double' | 'hold' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'bike' | 'skinny' | 'any';
+export type Group = 'flip' | 'grab' | 'whip' | 'double' | 'hold' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'bike' | 'skinny' | 'kayak' | 'end' | 'any';
 export type Match = TrickName | Group;
 
 /**
@@ -62,16 +62,19 @@ const GROUPS: Record<Group, TrickName[]> = {
   // Downhill bike: the bike thrown about on the right; skinnies ridden along.
   bike: ['Whip', 'Tabletop', 'Turndown'],
   skinny: ['Skinny', 'Skinny Manual', 'Skinny Stoppie'],
-  spin: ['FS 180', 'BS 180', 'FS 360', 'BS 360'],
-  '180': ['FS 180', 'BS 180'],
-  '360': ['FS 360', 'BS 360'],
-  bodyflip: ['Backflip', 'Frontflip'],
+  // Kayak: the boat thrown about in the air off a wave or a drop, and end moves held in a hole.
+  kayak: ['Airscrew', 'Helix', 'Pan-Am'],
+  end: ['Cartwheel', 'Blunt', 'McNasty', 'Space Godzilla'],
+  spin: ['FS 180', 'BS 180', 'FS 360', 'BS 360', 'Flatspin 180', 'Flatspin 360'],
+  '180': ['FS 180', 'BS 180', 'Flatspin 180'],
+  '360': ['FS 360', 'BS 360', 'Flatspin 360'],
+  bodyflip: ['Backflip', 'Frontflip', 'Back Loop', 'Front Loop'],
   grind: ['50-50', 'Boardslide', '5-0', 'Nosegrind', 'Feeble', 'Smith', 'Skinny', 'Skinny Manual', 'Skinny Stoppie'],
-  manual: ['Manual', 'Nose Manual', 'Tail Press', 'Nose Press', 'Stoppie'],
+  manual: ['Manual', 'Nose Manual', 'Tail Press', 'Nose Press', 'Stoppie', 'Stern Stall', 'Bow Stall'],
   loop: ['Loop'],
   any: [],
 };
-GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.whip, ...GROUPS.bike, ...GROUPS.hold, ...GROUPS.spin, ...GROUPS.bodyflip];
+GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.whip, ...GROUPS.bike, ...GROUPS.kayak, ...GROUPS.end, ...GROUPS.hold, ...GROUPS.spin, ...GROUPS.bodyflip];
 
 export function matches(m: Match, name: TrickName): boolean {
   return m in GROUPS ? GROUPS[m as Group].includes(name) : m === name;
@@ -86,11 +89,13 @@ const EASY_DOWNHILL = ['dh-urban', 'dh-mud'];
 
 /**
  * How many challenges must be done to complete a track: one in the first two biomes (by their
- * place in the game, `worldIndex`), then two. The downhill world starts again at one.
+ * place in the game, `worldIndex`), then two. The downhill world and the rivers start again at one.
  */
 export function requiredCount(worldIndex: number, kind: string = 'run', biome = ''): number {
   if (kind !== 'run') return 0;
   if (biome.startsWith('dh-')) return EASY_DOWNHILL.includes(biome) ? 1 : 2;
+  // The kayak's rivers start again at one too, for their first two biomes.
+  if (biome.startsWith('kayak-')) return biome === 'kayak-centre' || biome === 'kayak-creek' ? 1 : 2;
   return worldIndex <= 1 ? 1 : 2;
 }
 
@@ -101,6 +106,7 @@ export function icon(c: Challenge): string {
     if (matches(m, 'Indy') || m === 'grab' || members(m).every((n) => GROUPS.grab.includes(n))) return '&#9995;';
     if (members(m).every((n) => GROUPS.hold.includes(n))) return '&#129464;';
     if (members(m).every((n) => GROUPS.whip.includes(n) || GROUPS.bike.includes(n))) return '&#128260;';
+    if (members(m).every((n) => GROUPS.kayak.includes(n) || GROUPS.end.includes(n) || n === 'Splat' || n === 'Boof')) return '&#128758;';
     if (m === 'Bunny Hop') return '&#128756;';
     if (members(m).every((n) => GROUPS.spin.includes(n))) return '&#127744;';
     if (members(m).every((n) => GROUPS.bodyflip.includes(n))) return '&#129528;';

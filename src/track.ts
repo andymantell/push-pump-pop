@@ -134,6 +134,24 @@ function gardenRocks(g: Garden): GardenRock[] {
   return out;
 }
 
+/**
+ * A hole on a river, from x0 to x1: water pouring over a ledge and curling back on itself.
+ * A play hole is somewhere to throw end moves as you pass; a sticky one grabs a slow kayak and
+ * holds it, bouncing, until it paddles out (see rider.ts).
+ */
+export interface Hole {
+  x0: number;
+  x1: number;
+  sticky: boolean;
+  /** A standing wave level's whole bowl: a glassy green face, a white trough and the foam pile. */
+  wave?: boolean;
+}
+
+/** A rock on a river to splat: paddle into it as you pass and the kayak goes vertical against it. */
+export interface SplatRock {
+  x: number;
+}
+
 export interface Prop {
   kind: PropKind;
   x: number;
@@ -165,8 +183,12 @@ export class Track {
   readonly belts: Belt[];
   readonly gardens: Garden[];
   readonly gardenRocks: GardenRock[];
+  readonly holes: Hole[];
+  readonly splats: SplatRock[];
 
-  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = [], stacks: Stack[] = [], rocks: { x0: number; x1: number }[] = [], belts: Belt[] = [], gardens: Garden[] = []) {
+  constructor(heights: number[], startX: number, finishX: number, props: Prop[], signs: { x: number; text: string }[], pits: Pit[] = [], rails: Rail[] = [], stairs: Stairs[] = [], loops: Loop[] = [], spots: Spot[] = [], pads: Pad[] = [], mud: Mud[] = [], bouncers: Bouncer[] = [], stacks: Stack[] = [], rocks: { x0: number; x1: number }[] = [], belts: Belt[] = [], gardens: Garden[] = [], holes: Hole[] = [], splats: SplatRock[] = []) {
+    this.holes = holes;
+    this.splats = splats;
     this.gardens = gardens;
     this.gardenRocks = gardens.flatMap(gardenRocks).sort((a, b) => a.x - b.x);
     this.mud = mud;
@@ -239,6 +261,12 @@ export class Track {
     return y;
   }
 
+  /** The river hole at x, if any. */
+  holeAt(x: number): Hole | null {
+    for (const h of this.holes) if (x >= h.x0 && x <= h.x1) return h;
+    return null;
+  }
+
   inMud(x: number): boolean {
     for (const m of this.mud) if (x >= m.x0 && x <= m.x1) return true;
     return false;
@@ -289,6 +317,8 @@ export class TrackBuilder {
   rocks: { x0: number; x1: number }[] = [];
   belts: Belt[] = [];
   gardens: Garden[] = [];
+  holes: Hole[] = [];
+  splats: SplatRock[] = [];
 
   constructor(startY: number) {
     this.y = startY;
@@ -551,6 +581,27 @@ export class TrackBuilder {
     return this.flat(lead).pit(len).flat(2);
   }
 
+  /**
+   * A river hole `len` long: the water pours `depth` down into a trough and piles back up into
+   * a foam pile, still running downhill at `grade`. A play hole (tagged 'hole') is for end moves
+   * as you pass through; a sticky one (tagged 'sticky') holds a kayak that hits it slowly.
+   */
+  hole(len = 9, depth = 0.4, sticky = false, grade = 0.03): this {
+    this.spot(sticky ? 'sticky' : 'hole');
+    const x0 = this.x;
+    // Down the green water into the trough (a third of the way), then back up the foam pile.
+    this.run(len, (t) => -grade * len * t - depth * (t < 0.35 ? (1 - Math.cos(Math.PI * t / 0.35)) / 2 : (1 + Math.cos(Math.PI * (t - 0.35) / 0.65)) / 2));
+    this.holes.push({ x0, x1: this.x, sticky });
+    return this;
+  }
+
+  /** A rock beside the line to splat: tap as you reach it. Tagged 'splat'. */
+  splat(): this {
+    this.spot('splat');
+    this.splats.push({ x: this.x });
+    return this;
+  }
+
   /** A mega ramp roll-in: steepest at the top, curving out flat at the bottom. */
   rollIn(len: number, drop: number): this {
     return this.run(len, (t) => -drop * (1 - (1 - t) * (1 - t)));
@@ -651,6 +702,6 @@ export class TrackBuilder {
   }
 
   build(startX: number, finishX: number): Track {
-    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers, this.stacks, this.rocks, this.belts, this.gardens);
+    return new Track(this.h, startX, finishX, this.props, this.signs, this.pits, this.rails, this.stairSets, this.loops, this.spots, this.pads, this.mudPatches, this.bouncers, this.stacks, this.rocks, this.belts, this.gardens, this.holes, this.splats);
   }
 }

@@ -58,33 +58,49 @@ const RAIL_REACH = 0.7;
 const RAIL_ROOM = 1.2;
 
 /** Held tricks from the left-hand swipes: board grabs on a skateboard, body tricks on a scooter. */
-export type GrabName = BoardGrab | ScooterHold | BikeHold;
+export type GrabName = BoardGrab | ScooterHold | BikeHold | KayakHold;
 export type BoardGrab = 'Indy' | 'Melon' | 'Nosegrab' | 'Tailgrab';
 export type ScooterHold = 'Superman' | 'No Footer' | 'Can Can' | 'X-Up';
 /** On a downhill bike: the same body tricks, but hands off the bars instead of an X-Up. */
 export type BikeHold = 'Superman' | 'No Footer' | 'Can Can' | 'No Hander';
-export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360';
+/**
+ * In a kayak, held on the left in a hole: end moves. A cartwheel throws the boat end over end
+ * for as long as you hold it; a blunt stands it up on the bow and swings it round; a McNasty is
+ * a spinning loop; a Space Godzilla a loop thrown off to one side.
+ */
+export type KayakHold = 'Cartwheel' | 'Blunt' | 'McNasty' | 'Space Godzilla';
+/** A kayak spins flat on the water (a flatspin) rather than in the air. */
+export type SpinName = 'FS 180' | 'BS 180' | 'FS 360' | 'BS 360' | 'Flatspin 180' | 'Flatspin 360';
 /** Spins added up through one air: 180 + 180 is a 360, and so on. */
 export type SpinTotal = `${'FS' | 'BS'} ${number}`;
-export type FlipName = 'Backflip' | 'Frontflip';
+/** Body flips: a kayak's are loops, the boat going end over end in the air. */
+export type FlipName = 'Backflip' | 'Frontflip' | 'Back Loop' | 'Front Loop';
 /**
  * Tricks done one after another in the same air that riders call by one name: a backflip with
  * a 180 (flair) or a 360 (cash roll), a frontflip with a backside 540 or more (misty), a 360
  * with a barspin (truckdriver), a 360 flip with the body turning 180 backside with it (bigspin flip).
  */
 export type ComboName = 'Flair' | 'Cash Roll' | 'Misty' | `Misty ${number}` | 'Truckdriver' | 'Bigspin Flip';
-/** Manuals on a skateboard, presses on a snowboard: nose up first. */
-export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press' | 'Stoppie';
+/** Manuals on a skateboard, presses on a snowboard, stalls in a kayak (standing on its stern or bow): nose up first. */
+export type ManualName = 'Manual' | 'Nose Manual' | 'Tail Press' | 'Nose Press' | 'Stoppie' | 'Stern Stall' | 'Bow Stall';
 export type GrindName = '50-50' | 'Boardslide' | '5-0' | 'Nosegrind' | 'Feeble' | 'Smith' | 'Skinny' | 'Skinny Manual' | 'Skinny Stoppie';
 export type LoopName = 'Loop';
 /** Riding a whole rock garden on a bike without falling off. */
 export type GardenName = 'Rock Garden';
-type BoardTrick = 'Ollie' | 'Bunny Hop' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | '360 Flip' | 'Hardflip' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee' | BikeTrick;
+type BoardTrick = 'Ollie' | 'Bunny Hop' | 'Kickflip' | 'Heelflip' | 'Pop Shove-it' | '360 Flip' | 'Hardflip' | 'BS Shifty' | 'FS Shifty' | 'Tuck Knee' | BikeTrick | KayakTrick;
+/**
+ * Kayak air moves off a wave or a drop: a boof (the kayak's ollie, a big stroke that launches the
+ * bow), an airscrew (a flat roll right round in the air), a helix (an upside-down 360), and a
+ * Pan-Am (the boat thrown up past vertical and back).
+ */
+export type KayakTrick = 'Boof' | 'Airscrew' | 'Helix' | 'Pan-Am';
 /** Downhill bike: the bike thrown sideways (whip), laid flat (tabletop), or bars twisted down with the bike tucked under them (turndown). */
 export type BikeTrick = 'Whip' | 'Tabletop' | 'Turndown';
 /** Scooter tricks: the deck whipped round the bars, the bars spun round, or both at once. */
 export type WhipName = 'Tailwhip' | 'Double Whip' | 'Heelwhip' | 'Double Heelwhip' | 'Barspin' | 'Double Barspin' | 'Tailwhip Barspin' | 'Heelwhip Barspin';
-export type TrickName = BoardTrick | WhipName | GrabName | SpinName | SpinTotal | ComboName | FlipName | ManualName | GrindName | LoopName | GardenName;
+/** Paddling a kayak into a rock as you pass, so it stands up vertical against it. */
+export type SplatName = 'Splat';
+export type TrickName = BoardTrick | WhipName | GrabName | SpinName | SpinTotal | ComboName | FlipName | ManualName | GrindName | LoopName | GardenName | SplatName;
 /** Tilt of the device: +1 nose up (manual, backflip), -1 nose down (nose manual, frontflip). */
 export type Lean = -1 | 0 | 1;
 export type Swipe = 'up' | 'down' | 'left' | 'right';
@@ -94,7 +110,7 @@ export interface Trick {
   duration: number;
   points: number;
   /** Board rotation axis: 'flip' spins along the board, 'spin' around vertical. */
-  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop' | 'whip' | 'bike' | 'garden';
+  axis: 'none' | 'flip' | 'spin' | 'grab' | 'body' | 'manual' | 'shifty' | 'tuck' | 'grind' | 'loop' | 'whip' | 'bike' | 'garden' | 'kayak' | 'splat';
   dir: 1 | -1;
   /** Shove-its: half turns the board spins round flat (+ backside, - frontside), on its own or in a flip. */
   shove?: number;
@@ -127,6 +143,11 @@ export const TRICKS: Record<BoardTrick, Trick> = {
   'Whip': { name: 'Whip', duration: 0.5, points: 450, axis: 'bike', dir: 1 },
   'Tabletop': { name: 'Tabletop', duration: 0.55, points: 500, axis: 'bike', dir: 1 },
   'Turndown': { name: 'Turndown', duration: 0.5, points: 500, axis: 'bike', dir: -1 },
+  // Kayak: a boof launches you like an ollie; the rest throw the boat about in the air.
+  'Boof': { name: 'Boof', duration: 0, points: 100, axis: 'none', dir: 1 },
+  'Airscrew': { name: 'Airscrew', duration: 0.5, points: 500, axis: 'kayak', dir: 1 },
+  'Helix': { name: 'Helix', duration: 0.6, points: 650, axis: 'kayak', dir: -1 },
+  'Pan-Am': { name: 'Pan-Am', duration: 0.5, points: 550, axis: 'kayak', dir: 1 },
 };
 
 /** Flip-side swipes while grinding: change grind. */
@@ -171,7 +192,9 @@ export function whipTrick(whip: number, bars: number): Trick | null {
 }
 
 /** Body spins and the tricks that join up with them into one: barspins, body flips, 360 flips. */
-const JOINS = (t: Trick) => (t.axis === 'body' && !t.parts) || t.name === 'Barspin' || t.name === '360 Flip';
+/** A kayak's flatspins and loops stand alone. */
+const KAYAK_BODY = ['Flatspin 180', 'Flatspin 360', 'Back Loop', 'Front Loop'];
+const JOINS = (t: Trick) => (t.axis === 'body' && !t.parts && !KAYAK_BODY.includes(t.name)) || t.name === 'Barspin' || t.name === '360 Flip';
 const isSpin = (t: Trick) => t.axis === 'body' && t.name !== 'Backflip' && t.name !== 'Frontflip';
 
 /**
@@ -222,6 +245,14 @@ const SWIPE_TRICK_BIKE: Record<Swipe, BoardTrick> = {
   down: 'Turndown',
 };
 
+/** Flip-side swipes in a kayak. */
+const SWIPE_TRICK_KAYAK: Record<Swipe, BoardTrick> = {
+  up: 'Boof',
+  left: 'Airscrew',
+  right: 'Helix',
+  down: 'Pan-Am',
+};
+
 /** Swipe and keep holding: grab the board until you let go. */
 const SWIPE_GRAB: Record<Swipe, GrabName> = {
   up: 'Indy',
@@ -242,6 +273,13 @@ const SWIPE_HOLD_BIKE: Record<Swipe, GrabName> = {
   down: 'No Footer',
   left: 'Can Can',
   right: 'No Hander',
+};
+/** In a kayak, held in a hole: end moves, for as long as you hold on and stay in the hole. */
+const SWIPE_HOLD_KAYAK: Record<Swipe, KayakHold> = {
+  up: 'Cartwheel',
+  down: 'Blunt',
+  left: 'McNasty',
+  right: 'Space Godzilla',
 };
 /** Hold this long after a grab swipe before the grab starts, so a quick flick is just an ollie. */
 const GRAB_HOLD = 0.08;
@@ -293,6 +331,23 @@ const GARDEN_POINTS = 150, GARDEN_POINTS_PER_M = 40;
 /** Where the front wheel is, ahead of the rider's point (see mtb.ts). */
 const FRONT_WHEEL = 0.65;
 
+/**
+ * Kayak. A tap is a paddle stroke: it drives you on a little anywhere, and like a pump it pays
+ * best down the face of a wave. Crash a landing and you capsize: tap ROLL_TAPS times within
+ * ROLL_TIME to roll back up (an Eskimo roll), or you swim, and that costs a life.
+ */
+const KAYAK_STROKE = 0.3;
+export const ROLL_TIME = 2.2, ROLL_TAPS = 3;
+/** Holes slow you down while you're in them. */
+const HOLE_DRAG = 1.2;
+/**
+ * A sticky hole grabs a kayak going slower than this through its trough, and holds it, surfing
+ * back and forth, until enough strokes (STICKY_TAPS, and they wear off) paddle it out, or until
+ * STICKY_TIME, when it flips you over.
+ */
+export const STICKY_SPEED = 7, STICKY_TAPS = 3, STICKY_TIME = 4;
+const SPLAT_POINTS = 600;
+
 const SWIPE_TRICK: Record<Swipe, keyof typeof TRICKS | null> = {
   up: 'Ollie',
   left: 'Kickflip',
@@ -311,6 +366,11 @@ export interface RiderEvents {
   loop?(done: boolean): void;
   pump(good: boolean): void;
   fall(): void;
+  /** A kayak went over (it can still roll back up), and rolled back up. */
+  capsize?(): void;
+  rolled?(): void;
+  /** A sticky hole caught the kayak (true), or it paddled out (false). */
+  stuck?(caught: boolean): void;
 }
 
 export interface RiderOptions {
@@ -329,6 +389,8 @@ export interface RiderOptions {
   scooter?: boolean;
   /** Downhill bike: whips, tabletops and turndowns on the right, body tricks on the left, rails ridden as skinnies. */
   mtb?: boolean;
+  /** White water kayak: the track is a river; taps are paddle strokes, crashes capsize. */
+  kayak?: boolean;
   /** Gravity, if not the usual (lower on the moon). */
   gravity?: number;
 }
@@ -405,6 +467,12 @@ export class Rider {
   balance = 0;
   /** The rock garden being ridden, and where you came into it. */
   garden: { x0: number; g: { x0: number; x1: number } } | null = null;
+  /** Upside down in a kayak, rolling back up: time since capsizing, and strokes so far. */
+  roll: { t: number; taps: number } | null = null;
+  /** Held in a sticky hole: how long, how hard you've paddled to get out, and where its trough is. */
+  stuck: { t: number; push: number; x: number; hole: { x0: number; x1: number } } | null = null;
+  /** Counts splats, for the animation. */
+  splats = 0;
   /** Manual in progress and how long it has been held. */
   manual: ManualName | null = null;
   manualT = 0;
@@ -526,6 +594,10 @@ export class Rider {
     // On the coping: lean forward and drop in.
     if (this.perched) { this.perched = false; this.dropT = 0; return; }
     if (this.bailing || this.dropT >= 0) return;
+    // Upside down: each tap is a sweep of the paddle towards rolling back up.
+    if (this.roll) { this.roll.taps++; return; }
+    // Held in a sticky hole: each stroke drives you towards the far side.
+    if (this.stuck) { this.stuck.push += 1; this.ev.pump(true); }
     this.pumpTimer = PUMP_TIME;
     // On the way down only: a late pump at a lip shouldn't cut the air short.
     if (!this.grounded && !this.grind && !this.loop && !this.inPipe && this.vy < 0) this.airPump = AIR_PUMP_TIME;
@@ -541,13 +613,15 @@ export class Rider {
    * or a board you're strapped into, it's just a swipe down.
    */
   comboSwipe(dir: 'left' | 'right') {
-    if (this.grind || this.opts.scooter || this.opts.mtb || this.opts.snow || this.opts.mountain) { this.swipe('down'); return; }
+    if (this.grind || this.opts.scooter || this.opts.mtb || this.opts.kayak || this.opts.snow || this.opts.mountain) { this.swipe('down'); return; }
     this.swipe('down', dir === 'left' ? '360 Flip' : 'Hardflip');
   }
 
   swipe(dir: Swipe, combo?: '360 Flip' | 'Hardflip') {
     if (this.perched || this.dropT >= 0) return;
-    if (this.bailing || this.grab) return;
+    if (this.bailing || this.grab || this.roll) return;
+    // A sticky hole won't let you boof out of it: paddle out.
+    if (this.stuck) return;
     // On a rail the flip-side swipes change how you grind it (up still ollies off).
     // A bike on a skinny just rolls along it: only a hop takes it off.
     if (this.grind && dir !== 'up' && this.opts.mtb) return;
@@ -560,7 +634,7 @@ export class Rider {
       return;
     }
     if (this.opts.scooter && dir !== 'up') { this.whipSwipe(dir); return; }
-    const name = combo ?? (this.opts.scooter ? 'Bunny Hop' : (this.opts.mtb ? SWIPE_TRICK_BIKE : this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir]);
+    const name = combo ?? (this.opts.scooter ? 'Bunny Hop' : (this.opts.kayak ? SWIPE_TRICK_KAYAK : this.opts.mtb ? SWIPE_TRICK_BIKE : this.opts.snow || this.opts.mountain ? SWIPE_TRICK_SNOW : SWIPE_TRICK)[dir]);
     if (!name) return;
     const hop = TRICKS[name].axis === 'none';
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
@@ -613,6 +687,8 @@ export class Rider {
   }
 
   private clearBody() {
+    this.roll = null;
+    this.stuck = null;
     this.garden = null;
     this.balance = 0;
     this.spin = null;
@@ -631,7 +707,9 @@ export class Rider {
     if (this.perched || this.dropT >= 0) return;
     // On a bike's pipe air the turn is already under way: swiping makes it your 180.
     if (this.spin?.auto && !this.bailing) { this.spin.auto = false; this.spin.dir = dir === 'right' ? 1 : -1; return; }
-    if (this.bailing || this.spin) return;
+    if (this.bailing || this.spin || this.roll) return;
+    // A kayak spins flat on the water, without leaving it.
+    if (this.opts.kayak && this.grounded) { this.spin = { dir: dir === 'right' ? 1 : -1, deg: 180, t: 0 }; return; }
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) this.pop();
     if (this.grounded) return;
@@ -659,7 +737,7 @@ export class Rider {
     else if (sp.deg === 180) this.bodyYaw = this.bodyYaw ? 0 : Math.PI;
     if (sp.auto) return;
     this.tricksThisAir++;
-    const name = `${sp.dir > 0 ? 'FS' : 'BS'} ${sp.deg}` as SpinName;
+    const name = (this.opts.kayak ? `Flatspin ${sp.deg}` : `${sp.dir > 0 ? 'FS' : 'BS'} ${sp.deg}`) as SpinName;
     this.emit({ name, duration: SPIN_TIME, points: SPIN_POINTS[sp.deg], axis: 'body', dir: sp.dir });
   }
 
@@ -721,6 +799,11 @@ export class Rider {
 
   get manualPoints() {
     return this.manual ? Math.round((MANUAL_POINTS + MANUAL_POINTS_PER_SEC * this.manualT) / 10) * 10 : 0;
+  }
+
+  /** A body flip in the air: on a kayak, a loop. */
+  private get flipName(): FlipName {
+    return this.opts.kayak ? (this.flipDir > 0 ? 'Back Loop' : 'Front Loop') : this.flipDir > 0 ? 'Backflip' : 'Frontflip';
   }
 
   /** Body pitch from a flip in progress, radians (+ is nose up / backwards). */
@@ -809,9 +892,11 @@ export class Rider {
   /** Swipe on the grab side of the screen: pop if on the ground, then grab while held. */
   grabSwipe(dir: Swipe) {
     if (this.perched || this.dropT >= 0) return;
-    if (this.bailing || this.grab) return;
+    if (this.bailing || this.grab || this.roll) return;
     this.held = dir;
     this.heldT = 0;
+    // A kayak's end moves happen on the water, in a hole: no pop.
+    if (this.opts.kayak) return;
     const canPop = this.grounded || this.grind !== null || (!this.inPipe && this.timeSinceGround < COYOTE_TIME && !this.ollied);
     if (canPop) this.pop();
   }
@@ -907,6 +992,8 @@ export class Rider {
     this.chain = { tricks: [], whole: null, spins: null, rest: [] };
     this.airPump = 0;
     this.endManual();
+    // An end move in a hole is done once the boat leaves the water.
+    if (this.opts.kayak && this.grab) this.release();
     // A tilt held through take-off doesn't flip you: level out, then tilt.
     this.leanArmed = this.lean === 0;
   }
@@ -947,6 +1034,8 @@ export class Rider {
         this.ev.bail();
       }
     }
+
+    if (this.roll) this.stepRoll(dt);
 
     if (this.falling) {
       // Tumbling into a pit: no collisions until respawn.
@@ -1001,14 +1090,20 @@ export class Rider {
       // Once it drops, level out before the next one, so it can't flicker on and off.
       // On a bike the tilt is your balance in a rock garden, not a manual.
       if (this.opts.mtb) this.stepGarden(dt);
-      const want: ManualName | null = this.lean && !this.garden && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.8)
-        ? (this.lean > 0 ? (this.opts.snow ? 'Tail Press' : 'Manual') : (this.opts.snow ? 'Nose Press' : this.opts.mtb ? 'Stoppie' : 'Nose Manual')) : null;
+      if (this.opts.kayak && this.stepWater(dt)) return;
+      const want: ManualName | null = this.lean && !this.garden && !this.roll && !this.manualBlocked && !this.bailing && Math.abs(k) < MANUAL_SLOPE && (this.opts.pipe || Math.abs(this.v) > MIN_PUSH_SPEED * 0.8)
+        ? (this.lean > 0 ? (this.opts.snow ? 'Tail Press' : this.opts.kayak ? 'Stern Stall' : 'Manual') : (this.opts.snow ? 'Nose Press' : this.opts.mtb ? 'Stoppie' : this.opts.kayak ? 'Bow Stall' : 'Nose Manual')) : null;
       if (want !== this.manual) {
         if (this.manual && this.lean) this.manualBlocked = true;
         this.endManual();
         if (want) { this.manual = want; this.manualT = 0; this.ev.manual?.(want); }
       }
       if (this.manual) this.manualT += dt;
+      // A kayak's flatspin turns on the water.
+      if (this.opts.kayak && this.spin) {
+        this.spin.t += dt;
+        if (this.spin.t >= this.spinDuration) this.finishSpin();
+      }
       // A jelly pad: boing.
       const pad = !this.bailing && !this.inPipe ? tr.bouncerAt(this.x) : null;
       if (pad && Math.abs(this.v) > 1) {
@@ -1029,6 +1124,7 @@ export class Rider {
       a -= dir * (ROLL_FRICTION * this.opts.friction + AIR_DRAG * (this.fastBike ? BIKE_DRAG : 1) * this.v * this.v);
       if (tr.inMud(this.x)) a -= dir * (MUD_DRAG + MUD_DRAG_PER_SPEED * Math.abs(this.v));
       if (this.garden) a -= dir * GARDEN_DRAG;
+      if (this.opts.kayak && tr.holeAt(this.x)) a -= dir * HOLE_DRAG;
       const belt = !this.inPipe ? tr.beltAt(this.x) : null;
       if (belt && belt.speed > this.v) a += Math.min(BELT_PUSH, BELT_GRIP * (belt.speed - this.v));
       else if (belt && belt.speed < 0 && this.v > BELT_CRAWL) a -= BELT_DRAG;
@@ -1040,6 +1136,8 @@ export class Rider {
         if (belt) f = Math.max(f, BELT_PUMP);
         // Half pipe: pumping through the flat bottom counts too, so it's easy to build height.
         if (this.opts.pipe) f = Math.max(f, Math.abs(sin) < 0.3 ? 0.8 : 0.25);
+        // A paddle stroke drives a kayak on anywhere, a little.
+        if (this.opts.kayak && !this.roll) f = Math.max(f, KAYAK_STROKE);
         a += dir * PUMP_ACCEL * f;
       }
 
@@ -1048,7 +1146,7 @@ export class Rider {
       // Past the finish: brake hard enough to stop by stopAt, gently if there's room.
       const braking = this.stopAt !== null && !this.bailing && this.v >= 0;
       if (braking) a -= Math.min(8, Math.max(1.5, this.v * this.v / (2 * Math.max(0.5, this.stopAt! - this.x))));
-      if (!braking && !this.bailing && !this.manual && !this.opts.pipe && !this.opts.mega && this.v < MIN_PUSH_SPEED) {
+      if (!braking && !this.bailing && !this.manual && !this.roll && !this.opts.pipe && !this.opts.mega && this.v < MIN_PUSH_SPEED) {
         a += 4 + this.g * Math.max(0, sin);
         this.pushing = true;
       }
@@ -1111,7 +1209,7 @@ export class Rider {
       const target = Math.max(-0.9, Math.min(0.9, Math.atan2(this.vy, Math.abs(this.vx)) * 0.75)) * Math.sign(this.vx || 1);
       if (!this.inPipe) this.angle += (target - this.angle) * Math.min(1, dt * 3);
 
-      if (this.held) {
+      if (this.held && !this.opts.kayak) {
         this.heldT += dt;
         // Grab once the board is free of any flip and the finger has stayed down.
         if (!this.grab && !this.current && this.heldT >= GRAB_HOLD) {
@@ -1137,7 +1235,7 @@ export class Rider {
         this.flipT += dt / FLIP_TIME;
         if (this.flipT >= 1) {
           this.tricksThisAir++;
-          this.emit({ name: this.flipDir > 0 ? 'Backflip' : 'Frontflip', duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
+          this.emit({ name: this.flipName, duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
           if (this.lean === this.flipDir) this.flipT -= 1;
           else { this.flipping = false; this.flipT = 0; }
         }
@@ -1217,7 +1315,7 @@ export class Rider {
     const midFlip = this.flipping && this.flipT > FLIP_SAFE && this.flipT < FLIP_LAND;
     if (this.flipping && this.flipT >= FLIP_LAND) {
       this.tricksThisAir++;
-      this.emit({ name: this.flipDir > 0 ? 'Backflip' : 'Frontflip', duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
+      this.emit({ name: this.flipName, duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
     }
     this.flipping = false;
     this.flipT = 0;
@@ -1227,6 +1325,8 @@ export class Rider {
       this.current = null;
       this.bodyYaw = 0;
       this.v = tang * 0.35;
+      // In a kayak you go over, and get a moment to roll back up.
+      if (this.opts.kayak) { this.capsize(); return; }
       this.bailTimer = BAIL_TIME;
       this.chain = { tricks: [], whole: null, spins: null, rest: [] };
       this.ev.bail();
@@ -1249,6 +1349,113 @@ export class Rider {
     this.ev.land({ airTime: this.airTime, smooth, hadTricks: this.tricksThisAir > 0 || this.ollied, peakY: this.peakY });
     this.chain = { tricks: [], whole: null, spins: null, rest: [] };
     this.ollied = false;
+  }
+
+  /** Over you go: upside down in the water, with ROLL_TIME to roll back up. */
+  private capsize() {
+    this.roll = { t: 0, taps: 0 };
+    this.stuck = null;
+    this.grab = null;
+    this.held = null;
+    this.spin = null;
+    this.flipping = false;
+    this.endManual();
+    this.manual = null;
+    this.current = null;
+    this.ev.capsize?.();
+  }
+
+  private stepRoll(dt: number) {
+    const roll = this.roll!;
+    roll.t += dt;
+    if (roll.taps >= ROLL_TAPS) {
+      // Back up! You keep going, a bit slower.
+      this.roll = null;
+      this.v *= 0.8;
+      this.ev.rolled?.();
+    } else if (roll.t >= ROLL_TIME) {
+      // Couldn't roll up: out of the boat for a swim.
+      this.roll = null;
+      this.v *= 0.4;
+      this.bodyYaw = 0;
+      this.bailTimer = BAIL_TIME;
+      this.ev.bail();
+    }
+  }
+
+  /**
+   * A kayak on the water, each step: end moves held in a hole, sticky holes, and rocks to splat.
+   * Returns true when a sticky hole has the boat and has moved it itself.
+   */
+  private stepWater(dt: number): boolean {
+    const tr = this.track;
+    const hole = tr.holeAt(this.x);
+    // A swipe held on the left in a hole is an end move, for as long as you hold on in there.
+    if (this.held && !this.bailing && !this.roll) this.heldT += dt;
+    if (this.held && hole && !this.grab && !this.current && !this.roll && !this.bailing && this.heldT >= GRAB_HOLD) {
+      this.grab = SWIPE_HOLD_KAYAK[this.held];
+      this.grabT = 0;
+      this.ev.grab?.(this.grab);
+    }
+    if (this.grab && !hole && !this.stuck) { this.held = null; this.release(); }
+    if (this.grab) this.grabT += dt;
+    // On a standing wave an end move holds you in the trough, wheeling on the spot.
+    if (this.grab && hole && this.opts.pipe) this.v += ((hole.x0 + hole.x1) / 2 - this.x) * 4 * dt - this.v * 3 * dt;
+    // Paddle into a rock as you reach it: splat!
+    const ahead = this.x + this.v * dt;
+    if (this.pumpTimer > 0 && !this.roll && !this.bailing && this.v > 0) {
+      for (const s of tr.splats) {
+        if (this.x < s.x && ahead >= s.x) {
+          this.splats++;
+          this.emit({ name: 'Splat', duration: 0.6, points: SPLAT_POINTS, axis: 'splat', dir: 1 });
+        }
+      }
+    }
+    // A sticky hole: going too slowly through its trough, it holds you.
+    if (!this.stuck && hole?.sticky && !this.roll && !this.bailing && this.v < STICKY_SPEED && this.v > -1) {
+      const u = (this.x - hole.x0) / (hole.x1 - hole.x0);
+      if (u > 0.2 && u < 0.5) {
+        this.stuck = { t: 0, push: 0, x: hole.x0 + (hole.x1 - hole.x0) * 0.35, hole };
+        this.endManual();
+        this.manual = null;
+        this.ev.stuck?.(true);
+      }
+    }
+    const st = this.stuck;
+    if (!st) return false;
+    st.t += dt;
+    st.push = Math.max(0, st.push - dt * 0.6);
+    const h = st.hole;
+    if (st.push >= STICKY_TAPS) {
+      // Paddled out over the foam pile.
+      this.stuck = null;
+      this.x = h.x1 + 0.1;
+      this.y = tr.height(this.x);
+      this.v = 6;
+      this.ev.stuck?.(false);
+      return true;
+    }
+    if (st.t >= STICKY_TIME) {
+      // Held too long: it flips you over and flushes you out.
+      this.stuck = null;
+      if (this.grab) { this.held = null; this.release(); }
+      this.x = h.x1 + 0.1;
+      this.y = tr.height(this.x);
+      this.v = 4;
+      this.capsize();
+      return true;
+    }
+    // Surfing back and forth in the trough, pushed further up the pile by each stroke.
+    const back = st.x + 0.5 * Math.sin(st.t * 4.5) + st.push * 0.4;
+    this.v = (back - this.x) / dt;
+    this.x = back;
+    this.y = tr.height(this.x);
+    this.angle = Math.atan(tr.slope(this.x));
+    if (this.spin) {
+      this.spin.t += dt;
+      if (this.spin.t >= this.spinDuration) this.finishSpin();
+    }
+    return true;
   }
 
   /** A rock garden on a bike: rocks knock your balance about, tilting puts it back. */
