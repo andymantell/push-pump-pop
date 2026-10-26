@@ -43,6 +43,7 @@ interface Tab { id: string; label: string; icon: string; frame: Frame; thumb: Fr
 const NAMES: Record<string, string> = {
   buzz: 'Buzz cut', crop: 'Short', spiky: 'Spiky', curly: 'Curly', puffs: 'Puffs', bob: 'Bob', ponytail: 'Ponytail', bun: 'Bun',
   pigtails: 'Bunches', long: 'Long', braids: 'Braids', mohawk: 'Mohawk',
+  messy: 'Messy', flow: 'Flow', swoop: 'Swoop', afro: 'Afro', spacebuns: 'Space buns',
   none: 'None', cap: 'Cap', capback: 'Cap back', beanie: 'Beanie', bucket: 'Bucket hat', headband: 'Headband', bandana: 'Bandana',
   catears: 'Cat ears', unicorn: 'Unicorn',
   smile: 'Smile', grin: 'Big grin', cheeky: 'Cheeky', tongue: 'Tongue out',
@@ -71,7 +72,7 @@ const TABS: Tab[] = [
   { id: 'hair', thumb: 'face', label: 'HAIR', icon: '&#128135;', frame: 'head', choices: [
     c({ key: 'hair', label: 'Style', values: HAIR_STYLES }),
     c({ key: 'hairColour', label: 'Colour', values: HAIR_COLOURS, colours: true }),
-    c({ key: 'tips', label: 'Dyed tips', values: [-1, ...HAIR_COLOURS.slice(9)], colours: true, when: (l) => ['long', 'braids', 'mohawk', 'bob', 'ponytail', 'pigtails'].includes(l.hair) }),
+    c({ key: 'tips', label: 'Dyed tips', values: [-1, ...HAIR_COLOURS.slice(9)], colours: true, when: (l) => ['long', 'braids', 'mohawk', 'bob', 'ponytail', 'pigtails', 'messy', 'flow', 'swoop'].includes(l.hair) }),
   ] },
   { id: 'hat', thumb: 'face', label: 'HAT', icon: '&#129506;', frame: 'head', choices: [
     c({ key: 'hat', label: 'Hat', values: HATS }),

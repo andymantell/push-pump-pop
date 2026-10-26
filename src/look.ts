@@ -10,7 +10,7 @@ import { drawPattern, PatternName, drawDeck, DeckArt, PATTERNS, DECK_ARTS } from
 // its model for the chosen pieces. Colours go on by material name: every rider part shares one
 // material per name (see paint), so changing the look recolours everything that's dressed.
 
-export const HAIR_STYLES = ['buzz', 'crop', 'spiky', 'curly', 'puffs', 'bob', 'ponytail', 'bun', 'pigtails', 'long', 'braids', 'mohawk'] as const;
+export const HAIR_STYLES = ['buzz', 'crop', 'spiky', 'curly', 'puffs', 'bob', 'ponytail', 'bun', 'pigtails', 'long', 'braids', 'mohawk', 'messy', 'flow', 'swoop', 'afro', 'spacebuns'] as const;
 export type HairStyle = (typeof HAIR_STYLES)[number];
 export const HATS = ['none', 'cap', 'capback', 'beanie', 'bucket', 'headband', 'bandana', 'catears', 'unicorn'] as const;
 export type Hat = (typeof HATS)[number];
@@ -147,7 +147,7 @@ const COVERS: Record<Hat, boolean> = {
   none: false, cap: true, capback: true, beanie: true, bucket: true, headband: false, bandana: true, catears: false, unicorn: false,
 };
 /** Hair that stands out from the head: bands worn over it sit this much further out. */
-const BAND_FIT: Partial<Record<HairStyle, number>> = { curly: 1.14, bob: 1.03, long: 1.03 };
+const BAND_FIT: Partial<Record<HairStyle, number>> = { curly: 1.14, bob: 1.03, long: 1.03, messy: 1.05, flow: 1.03, afro: 1.32 };
 /** Middle of the skull above the neck (scaled like the head), which bands grow out from. */
 const SKULL_Y = 0.16 * 1.08;
 const SLEEVES: Record<Top, string> = { hoodie: 'hoodie', tee: 'tee', vest: 'bare', jersey: 'jersey', rash: 'rash', jacket: 'jacket' };

@@ -13,6 +13,7 @@ metres (u around the body, v up it), so a pattern tile is the same size on every
 """
 import math
 import os
+import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -557,6 +558,67 @@ def hair_styles(hair, hair_tie, tips):
         fin[-1].scale = (0.45, 1, 1)
         apply_tf(fin[-1])
     styles['mohawk'] = ([under], [full] + fin)
+
+    # Messy: shaggy, longer at the fringe and the neck, tufts sticking out every which way
+    # (and out from under a hat).
+    full, under = two(hairline(0.19, 0.118, 0.055), r=0.133, scale=(0.97, 1.03, 1.07), t=0.007)
+    rnd = random.Random(11)
+    tufts_top, tufts_low = [], []
+
+    def tuft(th, ph, L, r, down, mat=hair):
+        base = on_head(0.128, th, ph)
+        n = (base - Vector((0, 0, CZ))).normalized()
+        jit = Vector((rnd.uniform(-0.5, 0.5), rnd.uniform(-0.5, 0.5), rnd.uniform(-0.2, 0.4)))
+        out = (n + Vector((0, 0, -down)) + jit).normalized()
+        o = cyl(mat, r, L, loc=tuple(base + out * L * 0.35), r2=0.007, verts=8,
+                rot=Vector((0, 0, 1)).rotation_difference(out).to_euler())
+        (tufts_low if UNDER(base) is False else tufts_top).append(o)
+
+    for i in range(7):  # the fringe, hanging over the forehead
+        tuft(1.0 + rnd.uniform(-0.05, 0.08), -0.95 + i * 0.32, 0.05 + rnd.uniform(0, 0.015), 0.03, 1.4)
+    for i in range(14):  # round the sides and back, down and out over the ears and neck
+        s_ = 1 if i % 2 else -1
+        tuft(1.35 + rnd.uniform(0, 0.3), s_ * (1.2 + (i // 2) * 0.3), 0.05 + rnd.uniform(0, 0.015), 0.032, 1.2)
+    for i in range(18):  # all over the top, every which way
+        th = math.acos(1 - 2 * (i + 0.5) / 44)
+        tuft(th, i * 2.39996, 0.04 + rnd.uniform(0, 0.015), 0.034, 0.5)
+    styles['messy'] = ([dye(under, tips, 0.11)] + [dye(t_, tips, 0.11) for t_ in tufts_low],
+                       [dye(full, tips, 0.11)] + tufts_low + tufts_top)
+
+    # Skater flow: down to the jaw, pushed back off the face, the ends flicking out.
+    full = shell(hair, low_line(0.08, 0.06), r=0.135, scale=(0.98, 1.04, 1.06), t=0.007, flare=0.28)
+    under = cut(dup(full), UNDER)
+    styles['flow'] = ([dye(under, tips, 0.07)], [dye(full, tips, 0.07)])
+
+    # Swoop: short at the back, a big side-swept fringe across the forehead.
+    full, under = two(hairline(0.208, 0.14, 0.08), r=0.13)
+    pts = bezier(tuple(on_head(0.135, 0.3, 0.9)), tuple(on_head(0.15, 0.75, 0.1)), tuple(on_head(0.138, 1.12, -0.9)), 10)
+    sweep = tube(hair, pts, [0.024, 0.034, 0.038, 0.038, 0.036, 0.032, 0.027, 0.021, 0.015, 0.009, 0.003], segs=14, squash=0.5)
+    styles['swoop'] = ([under], [full, dye(sweep, tips, 0.215)])
+
+    # Big round afro.
+    full, under = two(hairline(0.2, 0.125, 0.065), r=0.132)
+    afro_top, afro_low = [], []
+    for i in range(110):
+        th = math.acos(1 - 2 * (i + 0.5) / 160)
+        ph = i * 2.39996
+        p = on_head(0.165, th, ph)
+        if p.z < hairline(0.215, 0.13, 0.07)(p) + 0.025:
+            continue
+        afro_top.append(sphere(hair, 0.05 + 0.006 * rnd.random(), loc=tuple(p), segs=10, rings=6))
+        # Under a hat it squashes down to a ring of curls poking out below the brim.
+        q = on_head(0.142, th, ph)
+        if UNDER(q + Vector((0, 0, 0.035))) is False:
+            afro_low.append(sphere(hair, 0.032 + 0.005 * rnd.random(), loc=tuple(q), segs=10, rings=6))
+    styles['afro'] = ([under] + afro_low, [full] + afro_top)
+
+    # Space buns: two smooth buns high on top.
+    full, under = two(hairline(0.212, 0.14, 0.08), r=0.128, t=0.005)
+    buns = []
+    for s_ in (1, -1):
+        buns.append(sphere(hair, 0.05, loc=(s_ * 0.075, 0.02, 0.3), scale=(1, 1, 0.9), segs=16, rings=10))
+        buns.append(ties(hair_tie, (s_ * 0.065, 0.015, 0.262), (s_ * 0.35, 0.1, 1)))
+    styles['spacebuns'] = ([under], [full] + buns)
     return styles
 
 

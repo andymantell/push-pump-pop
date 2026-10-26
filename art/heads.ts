@@ -6,7 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { toonify } from '../src/toon';
 
 const q = new URLSearchParams(location.search);
-const items = (q.get('items') ?? 'hair:buzz,hair:crop,hair:spiky,hair:curly,hair:puffs,hair:bob,hair:ponytail,hair:bun,hair:pigtails,hair:long,hair:braids,hair:mohawk').split(',');
+const items = (q.get('items') ?? 'hair:buzz,hair:crop,hair:spiky,hair:curly,hair:puffs,hair:bob,hair:ponytail,hair:bun,hair:pigtails,hair:long,hair:braids,hair:mohawk,hair:messy,hair:flow,hair:swoop,hair:afro,hair:spacebuns').split(',');
 const cols = Number(q.get('cols') ?? 6);
 const yaw = Number(q.get('yaw') ?? 0.7);
 const C = 220;
