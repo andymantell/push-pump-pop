@@ -22,6 +22,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      # Let every part finish, so one failure doesn't hide others.
+      fail-fast: false
       matrix:
         ride: [skate, scooter, mtb]
         shard: [1, 2, 3, 4]
