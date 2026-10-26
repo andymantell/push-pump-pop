@@ -2561,6 +2561,13 @@ export class World {
 
   private buildSky() { /* sky is the scene background, set in applyEnvironment */ }
 
+  /** Draw only this share of the weather particles (fewer on slow devices). */
+  setParticles(share: number) {
+    const p = this.particleKind;
+    if (!this.particles || !p) return;
+    this.particles.geometry.setDrawRange(0, Math.round(p.n * share) * this.particleStride);
+  }
+
   update(dt: number, camX: number, camY: number) {
     for (const b of this.belts) b.tex.offset.x -= (b.speed * dt) / 3;
     if (this.beacons.length) {
@@ -2583,7 +2590,8 @@ export class World {
       const a = pos.array as Float32Array;
       const t = performance.now() / 1000;
       const step = this.particleStride * 3;
-      for (let i = 0; i < a.length; i += step) {
+      const end = Math.min(a.length, this.particles.geometry.drawRange.count * 3);
+      for (let i = 0; i < end; i += step) {
         const k = 0.6 + ((i * 7) % 10) / 20;
         let dx = p.vx * dt * k + Math.sin(t * (p.swaySpeed ?? 1) + i) * dt * (p.sway ?? 0.3);
         let dy = p.vy * dt * k;

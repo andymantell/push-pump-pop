@@ -59,14 +59,25 @@ export function setRim(color: THREE.ColorRepresentation, strength: number) {
 export class LampLights {
   private lights: THREE.PointLight[] = [];
   private lamps: Lamp[] = [];
+  /** Fewer on slow devices, see quality.ts. */
+  private max = MAX_LAMPS;
 
   constructor(private scene: THREE.Scene) {}
+
+  /** Change how many lights there are; true if that means the shaders rebuild. */
+  setMax(n: number): boolean {
+    if (n === this.max) return false;
+    this.max = n;
+    const had = this.lights.length;
+    this.use(this.lamps);
+    return this.lights.length !== had;
+  }
 
   /** A track's lamps. The number of lights only changes between tracks with and without lamps,
    * as each change makes every shader rebuild. */
   use(lamps: Lamp[]) {
     this.lamps = lamps;
-    const n = lamps.length ? MAX_LAMPS : 0;
+    const n = lamps.length ? this.max : 0;
     while (this.lights.length > n) this.scene.remove(this.lights.pop()!);
     while (this.lights.length < n) {
       const l = new THREE.PointLight(0xffffff, 0, 10, 2);
@@ -78,7 +89,7 @@ export class LampLights {
   /** Move the lights to the lamps nearest x. */
   update(x: number) {
     if (!this.lights.length) return;
-    const near = this.lamps.length <= MAX_LAMPS ? this.lamps : [...this.lamps].sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x));
+    const near = this.lamps.length <= this.max ? this.lamps : [...this.lamps].sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x));
     this.lights.forEach((l, i) => {
       const lamp = near[i];
       if (!lamp) { l.intensity = 0; return; }

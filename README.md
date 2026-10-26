@@ -71,6 +71,18 @@ prompt lists the lines the running copy doesn't have, and after an update the Wh
 New screen opens with the new updates marked. Don't reword old lines: a reworded line
 moves to the commit that changed it and shows up as new.
 
+### Picture quality
+
+`src/quality.ts` holds 60fps on slower devices. On AUTO (the title screen's QUALITY
+button) it averages frame times; when they run slow it steps down a ladder of levels:
+render resolution first (the biggest cost), then smaller and then no sun shadows, fewer
+weather particles and lamp lights, and last the ink outlines. After a smooth spell it
+tries a step back up, waiting twice as long after each try that turns out too slow, so it
+doesn't flicker. If going all the way down gains nothing (a battery saver holding the
+screen at 30fps) it goes back to full quality. Each device remembers its level for next
+time, and devices that ended up near the bottom start without antialiasing. HIGH,
+MEDIUM and LOW lock a level. `scripts/quality-test.ts` (in `npm test`) checks this.
+
 ### Home screen app
 
 The game installs to the home screen (Android: Install app; iPad: Share, then Add to

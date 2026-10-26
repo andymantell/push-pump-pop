@@ -24,6 +24,7 @@ import { registerOffline, keepSaves } from './pwa';
 import { exportCode, importCode, hasProgress } from './transfer';
 import { Replays, Player, Clip, HudSnap, MAX_CLIPS } from './replay';
 import { Sound } from './audio';
+import { Quality, Setting, SETTINGS } from './quality';
 
 const $ = (id: string) => document.getElementById(id)!;
 const progress = new Progress(TRACKS, BIOME_ORDER, (() => { try { return localStorage; } catch { return null; } })());
@@ -35,8 +36,8 @@ const starsHtml = (n: number) => '<span class="stars">' + [1, 2, 3].map((i) => (
 const fmt = (n: number) => Math.round(n).toLocaleString('en-GB');
 
 const canvas = $('game') as HTMLCanvasElement;
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const quality = new Quality((() => { try { return localStorage; } catch { return null; } })());
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: quality.antialias });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -58,6 +59,31 @@ sun.shadow.intensity = 1;
 scene.add(sun);
 const lampLights = new LampLights(scene);
 scene.add(sun.target);
+
+/** Draw at the current quality level, see quality.ts. */
+function applyQuality() {
+  const q = quality.current;
+  // Down to one pixel per CSS pixel on a retina screen, and never below 0.75.
+  const base = Math.min(window.devicePixelRatio, 2);
+  renderer.setPixelRatio(Math.max(Math.min(base, 0.75), base * q.scale));
+  resize();
+  const shadows = q.shadows > 0;
+  let recompile = shadows !== sun.castShadow;
+  renderer.shadowMap.enabled = sun.castShadow = shadows;
+  if (shadows && sun.shadow.mapSize.x !== q.shadows) {
+    sun.shadow.mapSize.set(q.shadows, q.shadows);
+    sun.shadow.map?.dispose();
+    sun.shadow.map = null;
+  }
+  recompile = lampLights.setMax(q.lamps) || recompile;
+  if (recompile) scene.traverse((o) => { for (const m of ([] as THREE.Material[]).concat((o as THREE.Mesh).material ?? [])) m.needsUpdate = true; });
+  world?.setParticles(q.particles);
+}
+quality.onChange = () => { applyQuality(); drawQuality(); };
+function draw() {
+  if (quality.current.outlines) effect.render(scene, camera);
+  else renderer.render(scene, camera);
+}
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 500);
 
@@ -217,8 +243,11 @@ function loadTrack(d: TrackDef) {
     world = new World(track, biomeFor(BIOMES[d.biome], d.id), assets.props, d.id);
     world.applyEnvironment(scene, hemi, sun);
     lampLights.use(world.lamps);
+    world.setParticles(quality.current.particles);
     scene.add(world.group);
   }
+  // Building a track and compiling its shaders makes the first frames slow.
+  quality.hold(2);
   const b = BIOMES[d.biome];
   rider.track = track;
   const isPipe = d.kind === 'pipe', isMega = d.kind === 'mega';
@@ -532,6 +561,19 @@ const soundBtn = $('soundbtn');
 const drawSound = () => { soundBtn.textContent = sound.enabled ? 'SOUND: ON' : 'SOUND: OFF'; };
 drawSound();
 soundBtn.addEventListener('click', () => { sound.enabled = !sound.enabled; drawSound(); });
+// Auto steps the picture down to keep things smooth on slower devices; the others lock it.
+const qualityBtn = $('qualitybtn');
+const drawQuality = () => {
+  const s = quality.setting;
+  const now = quality.level === 0 ? 'HIGH' : quality.level <= 3 ? 'MEDIUM' : 'LOW';
+  qualityBtn.textContent = `QUALITY: ${s.toUpperCase()}` + (s === 'auto' ? ` (${now})` : '');
+};
+drawQuality();
+qualityBtn.addEventListener('click', () => {
+  quality.set(SETTINGS[(SETTINGS.indexOf(quality.setting) + 1) % SETTINGS.length] as Setting);
+  applyQuality();
+  drawQuality();
+});
 $('again').addEventListener('click', () => start(def));
 $('next').addEventListener('click', () => { const n = nextTrack(); if (n) showCard(n); });
 $('go').addEventListener('click', () => { if (cardDef) start(cardDef); });
@@ -630,10 +672,11 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
-resize();
+applyQuality();
 
 let last = performance.now();
 function frame(now: number) {
+  quality.frame((now - last) / 1000);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
 
@@ -643,14 +686,14 @@ function frame(now: number) {
     world.update(r.dt, r.follow.x, r.follow.y);
     lampLights.update(r.follow.x + 4);
     sound.update(dt, rider, false, 1);
-    effect.render(scene, camera);
+    draw();
     requestAnimationFrame(frame);
     return;
   }
   if (state === 'paused') {
     // The pause menu holds the run still, timer and all.
     sound.update(dt, rider, false, 0.5);
-    effect.render(scene, camera);
+    draw();
     requestAnimationFrame(frame);
     return;
   }
@@ -743,7 +786,7 @@ function frame(now: number) {
   const prog = def.kind === 'pipe' ? time / PIPE_TIME : def.kind === 'mega' ? (mega.drop - 1 + Math.max(0, Math.min(1, rider.x / track.length))) / MEGA_DROPS : (rider.x - track.startX) / (track.finishX - track.startX);
   hud.progress.style.width = `${Math.min(100, prog * 100)}%`;
 
-  effect.render(scene, camera);
+  draw();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -751,6 +794,7 @@ requestAnimationFrame(frame);
 // Handy for automated play testing.
 (window as unknown as { __game: unknown }).__game = {
   rider, score, skater, scooter, replays, get ride() { return ride; }, setRide, progress, sound, start, watchReplay, get player() { return player; }, openSelect, loseLife, TRACKS, get track() { return track; }, get state() { return state; },
+  quality,
   setCamera(pos: number[] | null, look: number[] = []) { camOverride = pos ? { pos, look } : null; },
 };
 
