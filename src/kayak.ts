@@ -347,22 +347,22 @@ export class KayakRig {
       if (this.landT > 1) this.landT = -1;
     }
 
-    // Stalls: up on the stern (nose up) or the bow.
-    // Stalls stand up further the more the device is tipped.
-    const up = 0.55 + 0.45 * Math.min(1, Math.abs(r.tilt));
-    const stall = r.manual === 'Stern Stall' ? 0.95 * up : r.manual === 'Bow Stall' ? -0.85 * up : 0;
+    // Stalls are the tilt's lift (r.boat.pitch): up on the stern as the bow comes up, or on the bow.
+    const lift = r.boat.pitch;
     // Side surfing, held in a sticky hole: turned across the current, bouncing.
     this.surfYaw = ease(this.surfYaw, r.stuck ? Math.PI / 2 : 0, 8);
     // Capsized: over and back up as the strokes come; a swim leaves the boat upside down.
     const over = r.roll ? Math.PI * (1 - smooth(0, 1, r.roll.taps / 3)) : r.bailing ? Math.PI : 0;
     this.roll = ease(this.roll, over, r.roll || r.bailing ? 9 : 12);
-    this.pitch = ease(this.pitch, stall + splat + boof + land, 12);
+    this.pitch = ease(this.pitch, splat + boof + land, 12);
 
-    // Where it pivots: stalls about the end that's in the water, the rest about the cockpit.
-    const pivotX = stall > 0 ? -1.0 : stall < 0 ? 0.95 : splat > 0.01 ? -0.9 : 0;
-    // The boat as you steer it: tipped by the tilt, turned by your thumb.
+    // Where it pivots: lifted by the tilt on the water, about the end that's still in it (easing
+    // over as it lifts); a splat about the stern; otherwise, and always for the wheel, the paddler.
+    const onEnd = air ? 0 : smooth(0.1, 0.6, Math.abs(lift));
+    const pivotX = splat > 0.01 ? -0.9 : lift > 0 ? -1.0 * onEnd : 0.95 * onEnd;
+    // The boat as you steer it: lifted by the tilt, wheeled round by your thumb.
     const yaw = r.boat.yaw + this.surfYaw;
-    const pitch = this.pitch + r.boat.pitch;
+    const pitch = this.pitch + lift + r.boat.wheel;
     this.bob += dt;
     const bob = !air && !r.bailing ? 0.02 * Math.sin(this.bob * 3.2) : 0;
     this.root.position.set(r.x, r.y + bob, r.z);

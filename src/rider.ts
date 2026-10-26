@@ -894,10 +894,13 @@ export class Rider {
     this.ev.trick({ ...t, id });
   }
 
-  /** Kayak: a thumb dragged sideways turns the boat by this much (radians). */
+  /**
+   * Kayak: a thumb dragged sideways wheels the boat end over end by this much (radians), the
+   * way the thumb goes: to the right is clockwise on screen.
+   */
   turn(d: number) {
     if (!this.opts.kayak || this.bailing || this.roll || this.perched || this.dropT >= 0) return;
-    this.boat.turn(d);
+    this.boat.turn(-d);
   }
 
   /** Kayak: the thumb that was turning the boat is lifted. */
@@ -1167,9 +1170,7 @@ export class Rider {
       if (this.roll || this.bailing) this.boat.reset();
       else {
         const water: Water = !this.grounded ? 'air' : this.stuck || this.track.holeAt(this.x) ? 'feature' : 'flat';
-        // A tilt held through take-off doesn't throw the boat about: level out, then tilt.
-        const tilt = water === 'air' && !this.leanArmed ? 0 : this.tilt;
-        for (const m of this.boat.step(dt, tilt, water)) this.emitBoat(m);
+        for (const m of this.boat.step(dt, this.tilt, water)) this.emitBoat(m);
       }
     }
 

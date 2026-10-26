@@ -6,7 +6,7 @@ import { TrackDef, layout, wave } from './common';
 
 export const KAYAK_GORGE: TrackDef[] = [
   {
-    id: 'kayak-gorge-1', biome: 'kayak-gorge', name: 'Jungle Put In', difficulty: 3, par: 9000,
+    id: 'kayak-gorge-1', biome: 'kayak-gorge', name: 'Jungle Put In', difficulty: 3, par: 5500,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Boof 3 falls', kind: 'trick', match: 'Boof', count: 3 },
@@ -20,7 +20,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-2', biome: 'kayak-gorge', name: 'Misty Steps', difficulty: 3, par: 20000,
+    id: 'kayak-gorge-2', biome: 'kayak-gorge', name: 'Misty Steps', difficulty: 3, par: 16500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Land an Air Blunt', kind: 'trick', match: 'Air Blunt' },
@@ -62,7 +62,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-5', biome: 'kayak-gorge', name: 'Temple Falls', difficulty: 4, par: 13000,
+    id: 'kayak-gorge-5', biome: 'kayak-gorge', name: 'Temple Falls', difficulty: 4, par: 12000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Land a Pan-Am', kind: 'trick', match: 'Pan-Am' },
@@ -76,7 +76,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-6', biome: 'kayak-gorge', name: 'Sunset Cascade', difficulty: 4, par: 18000,
+    id: 'kayak-gorge-6', biome: 'kayak-gorge', name: 'Sunset Cascade', difficulty: 4, par: 14000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Do 2 end moves', kind: 'trick', match: 'end', count: 2 },
@@ -108,7 +108,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     challenges: [
       { text: 'Air for 1.3 seconds', kind: 'air', seconds: 1.3 },
       { text: 'Boof the big drop', kind: 'trick', match: 'Boof', from: 'bigdrop' },
-      { text: 'Land a Helix', kind: 'trick', match: 'Helix' },
+      { text: 'Land a McNasty', kind: 'trick', match: 'McNasty' },
     ],
     // Two big plunges in the evening light.
     build: layout(42, 5, (b) => {
@@ -118,7 +118,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-9', biome: 'kayak-gorge', name: 'Dusk Drops', difficulty: 5, par: 18000,
+    id: 'kayak-gorge-9', biome: 'kayak-gorge', name: 'Dusk Drops', difficulty: 5, par: 17000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Do 3 end moves', kind: 'trick', match: 'end', count: 3 },
@@ -126,9 +126,9 @@ export const KAYAK_GORGE: TrackDef[] = [
     ],
     // Falls, chutes and holes, one after another, as the light goes.
     build: layout(44, 5, (b) => {
-      b.flat(8).descend(10, 0.05).flat(4).dropoff(2.4, 30).descend(12, 0.0).hole(14, 0.4).descend(8, 0.04);
-      b.descend(12, 0.12).descend(4, 0.04).flat(4).dropoff(2.8, 34).descend(12, 0.0).hole(14, 0.4).descend(8, 0.04);
-      b.whoops(3, 11, 0.85, 0.06).flat(4).dropoff(3.2, 38).descend(12, 0.0).hole(14, 0.4).descend(8, 0.04).splat().descend(12, 0.04);
+      b.flat(8).descend(10, 0.05).flat(4).dropoff(2.4, 35).descend(12, 0.0).hole(14, 0.4).descend(8, 0.04);
+      b.descend(12, 0.15).descend(4, 0.04).flat(4).dropoff(2.8, 39).descend(12, 0.0).hole(14, 0.4).descend(8, 0.04);
+      b.whoops(3, 11, 0.85, 0.06).flat(4).dropoff(3.2, 43).descend(12, 0.0).hole(14, 0.4).descend(8, 0.04).splat().descend(12, 0.04);
     }),
   },
   {

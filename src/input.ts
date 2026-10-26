@@ -10,8 +10,8 @@ const SPIN_360 = 0.2;
 const GRAB_ZONE = 0.5;
 /** A flip swipe down and to the side, between these slopes (about 30 to 60 degrees), is a 360 flip or hardflip. */
 const COMBO_MIN = 0.6, COMBO_MAX = 1.7;
-/** Kayak: dragging a thumb the full width of the screen turns the boat this far (radians). */
-const TURN_PER_WIDTH = Math.PI * 2.4;
+/** Kayak: dragging a thumb the full width of the screen wheels the boat this far (radians): a third of the way is a whole turn. */
+const TURN_PER_WIDTH = Math.PI * 6;
 
 const GRAB_KEYS: Record<string, Swipe> = { KeyI: 'up', KeyK: 'down', KeyJ: 'left', KeyL: 'right' };
 const COMBO_KEYS: Record<string, 'left' | 'right'> = { KeyC: 'left', KeyV: 'right' };

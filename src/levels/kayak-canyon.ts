@@ -120,7 +120,7 @@ export const KAYAK_CANYON: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-canyon-9', biome: 'kayak-canyon', name: 'Dusk Rapids', difficulty: 4, par: 16500,
+    id: 'kayak-canyon-9', biome: 'kayak-canyon', name: 'Dusk Rapids', difficulty: 4, par: 14500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Blunt in a hole', kind: 'trick', match: 'Blunt' },
