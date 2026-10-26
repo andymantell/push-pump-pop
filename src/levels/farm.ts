@@ -50,7 +50,7 @@ export const FARM: TrackDef[] = [
     challenges: [
       { text: 'Do 12 good pumps', kind: 'pumps', count: 12 },
       { text: 'Manual for 1 second', kind: 'manual', seconds: 1 },
-      { text: 'Never roll backwards', kind: 'climb' },
+      { text: 'Score 6,500', kind: 'score', points: 6500 },
     ],
     build: layout(8, 5, (b) => {
       b.flat(8).sign('DROP IN').ease(10, -3).flat(6);

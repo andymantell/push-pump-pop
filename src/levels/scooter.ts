@@ -25,7 +25,6 @@ const variety = (count: number): Challenge => ({ text: `Land ${count} different 
 const tricks = (k: number): Challenge => combo(`Land a ${k}-trick combo`, { tricks: k });
 const worth = (points: number): Challenge => combo(`Combo worth ${n(points)}`, { points });
 const loop = (text = 'Ride the loop', count?: number): Challenge => ({ text, kind: 'loop', ...(count ? { count } : {}) });
-const climb = (text = 'Climb out of every gully first time'): Challenge => ({ text, kind: 'climb' });
 const noLives = (text = 'Finish without losing a life'): Challenge => ({ text, kind: 'noLives' });
 const finish = (): Challenge => ({ text: 'Finish the track', kind: 'finish' });
 const manual = (text: string, seconds?: number, name?: 'Nose Manual'): Challenge => ({ text, kind: 'manual', ...(seconds ? { seconds } : {}), ...(name ? { name } : {}) });
@@ -92,11 +91,11 @@ export const SCOOTER: Record<string, ScooterTrack> = {
 
   // Desert.
   'desert-1': scored(19000, pumps(8), air('Air off a gully lip', { from: 'lip', seconds: 0.4 })),
-  'desert-2': set(1000, climb(), air('Air off a gully lip', { from: 'lip', seconds: 0.4 }), noLives()),
+  'desert-2': set(1000, pumps(12), air('Air off a gully lip', { from: 'lip', seconds: 0.4 }), noLives()),
   'desert-3': scored(27000, trick('Bunny hop off a gully kicker', 'Bunny Hop', { from: 'kicker' }), combo('Whip + body trick combo', { include: ['whip', 'hold'] })),
   'desert-4': set(9000, gaps('Clear every gap'), trick('Spin over a gap', 'spin', { overGap: true }), noLives()),
   'desert-5': set(78500, grind('Grind across a gully'), grind('Grind every gully rail', { count: 4 }), combo('Smith + whip combo', { include: ['Smith', 'whip'] })),
-  'desert-6': scored(3500, climb(), air('Air off the last gully', { from: 'lastlip', seconds: 0.4 })),
+  'desert-6': scored(3500, pumps(10), air('Air off the last gully', { from: 'lastlip', seconds: 0.4 })),
   'desert-7': set(39000, gaps('Clear both gaps'), tricks(5), noLives()),
   'desert-8': scored(9500, loop(), combo('Loop + whip combo', { include: ['loop', 'whip'] })),
   'desert-9': set(43000, loop('Ride both loops', 2), combo('Loop + body trick + spin combo', { include: ['loop', 'hold', 'spin'] }), noLives()),
@@ -122,7 +121,7 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   'volcano-3': set(31500, gaps('Clear every gap'), pumps(12), combo('3-trick combo over a lava gap', { tricks: 3, gaps: 1 })),
   'volcano-4': set(68500, grind('Grind a rail over lava', { rails: [1] }), combo('Stair rail + whip combo', { include: ['grind', 'whip'] }), noLives()),
   'volcano-5': scored(25000, loop('Ride the lava tube loop'), combo('Loop + spin combo', { include: ['loop', 'spin'] })),
-  'volcano-6': set(12000, climb('Climb out of every crater first time'), trick('Whip over lava from a crater lip', 'whip', { from: 'lip', overGap: true }), noLives()),
+  'volcano-6': set(12000, gaps('Clear every lava gap'), trick('Whip over lava from a crater lip', 'whip', { from: 'lip', overGap: true }), noLives()),
   'volcano-7': scored(12000, gaps('Clear every gap'), trick('A trick over every lava gap', 'any', { overGap: 'every' })),
   'volcano-8': set(21500, gaps('Clear every uphill gap', { which: [2, 4] }), trick('360 over the 7 m gap', '360', { overGap: [3] }), worth(3000)),
   'volcano-9': set(61500, loop('Ride both loops', 2), tricks(8), noLives()),
@@ -132,7 +131,7 @@ export const SCOOTER: Record<string, ScooterTrack> = {
   // World 2: Autumn Farm.
   'farm-1': set(4500, finish(), pumps(8), noLives()),
   'farm-2': set(18500, everyKicker('Bunny hop every hay bale'), trick('Land a Superman', 'Superman'), everyKicker('A whip on every hay bale', 'whip')),
-  'farm-3': set(6500, pumps(12), manual('Manual for 1 second', 1), climb('Never roll backwards')),
+  'farm-3': scored(6500, pumps(12), manual('Manual for 1 second', 1)),
   'farm-4': set(67500, grind('Grind a fence rail'), grind('Grind 3 different rails', { count: 3 }), trick('Feeble grind a fence', 'Feeble')),
   'farm-5': set(23000, gaps('Clear every ditch'), trick('A trick over a ditch', 'any', { overGap: true }), trick('A body trick over every ditch', 'hold', { overGap: 'every' })),
   'farm-6': set(19500, variety(5), tricks(3), same('Spin and a body trick in the same air', ['spin', 'hold'])),

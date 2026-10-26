@@ -31,7 +31,7 @@ export const DESERT: TrackDef[] = [
   {
     id: 'desert-2', biome: 'desert', name: 'Rattlesnake Ravine', difficulty: 5, par: 1000,
     challenges: [
-      { text: 'Climb out of every gully first time', kind: 'climb' },
+      { text: 'Do 12 good pumps', kind: 'pumps', count: 12 },
       { text: 'Air off a gully lip', kind: 'air', from: 'lip', seconds: 0.4 },
       { text: 'Finish without losing a life', kind: 'noLives' },
     ],
@@ -111,7 +111,7 @@ export const DESERT: TrackDef[] = [
   {
     id: 'desert-6', biome: 'desert', name: 'The Big Dip', difficulty: 7, par: 3500,
     challenges: [
-      { text: 'Climb out of every gully first time', kind: 'climb' },
+      { text: 'Do 10 good pumps', kind: 'pumps', count: 10 },
       { text: 'Air off the last gully', kind: 'air', from: 'lastlip', seconds: 0.4 },
       { text: 'Score 3,500', kind: 'score', points: 3500 },
     ],

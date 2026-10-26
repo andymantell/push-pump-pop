@@ -118,7 +118,7 @@ export const VOLCANO: TrackDef[] = [
   {
     id: 'volcano-6', biome: 'volcano', name: 'Caldera Rim', difficulty: 8, par: 9500,
     challenges: [
-      { text: 'Climb out of every crater first time', kind: 'climb' },
+      { text: 'Clear every lava gap', kind: 'gaps' },
       { text: 'Flip over lava from a crater lip', kind: 'trick', match: 'flip', from: 'lip', overGap: true },
       { text: 'Finish without losing a life', kind: 'noLives' },
     ],
