@@ -9,7 +9,7 @@ Four biomes of ten rivers each, easiest first, unlocking like World 1 (river 5 o
 the next biome; the first river is open from the start):
 
 1. **Whitewater Centre** (`kayak-centre`): a man-made concrete slalom course. Built.
-2. **Forest Creek** (`kayak-creek`): a narrow rocky creek under conifers.
+2. **Forest Creek** (`kayak-creek`): a narrow rocky creek under conifers. Built.
 3. **Canyon River** (`kayak-canyon`): a wide river between red canyon walls.
 4. **Waterfall Gorge** (`kayak-gorge`): a jungle gorge of waterfalls.
 

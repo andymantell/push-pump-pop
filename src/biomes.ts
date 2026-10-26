@@ -467,7 +467,7 @@ Object.assign(BIOMES, {
     ground: [0xc87a4a, 0xb86a3e, 0xd88a5a], groundShape: 'river',
     river: { water: 0x3a8c78, deep: 0x1e4a44, foam: 0xfaf6ee, bed: 0x8a5a3a, width: 12 },
     far: 'mesas', farColors: [0xc8704a, 0xd8885a, 0xa85a3a], clouds: 0xffffff, particles: null,
-    back: [['desertrock', 3], ['boulders', 2], ['barrelcactus', 1], ['scree', 1], ['tent', 0.3]], backZ: [-12, -30],
+    back: [['desertrock', 3], ['boulders', 2], ['barrelcactus', 1], ['scree', 1], ['tent', 0.3]], backZ: [-16, -34],
     pitFill: 'water', fallText: 'SPLASH!', sign: '#7a3a1e',
     friction: 1, maxSpeed: 16, swatch: '#c8704a',
   },

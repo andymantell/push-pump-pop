@@ -2634,8 +2634,11 @@ export class World {
     const tr = this.track;
     const end = Number.isFinite(tr.finishX) ? tr.finishX : tr.length;
     names.forEach((name, i) => {
-      const lm = LANDMARKS[name];
-      if (!lm) return;
+      const base = LANDMARKS[name];
+      if (!base) return;
+      // By a river, anything standing on the ground stands back on the far bank, out of the water.
+      const rv = this.biome.river;
+      const lm = rv && !base.on ? { ...base, z: Math.min(base.z, -(TRACK_W / 2 + rv.width + base.r * 0.7 + 2.5)) } : base;
       let x = tr.startX + (end - tr.startX) * (names.length === 1 ? 0.45 : 0.28 + i * 0.44);
       // Clear of the whole footprint, corners too (the ravines widen as they go back), so no
       // leg or wall hangs out over a ravine.

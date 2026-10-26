@@ -25,11 +25,12 @@ import { DH_MUD } from './levels/dh-mud';
 import { DH_ROCKY } from './levels/dh-rocky';
 import { DH_SHORE } from './levels/dh-shore';
 import { KAYAK_CENTRE, KAYAK_CENTRE_WAVE } from './levels/kayak-centre';
+import { KAYAK_CREEK, KAYAK_CREEK_WAVE } from './levels/kayak-creek';
 
 export { PIPE_TIME, STOP_AFTER_FINISH } from './levels/common';
 export type { TrackDef } from './levels/common';
 
-export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA, ...DINO, DINO_MEGA, ...MOON, MOON_PIPE, ...SKY, SKY_MEGA, ...DH_URBAN, ...DH_MUD, ...DH_ROCKY, ...DH_SHORE, ...KAYAK_CENTRE, KAYAK_CENTRE_WAVE];
+export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA, ...DINO, DINO_MEGA, ...MOON, MOON_PIPE, ...SKY, SKY_MEGA, ...DH_URBAN, ...DH_MUD, ...DH_ROCKY, ...DH_SHORE, ...KAYAK_CENTRE, KAYAK_CENTRE_WAVE, ...KAYAK_CREEK, KAYAK_CREEK_WAVE];
 
 /** The kayak's rivers: its own world, ridden by nothing else. */
 export const isRiver = (biome: string) => biome.startsWith('kayak-');

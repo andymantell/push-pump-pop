@@ -1715,6 +1715,132 @@ export const LANDMARKS: Record<string, Landmark> = {
     }
     return g;
   } },
+  // ---- Whitewater Centre
+  slalomgates: { z: -4, r: 0, on: 'air', build: () => {
+    // Slalom gates hanging over the course from a wire: pairs of striped poles, green to go
+    // down through, red to come back up through, as at a real slalom course.
+    const g = new THREE.Group();
+    const wire = 0x2a2a2e, pylon = 0x9aa0a8;
+    // A pylon on the far bank with an arm reaching out over the water.
+    g.add(box(0.3, 8, 0.3, pylon, [0, 3, -8.5]), box(0.2, 0.2, 9, pylon, [0, 7.4, -4]), beam([0, 4.5, -8.5], [0, 7.3, -5], 0.15, pylon));
+    g.add(box(0.04, 0.04, 8.5, wire, [0, 7.25, -4.2]));
+    for (const [z, red] of [[-1.2, false], [-4.4, true]] as const) {
+      const c = red ? 0xe03a2a : 0x2ea84a;
+      const gate = new THREE.Group();
+      for (const dx of [-0.7, 0.7]) {
+        gate.add(beam([dx, 7.3, z], [dx, 1.4, z], 0.03, wire));
+        for (let k = 0; k < 5; k++) gate.add(cyl(0.05, 0.05, 0.4, k % 2 ? 0xf4f4f0 : c, [dx, 1.2 + k * 0.4, z], 8));
+      }
+      gate.add(box(1.0, 0.3, 0.03, 0xf4f4f0, [0, 3.6, z]));
+      g.add(gate);
+    }
+    return g;
+  } },
+  pumphouse: { z: -16, r: 7, build: () => {
+    // The pump house that sends the water round: a block with big blue pipes and the sign.
+    const wall = 0xd8d4c8, pipe = 0x2a7ac0;
+    const g = group(box(12, 6, 6, wall, [0, 3, 0]), box(12.4, 0.5, 6.4, 0x5a6470, [0, 6.25, 0]));
+    for (const x of [-3.5, 0, 3.5]) g.add(cyl(0.6, 0.6, 7, pipe, [x, 0.6, 4.5], 14, [Math.PI / 2, 0, 0]), cyl(0.9, 0.9, 0.5, pipe, [x, 0.6, 3.1], 14, [Math.PI / 2, 0, 0]));
+    for (const x of [-4.5, -1.5, 1.5, 4.5]) g.add(box(1.6, 1.4, 0.1, 0x8ac8e8, [x, 4.2, 3.05]));
+    g.add(box(1.6, 2.6, 0.1, 0x3a4a5a, [5, 1.3, 3.05]));
+    const sign = textPanel('WHITEWATER CENTRE', 10, 1.3, '#1e5a8a', '#ffffff');
+    sign.position.set(0, 7.3, 3.1);
+    return g.add(sign), g;
+  } },
+  grandstand: { z: -15, r: 8, build: (rand) => {
+    // Stepped seating full of fans waving flags, for race day.
+    const g = new THREE.Group();
+    const shirt = [0xe84a3a, 0x3a7ad8, 0xf2c040, 0x4ab84a, 0xf4f4f0, 0xc84ad8];
+    for (let row = 0; row < 5; row++) {
+      g.add(box(14, 0.5, 1.2, 0x9aa0a8, [0, 0.25 + row * 0.6, 2.4 - row * 1.2]));
+      for (let k = 0; k < 13; k++) {
+        if (rand() < 0.25) continue;
+        const x = -6.4 + k + (rand() - 0.5) * 0.3, y = 0.5 + row * 0.6, z = 2.4 - row * 1.2;
+        g.add(cyl(0.2, 0.22, 0.6, shirt[Math.floor(rand() * shirt.length)], [x, y + 0.3, z], 6), ball(0.15, 0xe0b090, [x, y + 0.75, z], 6));
+        if (rand() < 0.15) g.add(box(0.02, 0.9, 0.02, 0x3a3a3a, [x + 0.25, y + 1.0, z]), box(0.45, 0.3, 0.02, shirt[k % shirt.length], [x + 0.48, y + 1.3, z]));
+      }
+    }
+    g.add(box(15, 0.2, 7, 0x4a5460, [0, 4.4, -0.2]));
+    for (const x of [-7, 7]) g.add(box(0.2, 4.4, 0.2, 0x4a5460, [x, 2.2, 2.8]), box(0.2, 4.4, 0.2, 0x4a5460, [x, 2.2, -3.4]));
+    return g;
+  } },
+  boatlift: { z: -14, r: 6, build: () => {
+    // The conveyor that carries paddlers and their boats back up to the top of the course.
+    const g = new THREE.Group();
+    const frame = 0x7a828c, belt = 0x2a2a2e;
+    g.add(beam([-6, 0.4, 0], [6, 4.6, 0], 1.6, belt));
+    for (let k = 0; k <= 4; k++) { const x = -6 + k * 3, y = 0.4 + k * 1.05; g.add(box(0.2, y, 0.2, frame, [x, y / 2, 0.9]), box(0.2, y, 0.2, frame, [x, y / 2, -0.9])); }
+    const boats = [0xf2552a, 0x2ab0e0, 0xffd02a];
+    boats.forEach((c, i) => {
+      const x = -4 + i * 4, y = 1.3 + (x + 6) * 0.35;
+      const b = mesh(new THREE.SphereGeometry(1, 12, 8), c, [x, y, 0], [0, 0, Math.atan(0.35)]);
+      b.scale.set(1.3, 0.22, 0.32);
+      g.add(b);
+    });
+    g.add(box(2.4, 2.6, 2.4, 0xd8d4c8, [7.2, 1.3, 0]), box(2.6, 0.3, 2.6, 0x5a6470, [7.2, 2.75, 0]));
+    return g;
+  } },
+  boatrack: { z: -12, r: 4, build: () => {
+    // A rack of hire boats in every colour, paddles leaning against it.
+    const g = new THREE.Group();
+    const wood = 0x8a6a42, cols = [0xf2552a, 0x2ab0e0, 0xffd02a, 0x4ab84a, 0xc84ad8, 0xe84a8a];
+    for (const x of [-3, 3]) g.add(box(0.2, 3, 0.2, wood, [x, 1.5, 0.6]), box(0.2, 3, 0.2, wood, [x, 1.5, -0.6]));
+    for (let row = 0; row < 3; row++) {
+      g.add(box(6.4, 0.15, 1.4, wood, [0, 0.6 + row * 0.9, 0]));
+      const b = mesh(new THREE.SphereGeometry(1, 12, 8), cols[row * 2 % cols.length], [0, 0.85 + row * 0.9, 0]);
+      b.scale.set(2.6, 0.22, 0.32);
+      g.add(b);
+    }
+    for (let k = 0; k < 4; k++) g.add(beam([4 + k * 0.3, 0, 0.9], [3.6 + k * 0.3, 2.2, 0.6], 0.05, 0x2a2a2e), box(0.2, 0.5, 0.03, 0xffd02a, [3.6 + k * 0.3, 2.3, 0.6]));
+    return g;
+  } },
+  // ---- Forest Creek
+  watermill: { z: -14, r: 7, build: () => {
+    // An old stone mill on the creek with its wooden wheel turning in the leat.
+    const stone = 0x8a8478, wood = 0x6a4a2e, roof = 0x5a3a32;
+    const g = group(box(8, 6, 6, stone, [0, 3, 0]), box(8.6, 0.3, 4, roof, [0, 6.9, 1.4], [0.7, 0, 0]), box(8.6, 0.3, 4, roof, [0, 6.9, -1.4], [-0.7, 0, 0]));
+    g.add(box(1.4, 2.6, 0.2, wood, [1.5, 1.3, 3.05]), box(1.2, 1.2, 0.2, 0xffd88a, [-2, 4, 3.05]));
+    const wheel = new THREE.Group();
+    wheel.add(mesh(new THREE.TorusGeometry(2.6, 0.18, 6, 20), wood));
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      wheel.add(box(0.15, 2.6, 0.15, wood, [Math.cos(a) * 1.3, Math.sin(a) * 1.3, 0], [0, 0, a + Math.PI / 2]), box(0.8, 0.12, 0.9, wood, [Math.cos(a) * 2.7, Math.sin(a) * 2.7, 0], [0, 0, a]));
+    }
+    wheel.rotation.y = Math.PI / 2;
+    wheel.position.set(4.6, 2.6, 0.5);
+    g.add(wheel, box(0.6, 0.5, 6, 0x3a8e9a, [4.6, 0.1, 0.5]));
+    return g;
+  } },
+  kayakcamp: { z: -11, r: 5, build: () => {
+    // A paddlers' camp on the bank: two tents, boats pulled up, a campfire.
+    const g = new THREE.Group();
+    for (const [x, c] of [[-2.5, 0xe86a2a], [1.5, 0x3a8ad8]] as const) {
+      const t = mesh(new THREE.ConeGeometry(1.5, 1.8, 4), c, [x, 0.9, -0.5], [0, Math.PI / 4, 0]);
+      t.scale.z = 1.4;
+      g.add(t);
+    }
+    for (const [x, c] of [[-1, 0xf2552a], [3.5, 0xffd02a]] as const) {
+      const b = mesh(new THREE.SphereGeometry(1, 12, 8), c, [x, 0.25, 1.6], [0, 0.3, 0]);
+      b.scale.set(1.3, 0.22, 0.32);
+      g.add(b);
+    }
+    g.add(cyl(0.6, 0.7, 0.2, 0x6a6a62, [0.5, 0.1, 1], 10), mesh(new THREE.ConeGeometry(0.35, 0.8, 6), glow(0xff9a2a), [0.5, 0.5, 1]));
+    for (const a of [0.3, 1.9, 3.4]) g.add(cyl(0.12, 0.12, 1.2, 0x6a4a2e, [0.5 + Math.cos(a) * 1.2, 0.15, 1 + Math.sin(a) * 1.2], 6, [Math.PI / 2, a, 0]));
+    return g;
+  } },
+  heronrock: { z: -10, r: 3, build: () => {
+    // A big mossy boulder with a grey heron standing on it, watching for fish.
+    const g = new THREE.Group();
+    const rock = mesh(new THREE.DodecahedronGeometry(2.2, 0), 0x7a7a70, [0, 1.2, 0]);
+    rock.scale.set(1.3, 0.7, 1);
+    g.add(rock, ball(1.1, 0x4a7a3a, [-0.6, 2.1, 0.2], 7));
+    const grey = 0x9aa2a8;
+    const body = ball(0.4, grey, [0.6, 3.0, 0.2], 10);
+    body.scale.set(1.4, 0.8, 0.8);
+    g.add(body, beam([0.2, 2.2, 0.2], [0.3, 2.85, 0.2], 0.05, 0xc8a040), beam([0.6, 2.2, 0.2], [0.6, 2.85, 0.2], 0.05, 0xc8a040));
+    g.add(beam([1.1, 3.1, 0.2], [1.25, 3.8, 0.2], 0.12, grey), ball(0.17, 0xe8ecee, [1.3, 3.9, 0.2], 8), beam([1.4, 3.9, 0.2], [1.85, 3.85, 0.2], 0.05, 0xe0b040));
+    return g;
+  } },
   startgate: { z: -6, r: 4, build: () => {
     // The race's inflatable arch and a timing screen.
     const g = new THREE.Group();
@@ -1798,4 +1924,10 @@ export const TRACK_LANDMARKS: Record<string, string[]> = {
   'dh-shore-1': ['startgate', 'bigcedar'], 'dh-shore-2': ['firelookout'], 'dh-shore-3': ['trestle', 'logcabin'], 'dh-shore-4': ['bigcedar', 'waterfall'],
   'dh-shore-5': ['logcabin', 'firelookout'], 'dh-shore-6': ['trestle', 'bigcedar'], 'dh-shore-7': ['firelookout', 'trestle'], 'dh-shore-8': ['startgate', 'waterfall'],
   'dh-shore-9': ['bigcedar', 'trestle'], 'dh-shore-10': ['startgate', 'firelookout'],
+  'kayak-centre-1': ['boatrack', 'pumphouse'], 'kayak-centre-2': ['slalomgates'], 'kayak-centre-3': ['boatlift', 'slalomgates'], 'kayak-centre-4': ['grandstand'],
+  'kayak-centre-5': ['slalomgates', 'grandstand'], 'kayak-centre-6': ['pumphouse', 'boatrack'], 'kayak-centre-7': ['slalomgates', 'boatlift'], 'kayak-centre-8': ['grandstand', 'pumphouse'],
+  'kayak-centre-9': ['boatrack', 'slalomgates'], 'kayak-centre-10': ['slalomgates', 'grandstand'], 'kayak-centre-wave': ['grandstand'],
+  'kayak-creek-1': ['kayakcamp', 'heronrock'], 'kayak-creek-2': ['watermill'], 'kayak-creek-3': ['heronrock', 'logcabin'], 'kayak-creek-4': ['waterfall'],
+  'kayak-creek-5': ['watermill', 'kayakcamp'], 'kayak-creek-6': ['bigoak', 'heronrock'], 'kayak-creek-7': ['logcabin', 'waterfall'], 'kayak-creek-8': ['kayakcamp', 'watermill'],
+  'kayak-creek-9': ['heronrock', 'bigoak'], 'kayak-creek-10': ['waterfall', 'watermill'], 'kayak-creek-wave': ['kayakcamp'],
 };
