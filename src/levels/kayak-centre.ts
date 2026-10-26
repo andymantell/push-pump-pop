@@ -42,7 +42,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-3', biome: 'kayak-centre', name: 'Weir Drops', difficulty: 2, par: 12500,
+    id: 'kayak-centre-3', biome: 'kayak-centre', name: 'Weir Drops', difficulty: 2, par: 9500,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Boof off a weir', kind: 'trick', match: 'Boof', from: 'dropoff' },
@@ -51,13 +51,13 @@ export const KAYAK_CENTRE: TrackDef[] = [
     // Three weirs, each a little higher: swipe up at the lip to boof off it.
     build: layout(34, 5, (b) => {
       b.flat(8).descend(12, 0.04).whoops(3, 12, 0.6, 0.04).descend(8, 0.03);
-      b.sign('SWIPE UP AT THE LIP: BOOF').flat(4).dropoff(0.8, 18).descend(12, 0.04);
+      b.sign('PADDLE AT THE LIP: BOOF').flat(4).dropoff(0.8, 18).descend(12, 0.04);
       b.whoops(3, 12, 0.7, 0.05).descend(8, 0.03).flat(4).dropoff(1.0, 20).descend(12, 0.04);
       b.whoops(3, 12, 0.7, 0.05).descend(6, 0.03).sign('BIG ONE: BOOF IT!').flat(4).dropoff(1.3, 22).descend(16, 0.03);
     }),
   },
   {
-    id: 'kayak-centre-4', biome: 'kayak-centre', name: 'Play Hole', difficulty: 2, par: 13000,
+    id: 'kayak-centre-4', biome: 'kayak-centre', name: 'Play Hole', difficulty: 2, par: 10000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Do an end move in a hole', kind: 'trick', match: 'end' },
@@ -66,14 +66,14 @@ export const KAYAK_CENTRE: TrackDef[] = [
     // Holes below the weirs: swipe and hold on the left as you go through to throw end moves.
     build: layout(34, 5, (b) => {
       b.flat(8).descend(12, 0.04).whoops(3, 12, 0.6, 0.04).descend(6, 0.03);
-      b.sign('HOLE: SWIPE UP ON THE LEFT AND HOLD').flat(3).hole().descend(14, 0.04);
-      b.whoops(3, 12, 0.7, 0.05).descend(6, 0.03).flat(4).dropoff(0.8, 18).descend(4, 0.03).hole().descend(12, 0.04);
-      b.whoops(3, 12, 0.7, 0.05).sign('HOLD DOWN: BLUNT').descend(6, 0.03).hole().descend(10, 0.04);
+      b.sign('HOLE: TIP RIGHT OVER TO CARTWHEEL').flat(3).hole().descend(14, 0.04);
+      b.whoops(3, 12, 0.7, 0.05).descend(6, 0.03).flat(4).dropoff(0.8, 21).descend(4, 0.03).hole().descend(12, 0.04);
+      b.whoops(3, 12, 0.7, 0.05).sign('BOW UP AND TURN: BLUNT').descend(6, 0.03).hole().descend(10, 0.04);
       b.splat().descend(8, 0.03).whoops(3, 12, 0.7, 0.05).descend(14, 0.03);
     }),
   },
   {
-    id: 'kayak-centre-5', biome: 'kayak-centre', name: 'Slalom Gates', difficulty: 3, par: 18500,
+    id: 'kayak-centre-5', biome: 'kayak-centre', name: 'Slalom Gates', difficulty: 3, par: 16000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Splat 2 rocks', kind: 'trick', match: 'Splat', count: 2 },
@@ -83,12 +83,12 @@ export const KAYAK_CENTRE: TrackDef[] = [
     build: layout(36, 5, (b) => {
       b.flat(8).descend(12, 0.05).whoops(3, 12, 0.7, 0.05).descend(6, 0.03).splat().descend(10, 0.04);
       b.flat(4).dropoff(1.0, 20).descend(8, 0.04).whoops(3, 12, 0.75, 0.05).descend(6, 0.03);
-      b.sign('SWIPE DOWN IN THE AIR: PAN-AM').flat(4).dropoff(1.3, 22).descend(8, 0.04).splat().descend(10, 0.04);
+      b.sign('AIR: TURN AND TIP BOW UP: PAN-AM').flat(4).dropoff(1.3, 22).descend(8, 0.04).splat().descend(10, 0.04);
       b.whoops(4, 12, 0.75, 0.05).descend(6, 0.03).hole().descend(10, 0.04).splat().descend(14, 0.03);
     }),
   },
   {
-    id: 'kayak-centre-6', biome: 'kayak-centre', name: 'Sticky Hole', difficulty: 3, par: 15000,
+    id: 'kayak-centre-6', biome: 'kayak-centre', name: 'Sticky Hole', difficulty: 3, par: 11000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Finish without a swim', kind: 'noLives' },
@@ -103,7 +103,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-7', biome: 'kayak-centre', name: 'Boof Line', difficulty: 3, par: 12500,
+    id: 'kayak-centre-7', biome: 'kayak-centre', name: 'Boof Line', difficulty: 3, par: 10500,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Air trick off a weir', kind: 'trick', match: 'kayak', from: 'dropoff' },
@@ -112,14 +112,14 @@ export const KAYAK_CENTRE: TrackDef[] = [
     // Weir after weir: boof each one and throw the boat about in the air.
     build: layout(40, 5, (b) => {
       b.flat(8).descend(12, 0.05).whoops(3, 12, 0.7, 0.05).descend(6, 0.03);
-      b.sign('BOOF, THEN SWIPE LEFT: AIRSCREW').flat(4).dropoff(1.2, 22).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
+      b.sign('BOOF, TURN, BOW UP: AIR BLUNT').flat(4).dropoff(1.2, 22).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
       b.flat(4).dropoff(1.3, 22).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
-      b.sign('SWIPE RIGHT: HELIX').flat(4).dropoff(1.5, 24).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
+      b.sign('TURN A FULL 360 AND TIP: HELIX').flat(4).dropoff(1.5, 24).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
       b.flat(4).dropoff(1.4, 24).descend(8, 0.04).hole().descend(14, 0.03);
     }),
   },
   {
-    id: 'kayak-centre-8', biome: 'kayak-centre', name: 'Big Weir', difficulty: 4, par: 14500,
+    id: 'kayak-centre-8', biome: 'kayak-centre', name: 'Big Weir', difficulty: 4, par: 10500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.1 seconds', kind: 'air', seconds: 1.1 },
@@ -134,34 +134,34 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-9', biome: 'kayak-centre', name: 'Spin Pools', difficulty: 4, par: 17500,
+    id: 'kayak-centre-9', biome: 'kayak-centre', name: 'Spin Pools', difficulty: 4, par: 15500,
     challenges: [
-      { text: 'Flatspin on the water', kind: 'trick', match: 'Flatspin 180' },
+      { text: 'Flatspin in a hole', kind: 'trick', match: 'Flatspin 180' },
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
       { text: 'Land 5 different tricks', kind: 'variety', count: 5 },
     ],
     // Calm pools between the drops: swipe along the bottom to spin the boat flat on the water.
     build: layout(42, 5, (b) => {
       b.flat(8).descend(10, 0.05).whoops(3, 12, 0.75, 0.05).descend(4, 0.03);
-      b.sign('POOL: SWIPE ALONG THE BOTTOM TO FLATSPIN').descend(20, 0.0, 6).descend(6, 0.04);
-      b.flat(4).dropoff(1.3, 22).descend(6, 0.04).hole().descend(8, 0.04).whoops(3, 12, 0.8, 0.06);
+      b.descend(20, 0.0, 6).descend(6, 0.04);
+      b.flat(4).dropoff(1.3, 22).descend(6, 0.04).sign('HOLE: DRAG SIDEWAYS TO FLATSPIN').hole().descend(8, 0.04).whoops(3, 12, 0.8, 0.06);
       b.descend(20, 0.0, 6).descend(6, 0.04).flat(4).dropoff(1.5, 24).descend(8, 0.04).splat().descend(8, 0.04);
       b.whoops(3, 12, 0.8, 0.06).descend(4, 0.03).hole().descend(10, 0.04).descend(18, 0.0, 6).descend(10, 0.03);
     }),
   },
   {
-    id: 'kayak-centre-10', biome: 'kayak-centre', name: 'Grand Final', difficulty: 5, par: 28500,
+    id: 'kayak-centre-10', biome: 'kayak-centre', name: 'Grand Final', difficulty: 5, par: 25000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Land a 4-trick combo', kind: 'combo', tricks: 4 },
-      { text: 'McNasty in a hole', kind: 'trick', match: 'McNasty' },
+      { text: 'Blunt in a hole', kind: 'trick', match: 'Blunt' },
     ],
     // The whole course, top to bottom: every wave, weir and hole.
     build: layout(48, 5, (b) => {
       b.flat(8).sign('THE WHOLE COURSE!').descend(12, 0.05).whoops(4, 12, 0.8, 0.06).descend(6, 0.03);
       b.flat(4).dropoff(1.3, 22).descend(4, 0.03).hole().descend(10, 0.04).splat().descend(8, 0.04);
       b.whoops(4, 12, 0.8, 0.06).descend(4, 0.03).hole(9, 0.4, true).descend(10, 0.04);
-      b.sign('HOLD LEFT: MCNASTY').flat(4).dropoff(1.6, 26).descend(4, 0.03).hole().descend(10, 0.04);
+      b.sign('LOOP WITH A TURN: MCNASTY').flat(4).dropoff(1.6, 26).descend(4, 0.03).hole().descend(10, 0.04);
       b.whoops(3, 12, 0.8, 0.06).descend(6, 0.03).flat(5).dropoff(2.0, 28).descend(8, 0.04).splat().descend(6, 0.04);
       b.whoops(3, 12, 0.8, 0.06).descend(4, 0.03).hole().descend(16, 0.03);
     }),
@@ -170,7 +170,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
 
 /** The standing wave at the bottom of the course, surfed in a playboat. */
 export const KAYAK_CENTRE_WAVE: TrackDef = {
-  id: 'kayak-centre-wave', biome: 'kayak-centre', name: 'The Centre Wave', kind: 'pipe', par: 8500,
+  id: 'kayak-centre-wave', biome: 'kayak-centre', name: 'The Centre Wave', kind: 'pipe', par: 15000,
   challenges: [
     { text: 'Score 5,000', kind: 'score', points: 5000 },
     { text: 'Cartwheel for 1 second', kind: 'trick', match: 'Cartwheel', minTime: 1 },

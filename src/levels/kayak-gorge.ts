@@ -14,16 +14,16 @@ export const KAYAK_GORGE: TrackDef[] = [
     ],
     // A friendly start: three falls, each a bit taller.
     build: layout(36, 5, (b) => {
-      b.flat(8).sign('WATERFALLS! TAP UP ON THE LIP').descend(10, 0.05).whoops(3, 11, 0.8, 0.06).flat(4).dropoff(2.0, 28).descend(10, 0.04);
+      b.flat(8).sign('WATERFALLS! PADDLE ON THE LIP').descend(10, 0.05).whoops(3, 11, 0.8, 0.06).flat(4).dropoff(2.0, 28).descend(10, 0.04);
       b.whoops(3, 11, 0.8, 0.06).flat(4).dropoff(2.4, 30).descend(12, 0.0).hole(14, 0.4).descend(8, 0.04);
       b.whoops(2, 11, 0.8, 0.06).flat(4).dropoff(2.8, 34).descend(16, 0.04);
     }),
   },
   {
-    id: 'kayak-gorge-2', biome: 'kayak-gorge', name: 'Misty Steps', difficulty: 3, par: 36500,
+    id: 'kayak-gorge-2', biome: 'kayak-gorge', name: 'Misty Steps', difficulty: 3, par: 20000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
-      { text: 'Land a Helix', kind: 'trick', match: 'Helix' },
+      { text: 'Land an Air Blunt', kind: 'trick', match: 'Air Blunt' },
       { text: 'Do an end move', kind: 'trick', match: 'end' },
     ],
     // A staircase of short falls in the mist.
@@ -34,7 +34,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-3', biome: 'kayak-gorge', name: 'Rope Bridge Rapid', difficulty: 3, par: 14500,
+    id: 'kayak-gorge-3', biome: 'kayak-gorge', name: 'Rope Bridge Rapid', difficulty: 3, par: 10000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Splat the rock', kind: 'trick', match: 'Splat' },
@@ -48,7 +48,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-4', biome: 'kayak-gorge', name: 'The Tall One', difficulty: 4, par: 13000,
+    id: 'kayak-gorge-4', biome: 'kayak-gorge', name: 'The Tall One', difficulty: 4, par: 7000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.2 seconds', kind: 'air', seconds: 1.2 },
@@ -62,7 +62,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-5', biome: 'kayak-gorge', name: 'Temple Falls', difficulty: 4, par: 15000,
+    id: 'kayak-gorge-5', biome: 'kayak-gorge', name: 'Temple Falls', difficulty: 4, par: 13000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Land a Pan-Am', kind: 'trick', match: 'Pan-Am' },
@@ -76,11 +76,11 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-6', biome: 'kayak-gorge', name: 'Sunset Cascade', difficulty: 4, par: 15000,
+    id: 'kayak-gorge-6', biome: 'kayak-gorge', name: 'Sunset Cascade', difficulty: 4, par: 18000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Do 2 end moves', kind: 'trick', match: 'end', count: 2 },
-      { text: 'Airscrew off a fall', kind: 'trick', match: 'Airscrew', from: 'dropoff' },
+      { text: 'Air Blunt off a fall', kind: 'trick', match: 'Air Blunt', from: 'dropoff' },
     ],
     // A long cascade of falls and holes at sunset.
     build: layout(40, 5, (b) => {
@@ -90,7 +90,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-7', biome: 'kayak-gorge', name: 'Thunder Gorge', difficulty: 5, par: 12500,
+    id: 'kayak-gorge-7', biome: 'kayak-gorge', name: 'Thunder Gorge', difficulty: 5, par: 11000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Finish without a swim', kind: 'noLives' },
@@ -104,7 +104,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-8', biome: 'kayak-gorge', name: 'Golden Plunge', difficulty: 5, par: 14500,
+    id: 'kayak-gorge-8', biome: 'kayak-gorge', name: 'Golden Plunge', difficulty: 5, par: 11500,
     challenges: [
       { text: 'Air for 1.3 seconds', kind: 'air', seconds: 1.3 },
       { text: 'Boof the big drop', kind: 'trick', match: 'Boof', from: 'bigdrop' },
@@ -118,7 +118,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-9', biome: 'kayak-gorge', name: 'Dusk Drops', difficulty: 5, par: 20500,
+    id: 'kayak-gorge-9', biome: 'kayak-gorge', name: 'Dusk Drops', difficulty: 5, par: 18000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Do 3 end moves', kind: 'trick', match: 'end', count: 3 },
@@ -132,7 +132,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-10', biome: 'kayak-gorge', name: 'The Big Plunge', difficulty: 5, par: 21500,
+    id: 'kayak-gorge-10', biome: 'kayak-gorge', name: 'The Big Plunge', difficulty: 5, par: 20500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.2 seconds', kind: 'air', seconds: 1.2 },
@@ -150,10 +150,10 @@ export const KAYAK_GORGE: TrackDef[] = [
 
 /** A standing wave at the foot of the gorge's tallest fall, surfed in a playboat. */
 export const KAYAK_GORGE_WAVE: TrackDef = {
-  id: 'kayak-gorge-wave', biome: 'kayak-gorge', name: 'Gorge Wave', kind: 'pipe', par: 6000,
+  id: 'kayak-gorge-wave', biome: 'kayak-gorge', name: 'Gorge Wave', kind: 'pipe', par: 18500,
   challenges: [
     { text: 'Score 7,000', kind: 'score', points: 7000 },
-    { text: 'Space Godzilla in the wave', kind: 'trick', match: 'Space Godzilla' },
+    { text: 'Cartwheel in the wave', kind: 'trick', match: 'Cartwheel' },
     { text: 'Air 1.2 m off the wave', kind: 'air', metres: 1.2 },
   ],
   build: wave(1.4, 3.4),

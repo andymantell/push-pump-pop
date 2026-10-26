@@ -399,6 +399,8 @@ input.onGrab = (d) => { if (canRide()) rider.grabSwipe(d); };
 input.onRelease = () => { if (canRide()) rider.release(); };
 input.onSpin = (d) => { if (canRide()) rider.spinSwipe(d); };
 input.onSpinMore = () => { if (canRide()) rider.spinMore(); };
+input.onTurn = (d) => { if (canRide()) rider.turn(d); };
+input.onTurnEnd = () => rider.turnEnd();
 // Lean from the keyboard or from tilting the device, whichever is tipped.
 let keyLean: Lean = 0, tiltLean: Lean = 0;
 const applyLean = () => {
@@ -446,7 +448,10 @@ function start(d: TrackDef = def) {
   $('trackname').textContent = d.name;
   $('grabzone').textContent = ride === 'skate' || ride === 'roller' ? 'GRAB' : 'HOLD';
   $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : ride === 'mtb' || ride === 'kayak' || ride === 'roller' ? 'TRICK' : 'FLIP';
-  if (ride === 'kayak') $('grabzone').textContent = 'HOLE MOVES';
+  // A kayak is steered, not tricked: tap, tilt, and drag sideways to turn.
+  input.kayak = ride === 'kayak';
+  if (ride === 'kayak') { $('grabzone').textContent = ''; $('flipzone').textContent = ''; }
+  $('spinzone').textContent = ride === 'kayak' ? 'DRAG TO TURN' : 'SPIN';
   show(null);
   state = 'playing';
 }

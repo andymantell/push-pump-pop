@@ -110,7 +110,8 @@ export function ride(trackId: string, pumpRate: number, ollie: boolean, seed: nu
       if (queue[i].at > t) continue;
       const { act } = queue.splice(i, 1)[0];
       if (act === 'pump') r.pump();
-      else { r.swipe('up'); ollied = true; }
+      // (A kayak boofs with a stroke at the lip: it has no swipe to pop with.)
+      else { if (r.opts.kayak) r.pump(); else r.swipe('up'); ollied = true; }
     }
     if (r.perched && !queue.length) press('pump');
     if (r.grounded && !r.falling && !r.perched && r.dropT < 0) {

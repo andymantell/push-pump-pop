@@ -222,14 +222,16 @@ function trickActs(name: TrickName, hold: number): [string, number][] {
     case 'Turndown': return [['flick:down', 0]];
     case 'No Hander': return [['grab:right', 0], ['let go', hold]];
     // Kayak: the boat thrown about on the right; end moves are held in a hole (see below).
-    case 'Airscrew': return [['flick:left', 0]];
-    case 'Helix': return [['flick:right', 0]];
-    case 'Pan-Am': return [['flick:down', 0]];
+    // Kayak: steer the boat through the move (see boat.ts): turn it with a drag, tip it with a tilt.
+    case 'Air Blunt': return [['turn:3.14', 0], ['tilt:0.4', 0], ['tilt:-0.4', 0.25], ['tilt:0', 0.5]];
+    case 'Pan-Am': return [['turn:3.14', 0], ['tilt:1', 0], ['tilt:-1', 0.2], ['tilt:0', 0.38]];
+    case 'Helix': return [['turn:6.28', 0], ['tilt:1', 0], ['tilt:-1', 0.27], ['tilt:0', 0.52]];
+    case 'McNasty': return [['turn:3.14', 0], ['tilt:1', 0], ['tilt:0', 0.45]];
     // A kayak pitches only while tipped: hold the tilt past halfway round, and it carries on over.
-    case 'Back Loop': return [['lean+', 0], ['lean0', 0.4]];
-    case 'Front Loop': return [['lean-', 0], ['lean0', 0.4]];
-    case 'Flatspin 180': return [['spin:right', 0]];
-    case 'Flatspin 360': return [['spin360:right', 0]];
+    case 'Back Loop': return [['tilt:1', 0], ['tilt:0', 0.45]];
+    case 'Front Loop': return [['tilt:-1', 0], ['tilt:0', 0.45]];
+    case 'Flatspin 180': return [['turn:3.14', 0]];
+    case 'Flatspin 360': return [['turn:6.28', 0]];
     // Inline skates: airs on the right, grabs held on the left.
     case 'Flatspin': return [['flick:left', 0]];
     case 'Misty Flip': return [['flick:right', 0]];
@@ -254,9 +256,11 @@ function trickTime(name: TrickName, hold: number): number {
   if (name === 'Tailwhip' || name === 'Heelwhip') return 0.45;
   if (name.endsWith('360')) return 0.75;
   if (name === 'Backflip' || name === 'Frontflip') return 0.72;
-  if (name === 'Back Loop' || name === 'Front Loop') return 0.66;
-  if (name === 'Airscrew' || name === 'Pan-Am') return 0.6;
-  if (name === 'Helix') return 0.7;
+  if (name === 'Back Loop' || name === 'Front Loop') return 0.7;
+  if (name === 'Air Blunt' || name === 'Pan-Am') return 0.62;
+  if (name === 'Helix' || name === 'McNasty') return 0.78;
+  if (name === 'Flatspin 180') return 0.35;
+  if (name === 'Flatspin 360') return 0.6;
   if (name === 'Ollie') return 0;
   if (name === '360 Flip' || name === 'Hardflip') return 0.55;
   return 0.42;
@@ -369,6 +373,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   /** The end move a goal asks for, if any. */
   const endGoal = G && 'match' in G && typeof G.match === 'string' && members(G.match as TrickName).every((n) => members('end').includes(n)) ? members(G.match as TrickName) : null;
   const splatGoal = !!G && 'match' in G && G.match === 'Splat';
+  /** A flatspin a goal asks for in a hole or on the wave. */
+  const holeGoal = BOAT && G && 'match' in G && (G.match === 'Flatspin 180' || G.match === 'Flatspin 360') ? G.match as TrickName : null;
   /** A kayak's moves on the water, as a player watching the river ahead would make them. */
   function boatMoves(lead: number) {
     // Upside down: three quick strokes to roll back up.
@@ -382,21 +388,26 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     if (rock && !pumpOnly && (splatGoal || !careful || rand() < 0.5)) { press('pump'); splatted.add(rock.x); }
     // The lip of a drop: boof off it, a stroke that lifts the bow and launches you.
     const drop = track.spots.find((sp) => sp.tag === 'dropoff' && sp.x > r.x && Math.abs(sp.x - r.x - lead) < 0.35 + r.v * 0.03);
-    if (drop && t - lipPlanned > 0.6 && !pumpOnly) { press('up'); lipPlanned = t; }
-    // A play hole coming up: hold an end move through it.
-    // On a standing wave: pop off the face now and then for an air move.
-    if (onWave && !r.grab && !r.held && t - lipPlanned > 1.6 && !(endGoal && t - endAt > 2)) { press('up'); lipPlanned = t; }
+    if (drop && t - lipPlanned > 0.6 && !pumpOnly) { press('pump'); lipPlanned = t; }
+    // On a standing wave: a stroke up near the crest now and then pops you off it for an air move.
+    // (Timed for the boat to be climbing to the crest as the stroke goes in; otherwise just a
+    // stroke to rock up the face.)
+    const crest = onWave ? track.holes.find((h) => h.wave)!.wave!.crest : 0;
+    const climbing = r.v < -2.5 && r.x - crest > 1 && r.x - crest + r.v * REACTION < 2;
+    if (onWave && !r.boat.busy && t - lipPlanned > (climbing ? 1.2 : 3) && !(endGoal && t - endAt > 2)) { press('pump'); lipPlanned = t; }
     // On a standing wave you're always in the hole: throw one every so often, in the trough.
-    const surfing = isPipe && t - endAt > (endGoal ? 2.5 : 8) && Math.abs(track.slope(r.x)) < 0.3 && track.holeAt(r.x);
+    const surfing = isPipe && t - endAt > (endGoal ? 2.5 : 8) && Math.abs(track.slope(r.x)) < (onWave ? 0.5 : 0.3) && track.holeAt(r.x);
     const hole = surfing || track.holes.find((h) => h.x0 > r.x && h.x0 - r.x < lead + 0.6);
     if (surfing) { holePlanned = null; endAt = t; }
-    if (hole && hole !== holePlanned && !pumpOnly && (endGoal || (!careful && rand() < 0.6))) {
+    if (hole && hole !== holePlanned && !pumpOnly && (endGoal || holeGoal || (surfing && rand() < 0.8) || (!careful && rand() < 0.6))) {
       holePlanned = hole;
-      const name = endGoal ? pickFrom(endGoal) : pickFrom(members('end'));
-      const dir = ({ Cartwheel: 'up', Blunt: 'down', McNasty: 'left', 'Space Godzilla': 'right' } as Record<string, string>)[name];
+      // In the hole: tip it right over for a cartwheel, bow up and swing round for a blunt, or turn it flat.
+      const name = endGoal ? pickFrom(endGoal) : holeGoal ?? pickFrom(['Cartwheel', 'Blunt', 'Flatspin 180'] as TrickName[]);
       const minTime = G && 'minTime' in G ? G.minTime ?? 0 : 0;
-      press(`grab:${dir}`, 0.15);
-      press('let go', 0.15 + Math.max(0.45, minTime + 0.35));
+      const d = 0.12;
+      if (name === 'Cartwheel') { const s = rand() < 0.5 ? 1 : -1; press(`tilt:${s}`, d); press('tilt:0', d + Math.max(0.95, minTime + 0.2)); }
+      else if (name === 'Blunt') { press('tilt:0.65', d); press('turn:3.14', d + 0.05); press('tilt:0', d + 0.55); }
+      else press(name === 'Flatspin 360' ? 'turn:6.28' : 'turn:3.14', d);
     }
   }
 
@@ -424,7 +435,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     const g = G!;
     if (careful) return true;
     if (!airNames) {
-      const pool = BOAT ? (['Airscrew', 'Helix', 'Pan-Am', 'Flatspin 180'] as TrickName[])
+      const pool = BOAT ? (['Air Blunt', 'Pan-Am', 'Flatspin 180', 'Back Loop'] as TrickName[])
         : BIKE ? (['Whip', 'Tabletop', 'Turndown', 'Superman', 'No Footer', 'Can Can', 'No Hander', 'FS 180', 'BS 180'] as TrickName[])
         : SCOOT ? (['Tailwhip', 'Barspin', 'Heelwhip', 'Superman', 'No Footer', 'Can Can', 'X-Up', 'FS 180', 'BS 180'] as TrickName[])
         // Off-road skates on the farm: grabs only.
@@ -488,12 +499,15 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
       const { act } = queue.splice(i, 1)[0];
       // Tilting the device isn't a tap, so it doesn't count towards the tap rate.
       if (act === 'lean+' || act === 'lean-' || act === 'lean0') { r.setLean(act === 'lean+' ? 1 : act === 'lean-' ? -1 : 0); continue; }
+      // A kayak's tilt is an amount: past 0.4 it also stalls on flat water.
+      if (act.startsWith('tilt:')) { const a = Number(act.slice(5)); r.setLean(Math.abs(a) >= 0.4 ? (Math.sign(a) as Lean) : 0, a); continue; }
       if (act === 'let go') { r.release(); continue; }
       while (inputTimes.length && inputTimes[0] < t - 1) inputTimes.shift();
       if (inputTimes.length >= MAX_INPUTS_PER_SEC) continue;
       inputTimes.push(t);
       const [kind, arg] = act.split(':') as [string, Swipe];
       if (act === 'pump') r.pump();
+      else if (kind === 'turn') { r.turn(Number(arg)); r.turnEnd(); }
       else if (kind === 'grab' && arg) r.grabSwipe(arg);
       else if (kind === 'spin' && arg) r.spinSwipe(arg as 'left' | 'right');
       else if (kind === 'spin360') { r.spinSwipe(arg as 'left' | 'right'); r.spinMore(); }
@@ -558,14 +572,14 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         // Pop at the lip: decide when the lip is about one reaction-time away.
         const lip = isPipe || pumpOnly ? null : nextLip(track, r.x, lead + 1.5);
         if (lip !== null && t - lipPlanned > 0.6 && Math.abs(lip - lead) < 0.6 + r.v * 0.04) {
-          press('up');
+          press(BOAT ? 'pump' : 'up');
           lipPlanned = t;
         }
         // Going for an air off a particular place (a roller crest, the pier end): ollie there.
         const fromTag = G && 'from' in G && G.from ? G.from : G?.kind === 'air' ? 'crest' : undefined;
         if (fromTag && fromTag !== 'kicker') {
           const sp = track.spots.find((p) => p.tag === fromTag && p.x - r.x > 0 && Math.abs(p.x - r.x - lead) < 0.3 + r.v * 0.03);
-          if (sp && t - lipPlanned > 0.6) { press('up'); lipPlanned = t; }
+          if (sp && t - lipPlanned > 0.6) { press(BOAT ? 'pump' : 'up'); lipPlanned = t; }
         }
         // Ollie onto a rail coming up, timed so you come down near its start.
         const rail = railTry ? track.rails.find((rl) => !railsTried.has(rl) && rl.x0 > r.x && rl.x0 - r.x < lead + 12) : undefined;
@@ -620,10 +634,10 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
           press(lean);
           press('lean0', 0.2);
         } else if (BOAT) {
-          // Kayak: throw the boat about, spin it, or on a big air, loop it.
-          const big = flight().time - REACTION - JITTER > 0.8;
-          if (big && pick < 0.25) { const lean = rand() > 0.5 ? 'lean+' : 'lean-'; press(lean); press('lean0', 0.4); }
-          else if (flight().time - REACTION - JITTER > (onWave ? 0.45 : 0.7)) press(pickFrom(['left', 'right', 'down', 'spin']));
+          // Kayak: steer the boat through whichever move there's air for.
+          const room = flight().time - REACTION - JITTER;
+          const fits = (['Flatspin 180', 'Air Blunt', 'Pan-Am', 'Back Loop', 'Front Loop', 'McNasty', 'Helix'] as TrickName[]).filter((n) => trickTime(n, 0.3) < room);
+          if (fits.length && pick < 0.8) for (const [a, d] of trickActs(pickFrom(fits), 0.3)) press(a, d);
         } else if (r.vy > 5 && pick < 0.5) {
           // A big air: grab with the other thumb, and let go well before landing.
           press('grab');
@@ -854,7 +868,7 @@ if (!only && (shards === 1 || tricksDir)) {
   console.log(`\ntricks landed: ${[...seen].map(([n, c]) => `${n} ${c}`).join(', ')}`);
   const ROLLER_TRICKS = ['Heel Roll', 'Toe Roll', 'Tail Press', 'Nose Press', 'Frontside', 'Soul', 'Royale', 'Makio', 'Unity', 'Flatspin', 'Misty Flip', 'Rocket Air', 'Mute', 'Japan', 'Safety', 'Stalefish'];
   const all = BOAT ? [] : [...(ROLL ? [] : ['Manual']), 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360'];
-  const missing = BOAT ? ['Boof', 'Airscrew', 'Helix', 'Pan-Am', 'Cartwheel', 'Blunt', 'McNasty', 'Space Godzilla', 'Flatspin 180', 'Stern Stall', 'Bow Stall', 'Splat'].filter((n) => !seen.get(n)) : [...all, ...(BIKE
+  const missing = BOAT ? ['Boof', 'Air Blunt', 'Pan-Am', 'McNasty', 'Helix', 'Back Loop', 'Cartwheel', 'Blunt', 'Flatspin 180', 'Stern Stall', 'Bow Stall', 'Splat'].filter((n) => !seen.get(n)) : [...all, ...(BIKE
     ? ['Stoppie', 'Whip', 'Tabletop', 'Turndown', 'Superman', 'No Footer', 'Can Can', 'No Hander', 'Skinny']
     : ROLL ? ROLLER_TRICKS : ['Nose Manual', 'Tail Press', 'Nose Press', '50-50', 'Boardslide']), ...(BIKE || ROLL ? [] : SCOOT
     ? ['Tailwhip', 'Heelwhip', 'Barspin', 'Double Whip', 'Tailwhip Barspin', 'Superman', 'No Footer', 'Can Can', 'X-Up', 'Feeble', 'Smith']

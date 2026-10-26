@@ -18,7 +18,7 @@ Each biome's bonus level is a **standing wave** instead of a half pipe: surfed i
 60 seconds. It is a real river wave, not a half pipe: the water pours down a smooth tongue into
 the trough and piles up into a breaking crest, flowing right to left. You surf the green face
 facing upstream, held by the current (a spring towards the trough in `stepWater`), rock up and
-down it with strokes, pop into the air with a swipe up, and the whole wave is a hole for end moves.
+down it with strokes, boof into the air with a stroke on the way up to the crest, and the whole wave is a hole for end moves.
 
 | # | Whitewater Centre | Features |
 | --- | --- | --- |
@@ -34,14 +34,23 @@ down it with strokes, pop into the air with a swipe up, and the whole wave is a 
 | 10 | Grand Final | everything |
 | wave | The Centre Wave | standing wave bonus |
 
-## Controls (same zones as the other rides)
+## Controls (the boat is steered, tricks are recognised)
+
+Andy found canned swipe tricks odd in a kayak (boofs and helixes on flat water), so the kayak
+doesn't use the other rides' trick zones. You control the boat's attitude and `src/boat.ts`
+names the move when what the boat did matches one.
 
 - **Tap:** a paddle stroke. Best timed down the face of a wave. Tapped as you reach a marked rock: **Splat**.
-- **Right-half swipes:** up **Boof** (off a weir lip it launches you), left **Airscrew**, right **Helix**, down **Pan-Am**.
-- **Left swipe and hold, only in a hole:** up **Cartwheel** (keeps wheeling while held), down **Blunt**,
-  left **McNasty**, right **Space Godzilla**. On a standing wave an end move holds you in the trough.
-- **Bottom sideways swipes:** **Flatspin 180 / 360** on the water.
-- **Tilt:** on the water **Stern Stall** / **Bow Stall**; in the air **Back Loop** / **Front Loop**.
+  A stroke on the lip of a weir or fall (or climbing to a standing wave's crest) is a **Boof**.
+  Anywhere else it just paddles.
+- **Tilt (proportional):** lifts the bow or stern. On flat water: **Stern Stall** / **Bow Stall**.
+  In a hole or on a wave, tipped past 70% the ends go over: **Cartwheel** (2+ ends). In the air
+  the boat pitches round while tipped: **Back Loop** / **Front Loop**.
+- **Sideways thumb drag:** turns the boat. Flat water barely lets it turn and it straightens back.
+- **In a hole:** turn with the bow up = **Blunt**; turn flat = **Flatspin 180 / 360**.
+- **In the air:** 180 with the bow up = **Air Blunt**, past vertical = **Pan-Am**; 360 tipped
+  past upside down = **Helix**; loop with a 180 = **McNasty**; a plain turn = Flatspin.
+- Land near level and facing up or down the river, or you capsize.
 - No rails or grinds.
 
 ## Capsize and holes

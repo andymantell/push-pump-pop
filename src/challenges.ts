@@ -65,8 +65,8 @@ const GROUPS: Record<Group, TrickName[]> = {
   bike: ['Whip', 'Tabletop', 'Turndown'],
   skinny: ['Skinny', 'Skinny Manual', 'Skinny Stoppie'],
   // Kayak: the boat thrown about in the air off a wave or a drop, and end moves held in a hole.
-  kayak: ['Airscrew', 'Helix', 'Pan-Am'],
-  end: ['Cartwheel', 'Blunt', 'McNasty', 'Space Godzilla'],
+  kayak: ['Air Blunt', 'Pan-Am', 'McNasty', 'Helix'],
+  end: ['Cartwheel', 'Blunt'],
   spin: ['FS 180', 'BS 180', 'FS 360', 'BS 360', 'Flatspin 180', 'Flatspin 360'],
   '180': ['FS 180', 'BS 180', 'Flatspin 180'],
   '360': ['FS 360', 'BS 360', 'Flatspin 360'],

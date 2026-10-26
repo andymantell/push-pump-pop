@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Rider, KayakHold } from './rider';
+import { Rider } from './rider';
 import { toon } from './toon';
 import { PartName, PART_NAMES, elbowBackBend } from './skater';
 import { Look, Wardrobe, bodyPieces, headPieces, dress, markModels, paint } from './look';
@@ -188,18 +188,6 @@ function buildVest(): THREE.Group {
   return g;
 }
 
-/** End moves held in a hole: how the boat turns about the cockpit each second, per axis. */
-const ENDS: Record<KayakHold, { pitch: number; yaw: number; roll: number }> = {
-  // End over end, bow then stern, round and round.
-  Cartwheel: { pitch: -9, yaw: 0, roll: 0.35 },
-  // Up on the bow and swung round.
-  Blunt: { pitch: 0, yaw: 6, roll: 0 },
-  // A loop with a spin in it.
-  McNasty: { pitch: -7, yaw: 4, roll: 0 },
-  // A loop thrown off to one side.
-  'Space Godzilla': { pitch: -7.5, yaw: 0, roll: 2.2 },
-};
-
 export class KayakRig {
   readonly root = new THREE.Group();
   /** Tips over for a capsize, and drifts off for a swim. */
@@ -228,10 +216,6 @@ export class KayakRig {
   private pitch = 0;
   private yaw = 0;
   private roll = 0;
-  private endPitch = 0;
-  private endYaw = 0;
-  private endRoll = 0;
-  private lastEnd: KayakHold = 'Cartwheel';
   private bailT = 0;
   private bob = 0;
   private wasAir = false;
@@ -363,31 +347,6 @@ export class KayakRig {
       if (this.landT > 1) this.landT = -1;
     }
 
-    // Air tricks: the boat thrown about over the trick's progress.
-    let tp = 0, ty = 0, tr = 0;
-    const c = r.current;
-    if (c?.axis === 'kayak') {
-      const u = smooth(0, 1, r.trickProgress);
-      if (c.name === 'Airscrew') tr = u * Math.PI * 2;
-      else if (c.name === 'Helix') { tr = Math.sin(u * Math.PI) * Math.PI; ty = u * Math.PI * 2; }
-      else if (c.name === 'Pan-Am') tp = Math.sin(u * Math.PI) * 1.9;
-    }
-    // End moves in a hole: round and round for as long as they're held; back upright after.
-    const end = r.grab && r.grab in ENDS ? r.grab as KayakHold : null;
-    if (end) {
-      this.lastEnd = end;
-      const e = ENDS[end];
-      this.endPitch += e.pitch * dt;
-      this.endYaw += e.yaw * dt;
-      this.endRoll = e.roll * Math.sin(this.endPitch * 0.5);
-      if (end === 'Blunt') this.endPitch = -1.1 * Math.abs(Math.sin(this.endYaw * 0.5));
-    } else {
-      // Unwind to the nearest upright.
-      const near = (a: number) => Math.round(a / (Math.PI * 2)) * Math.PI * 2;
-      this.endPitch = ease(this.endPitch, near(this.endPitch), 10);
-      this.endYaw = ease(this.endYaw, near(this.endYaw), 10);
-      this.endRoll = ease(this.endRoll, 0, 10);
-    }
     // Stalls: up on the stern (nose up) or the bow.
     // Stalls stand up further the more the device is tipped.
     const up = 0.55 + 0.45 * Math.min(1, Math.abs(r.tilt));
@@ -401,15 +360,15 @@ export class KayakRig {
 
     // Where it pivots: stalls about the end that's in the water, the rest about the cockpit.
     const pivotX = stall > 0 ? -1.0 : stall < 0 ? 0.95 : splat > 0.01 ? -0.9 : 0;
-    const spin = r.spin ? r.spin.dir * r.spinProgress * (r.spin.deg === 360 ? Math.PI * 2 : Math.PI) : 0;
-    const yaw = r.bodyYaw + spin + this.surfYaw + ty + this.endYaw;
-    const pitch = this.pitch + r.flipAngle + tp + this.endPitch;
+    // The boat as you steer it: tipped by the tilt, turned by your thumb.
+    const yaw = r.boat.yaw + this.surfYaw;
+    const pitch = this.pitch + r.boat.pitch;
     this.bob += dt;
     const bob = !air && !r.bailing ? 0.02 * Math.sin(this.bob * 3.2) : 0;
     this.root.position.set(r.x, r.y + bob, r.z);
     this.root.rotation.set(0, 0, r.angle, 'ZYX');
     this.trick.position.set(pivotX, 0, 0);
-    this.trick.rotation.set(this.roll + tr + this.endRoll, yaw, pitch, 'YZX');
+    this.trick.rotation.set(this.roll + r.boat.wheelRoll, yaw, pitch, 'YZX');
     for (const b of Object.values(this.boats)) b.position.set(-pivotX, 0, 0);
     p.pelvis.position.x = -0.14 - pivotX;
 
