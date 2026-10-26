@@ -34,7 +34,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-3', biome: 'kayak-gorge', name: 'Rope Bridge Rapid', difficulty: 3, par: 15500,
+    id: 'kayak-gorge-3', biome: 'kayak-gorge', name: 'Rope Bridge Rapid', difficulty: 3, par: 14500,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Splat the rock', kind: 'trick', match: 'Splat' },
@@ -48,7 +48,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-4', biome: 'kayak-gorge', name: 'The Tall One', difficulty: 4, par: 14000,
+    id: 'kayak-gorge-4', biome: 'kayak-gorge', name: 'The Tall One', difficulty: 4, par: 13000,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.2 seconds', kind: 'air', seconds: 1.2 },

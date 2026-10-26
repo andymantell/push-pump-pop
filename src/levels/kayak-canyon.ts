@@ -35,7 +35,7 @@ export const KAYAK_CANYON: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-canyon-3', biome: 'kayak-canyon', name: 'Condor Rapid', difficulty: 3, par: 12500,
+    id: 'kayak-canyon-3', biome: 'kayak-canyon', name: 'Condor Rapid', difficulty: 3, par: 11500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Do 2 end moves', kind: 'trick', match: 'end', count: 2 },
@@ -109,13 +109,13 @@ export const KAYAK_CANYON: TrackDef[] = [
     id: 'kayak-canyon-8', biome: 'kayak-canyon', name: 'Golden Canyon', difficulty: 4, par: 7000,
     challenges: [
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
-      { text: 'Loop off a wave', kind: 'trick', match: 'bodyflip' },
+      { text: 'Air for 1 second', kind: 'air', seconds: 1 },
       { text: 'Stern stall for 1 second', kind: 'manual', name: 'Stern Stall', seconds: 1 },
     ],
     // Long pools and big waves in the evening light.
     build: layout(42, 5, (b) => {
       b.flat(8).descend(10, 0.05).whoops(5, 15, 1.4, 0.06).descend(18, 0.0, 6).descend(4, 0.04);
-      b.sign('BIG AIR: TILT TO LOOP').flat(4).dropoff(2.0, 28).descend(12, 0.0).hole(16, 0.45).descend(8, 0.04);
+      b.sign('BIG LEDGE!').flat(4).dropoff(2.0, 28).descend(12, 0.0).hole(16, 0.45).descend(8, 0.04);
       b.whoops(5, 15, 1.5, 0.06).descend(18, 0.0, 6).descend(6, 0.04).whoops(4, 15, 1.4, 0.06).descend(14, 0.03);
     }),
   },
@@ -134,7 +134,7 @@ export const KAYAK_CANYON: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-canyon-10', biome: 'kayak-canyon', name: 'Night Run', difficulty: 5, par: 16000,
+    id: 'kayak-canyon-10', biome: 'kayak-canyon', name: 'Night Run', difficulty: 5, par: 15500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },

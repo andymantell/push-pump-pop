@@ -51,7 +51,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-creek-4', biome: 'kayak-creek', name: 'Falls Pool', difficulty: 3, par: 21500,
+    id: 'kayak-creek-4', biome: 'kayak-creek', name: 'Falls Pool', difficulty: 3, par: 19000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Air for 1 second', kind: 'air', seconds: 1 },
@@ -79,7 +79,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-creek-6', biome: 'kayak-creek', name: 'Foggy Ledges', difficulty: 3, par: 39500,
+    id: 'kayak-creek-6', biome: 'kayak-creek', name: 'Foggy Ledges', difficulty: 3, par: 35000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Boof 3 ledges', kind: 'trick', match: 'Boof', from: 'dropoff', count: 3 },

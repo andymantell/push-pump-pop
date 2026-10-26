@@ -225,8 +225,9 @@ function trickActs(name: TrickName, hold: number): [string, number][] {
     case 'Airscrew': return [['flick:left', 0]];
     case 'Helix': return [['flick:right', 0]];
     case 'Pan-Am': return [['flick:down', 0]];
-    case 'Back Loop': return [['lean+', 0], ['lean0', 0.2]];
-    case 'Front Loop': return [['lean-', 0], ['lean0', 0.2]];
+    // A kayak pitches only while tipped: hold the tilt past halfway round, and it carries on over.
+    case 'Back Loop': return [['lean+', 0], ['lean0', 0.4]];
+    case 'Front Loop': return [['lean-', 0], ['lean0', 0.4]];
     case 'Flatspin 180': return [['spin:right', 0]];
     case 'Flatspin 360': return [['spin360:right', 0]];
     // Inline skates: airs on the right, grabs held on the left.
@@ -252,7 +253,8 @@ function trickTime(name: TrickName, hold: number): number {
   if (name.startsWith('Double') || name.endsWith(' Barspin')) return 0.85;
   if (name === 'Tailwhip' || name === 'Heelwhip') return 0.45;
   if (name.endsWith('360')) return 0.75;
-  if (name === 'Backflip' || name === 'Frontflip' || name === 'Back Loop' || name === 'Front Loop') return 0.72;
+  if (name === 'Backflip' || name === 'Frontflip') return 0.72;
+  if (name === 'Back Loop' || name === 'Front Loop') return 0.66;
   if (name === 'Airscrew' || name === 'Pan-Am') return 0.6;
   if (name === 'Helix') return 0.7;
   if (name === 'Ollie') return 0;
@@ -620,7 +622,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         } else if (BOAT) {
           // Kayak: throw the boat about, spin it, or on a big air, loop it.
           const big = flight().time - REACTION - JITTER > 0.8;
-          if (big && pick < 0.25) { const lean = rand() > 0.5 ? 'lean+' : 'lean-'; press(lean); press('lean0', 0.2); }
+          if (big && pick < 0.25) { const lean = rand() > 0.5 ? 'lean+' : 'lean-'; press(lean); press('lean0', 0.4); }
           else if (flight().time - REACTION - JITTER > (onWave ? 0.45 : 0.7)) press(pickFrom(['left', 'right', 'down', 'spin']));
         } else if (r.vy > 5 && pick < 0.5) {
           // A big air: grab with the other thumb, and let go well before landing.

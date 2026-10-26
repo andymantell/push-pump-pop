@@ -73,7 +73,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-5', biome: 'kayak-centre', name: 'Slalom Gates', difficulty: 3, par: 19000,
+    id: 'kayak-centre-5', biome: 'kayak-centre', name: 'Slalom Gates', difficulty: 3, par: 18500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Splat 2 rocks', kind: 'trick', match: 'Splat', count: 2 },
@@ -134,7 +134,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-9', biome: 'kayak-centre', name: 'Spin Pools', difficulty: 4, par: 18500,
+    id: 'kayak-centre-9', biome: 'kayak-centre', name: 'Spin Pools', difficulty: 4, par: 17500,
     challenges: [
       { text: 'Flatspin on the water', kind: 'trick', match: 'Flatspin 180' },
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
@@ -150,7 +150,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-centre-10', biome: 'kayak-centre', name: 'Grand Final', difficulty: 5, par: 29500,
+    id: 'kayak-centre-10', biome: 'kayak-centre', name: 'Grand Final', difficulty: 5, par: 28500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Land a 4-trick combo', kind: 'combo', tricks: 4 },

@@ -401,10 +401,20 @@ input.onSpin = (d) => { if (canRide()) rider.spinSwipe(d); };
 input.onSpinMore = () => { if (canRide()) rider.spinMore(); };
 // Lean from the keyboard or from tilting the device, whichever is tipped.
 let keyLean: Lean = 0, tiltLean: Lean = 0;
-const applyLean = () => rider.setLean(canRide() ? keyLean || tiltLean : 0);
+const applyLean = () => {
+  if (!canRide()) { rider.setLean(0); return; }
+  // A kayak follows how far the device is tipped: a little tilt pitches the boat a little.
+  // It only stalls once tipped a fair way, so a small wobble doesn't stand the boat on end.
+  const a = keyLean || (rider.opts.kayak ? tilt.amount : tiltLean);
+  const stall = Math.abs(a) >= (rider.lean ? KAYAK_STALL_OFF : KAYAK_STALL_ON);
+  rider.setLean(stall || !rider.opts.kayak ? Math.sign(a) as Lean : 0, a);
+};
+/** Share of full tilt a kayak needs to go up on a stall, and to stay up on it. */
+const KAYAK_STALL_ON = 0.4, KAYAK_STALL_OFF = 0.25;
 input.onLean = (l) => { keyLean = l; applyLean(); };
 const tilt = new Tilt();
 tilt.onLean = (l) => { tiltLean = l; applyLean(); };
+tilt.onAmount = () => { if (rider.opts.kayak) applyLean(); };
 
 const panels = ['title', 'select', 'card', 'results', 'guide', 'move', 'pause'];
 function show(panel: string | null) {

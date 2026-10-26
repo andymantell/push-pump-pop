@@ -389,7 +389,9 @@ export class KayakRig {
       this.endRoll = ease(this.endRoll, 0, 10);
     }
     // Stalls: up on the stern (nose up) or the bow.
-    const stall = r.manual === 'Stern Stall' ? 0.95 : r.manual === 'Bow Stall' ? -0.85 : 0;
+    // Stalls stand up further the more the device is tipped.
+    const up = 0.55 + 0.45 * Math.min(1, Math.abs(r.tilt));
+    const stall = r.manual === 'Stern Stall' ? 0.95 * up : r.manual === 'Bow Stall' ? -0.85 * up : 0;
     // Side surfing, held in a sticky hole: turned across the current, bouncing.
     this.surfYaw = ease(this.surfYaw, r.stuck ? Math.PI / 2 : 0, 8);
     // Capsized: over and back up as the strokes come; a swim leaves the boat upside down.

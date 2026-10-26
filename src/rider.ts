@@ -348,6 +348,10 @@ export const BIKE_FAKIE_SAFE = 1.5, BIKE_FAKIE_FALL = 5;
 /** Landing this far into a flip still counts; less than FLIP_SAFE is just a wobble. */
 const FLIP_LAND = 0.85;
 const FLIP_SAFE = 0.12;
+/** How fast a kayak eases back upright in the air once the device is level. */
+const KAYAK_RIGHT = 4;
+/** Seconds for a kayak loop with the device tipped all the way. */
+const KAYAK_LOOP_TIME = 0.6;
 const MANUAL_POINTS = 100;
 const MANUAL_POINTS_PER_SEC = 450;
 /** Manuals only hold on gentle ground. */
@@ -520,6 +524,8 @@ export class Rider {
   flipDir: 1 | -1 = 1;
   flipT = 0;
   flipping = false;
+  /** How far the device is tipped, -1 to 1: a kayak pitches in the air at a rate that follows it. */
+  tilt = 0;
   /** On a bike in a rock garden: your weight, -1 (looped out) to +1 (over the bars). */
   balance = 0;
   /** The rock garden being ridden, and where you came into it. */
@@ -850,7 +856,8 @@ export class Rider {
   }
 
   /** Device tilt changed. */
-  setLean(l: Lean) {
+  setLean(l: Lean, amount: number = l) {
+    this.tilt = amount;
     if (l === this.lean) return;
     this.lean = l;
     if (l === 0) { this.leanArmed = true; this.manualBlocked = false; }
@@ -1299,13 +1306,30 @@ export class Rider {
         if (this.spin.t >= this.spinDuration) this.finishSpin();
       }
 
+      // A kayak in the air pitches as fast as the device is tipped: a little tilt noses it
+      // down for the landing, a big one throws a loop, and the other way brings it back.
+      // Level the device and it eases back to the nearest upright.
+      if (this.opts.kayak && !this.bailing) {
+        const a = this.leanArmed ? this.tilt : 0;
+        if (!this.flipping && Math.abs(a) > 0.02) { this.flipping = true; this.flipDir = a > 0 ? 1 : -1; this.flipT = 0; }
+        if (this.flipping) {
+          if (Math.abs(a) > 0.02) this.flipT += (a * this.flipDir * dt) / KAYAK_LOOP_TIME;
+          else this.flipT += ((this.flipT < 0.5 ? -0.01 : 1.01) - this.flipT) * Math.min(1, dt * KAYAK_RIGHT);
+          if (this.flipT >= 1) {
+            this.tricksThisAir++;
+            this.emit({ name: this.flipName, duration: FLIP_TIME, points: FLIP_POINTS, axis: 'body', dir: this.flipDir });
+            this.flipT -= 1;
+          }
+          if (this.flipT <= 0) { this.flipping = false; this.flipT = 0; }
+        }
+      }
       // Tilt in the air: flip the whole body. Each full turn scores; keep tilting for more.
-      if (!this.flipping && this.lean && this.leanArmed && !this.bailing) {
+      if (!this.opts.kayak && !this.flipping && this.lean && this.leanArmed && !this.bailing) {
         this.flipping = true;
         this.flipDir = this.lean;
         this.flipT = 0;
       }
-      if (this.flipping) {
+      if (this.flipping && !this.opts.kayak) {
         this.flipT += dt / FLIP_TIME;
         if (this.flipT >= 1) {
           this.tricksThisAir++;
