@@ -1,16 +1,13 @@
-// What you ride: a skateboard, a scooter, aggressive inline (roller) skates, a downhill bike (MTB) or a white water kayak. Each ride is its own career,
+// What you ride: a skateboard, a scooter, aggressive inline (roller) skates or a downhill bike (MTB). Each ride is its own career,
 // with its own tricks, challenges, stars and best scores, but tracks open for all at once:
 // completing a track on any ride opens the next one for all of them.
 //
 // A ride lists the worlds it can't go to: the MTB's own world (its downhill courses) is only
-// for the bike, the rivers are only for the kayak (which goes nowhere else), and the level
-// select only shows the worlds the picked ride can reach.
+// for the bike, and the level select only shows the worlds the picked ride can reach.
 
-export type RideId = 'skate' | 'scooter' | 'roller' | 'mtb' | 'kayak';
+export type RideId = 'skate' | 'scooter' | 'roller' | 'mtb';
 /** The MTB-only world of downhill courses (index into WORLDS). */
 export const MTB_WORLD = 2;
-/** The kayak's world of rivers: the only world it can paddle. */
-export const KAYAK_WORLD = 3;
 
 export interface Ride {
   id: RideId;
@@ -21,11 +18,10 @@ export interface Ride {
 }
 
 export const RIDES: Ride[] = [
-  { id: 'skate', label: 'SKATE', skipWorlds: [MTB_WORLD, KAYAK_WORLD] },
-  { id: 'scooter', label: 'SCOOTER', skipWorlds: [MTB_WORLD, KAYAK_WORLD] },
-  { id: 'roller', label: 'ROLLER', skipWorlds: [MTB_WORLD, KAYAK_WORLD] },
-  { id: 'mtb', label: 'MTB', skipWorlds: [KAYAK_WORLD] },
-  { id: 'kayak', label: 'KAYAK', skipWorlds: [0, 1, MTB_WORLD] },
+  { id: 'skate', label: 'SKATE', skipWorlds: [MTB_WORLD] },
+  { id: 'scooter', label: 'SCOOTER', skipWorlds: [MTB_WORLD] },
+  { id: 'roller', label: 'ROLLER', skipWorlds: [MTB_WORLD] },
+  { id: 'mtb', label: 'MTB' },
 ];
 
 export const rideOf = (id: string | null | undefined): Ride => RIDES.find((r) => r.id === id) ?? RIDES[0];

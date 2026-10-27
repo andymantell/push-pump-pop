@@ -3,9 +3,6 @@ import { Lean } from './rider';
 /** Degrees of tilt from level to start a lean, and back within this to stop. */
 const ON_DEG = 14;
 const OFF_DEG = 8;
-/** A kayak reads tilt as an amount: nothing inside DEAD_DEG of level, all the way at FULL_DEG. */
-const DEAD_DEG = 5;
-const FULL_DEG = 32;
 /** Below this share of gravity in the screen's plane (device lying flat), roll is unreliable. */
 const MIN_PLANE = 0.3;
 
@@ -16,9 +13,6 @@ type PermissionFn = () => Promise<'granted' | 'denied'>;
 // Level is whatever angle the device was held at when the run started.
 export class Tilt {
   onLean: (l: Lean) => void = () => {};
-  /** How far the device is tipped, -1 to 1 (+ lifts the nose), for controls that follow it smoothly. */
-  onAmount: (a: number) => void = () => {};
-  amount = 0;
   /** Has the device ever reported an orientation? */
   available = false;
   /** Roll of the screen in degrees, + is clockwise (right side down). */
@@ -61,7 +55,6 @@ export class Tilt {
   calibrate() {
     this.level = this.roll;
     this.set(0);
-    this.setAmount(0);
   }
 
   private read(e: DeviceOrientationEvent) {
@@ -76,19 +69,12 @@ export class Tilt {
     const sx = dx * Math.cos(a) + dy * Math.sin(a);
     const sy = -dx * Math.sin(a) + dy * Math.cos(a);
     this.flat = Math.hypot(sx, sy) < MIN_PLANE;
-    if (this.flat) { this.set(0); this.setAmount(0); return; }
+    if (this.flat) { this.set(0); return; }
     this.roll = (Math.atan2(sx, -sy) * 180) / Math.PI;
     let d = this.roll - this.level;
     d = ((d + 540) % 360) - 180;
-    this.setAmount(-Math.sign(d) * Math.max(0, Math.min(1, (Math.abs(d) - DEAD_DEG) / (FULL_DEG - DEAD_DEG))));
     const on = Math.abs(d) > (this.lean ? OFF_DEG : ON_DEG);
     this.set(on ? (d > 0 ? -1 : 1) : 0);
-  }
-
-  private setAmount(a: number) {
-    if (a === this.amount) return;
-    this.amount = a;
-    this.onAmount(a);
   }
 
   private set(l: Lean) {

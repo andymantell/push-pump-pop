@@ -4,7 +4,6 @@ import { Track, Pit, DX, LOOP_SHIFT } from './track';
 import { Biome, Particles, Surface } from './biomes';
 import { toon } from './toon';
 import { LANDMARKS, TRACK_LANDMARKS } from './landmarks';
-import { River, WATER_DEPTH } from './river';
 
 export const TRACK_W = 3;
 
@@ -882,35 +881,10 @@ export class World {
         const w = Math.min(1, Math.max(0, (back - 2) / 5));
         return near + (this.cached(this.quayCache, x) - near) * w * w * (3 - 2 * w);
       }
-      case 'river': case 'channel': {
-        // The river bed under the water, out to the far bank.
-        const W = this.biome.river!.width;
-        const bed = near + 0.25 - WATER_DEPTH;
-        if (back <= W) return bed;
-        const hills = 2.5 * Math.sin(x * 0.045) + 1.5 * Math.sin(x * 0.11 + 1.3) + 3;
-        if (this.biome.groundShape === 'channel') {
-          // A concrete wall straight up out of the water, a walkway along its top, then grass.
-          const top = near + 1.6;
-          if (back < W + 0.06) return bed + (top - bed) * (back - W) / 0.06;
-          return top + Math.max(0, back - W - 4) * 0.05 + hills * depth * depth;
-        }
-        // A rocky bank climbing out of the water, then the hills.
-        const u = Math.min(1, (back - W) / 3.5);
-        return bed + (WATER_DEPTH + 1.1) * u * u * (3 - 2 * u) + 0.25 * Math.sin(x * 0.6) * u + hills * depth * depth;
-      }
     }
   }
 
-  /** The river, on the kayak's tracks. */
-  river: River | null = null;
-
-  /** Spray thrown up off the water (only on a river). */
-  splash(x: number, y: number, n: number, up = 4, along = 0) {
-    this.river?.splash(x, y, n, up, along);
-  }
-
   private buildTrack() {
-    if (this.biome.river) { this.buildRiver(); return; }
     const tr = this.track;
     const n = tr.heights.length;
     const base = tr.minY - 25;
@@ -961,35 +935,6 @@ export class World {
 
   private topMat!: THREE.Material;
   private frontMat!: THREE.Material;
-
-  /** A river: running water for the track, and the river bed under it in the cut-away front. */
-  private buildRiver() {
-    const tr = this.track;
-    const river = new River(tr, this.biome);
-    this.river = river;
-    this.group.add(river.group);
-    const n = tr.heights.length;
-    const base = tr.minY - 25;
-    const z0 = TRACK_W / 2;
-    const front = new Float32Array(n * 2 * 3), frontUv = new Float32Array(n * 2 * 2);
-    for (let i = 0; i < n; i++) {
-      const x = i * DX, bed = river.bedY(i);
-      front.set([x, bed, z0, x, base, z0], i * 6);
-      frontUv.set([x / 4, bed / 4, x / 4, base / 4], i * 4);
-    }
-    const idx: number[] = [];
-    for (let i = 0; i < n - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(front, 3));
-    g.setAttribute('uv', new THREE.BufferAttribute(frontUv, 2));
-    g.setIndex(idx);
-    g.computeVertexNormals();
-    this.topMat = toon(0xffffff, { map: surfaceTexture(this.biome.top) });
-    this.frontMat = toon(0xffffff, { map: surfaceTexture(this.biome.front) });
-    const m = new THREE.Mesh(g, this.frontMat);
-    (m.material as THREE.Material).userData.outlineParameters = { visible: false };
-    this.group.add(m);
-  }
 
   /** Wet mud lying on the track: wobbly edges, rounded ends, puddles that catch the light. */
   private buildMud() {
@@ -1769,13 +1714,7 @@ export class World {
   private buildGround() {
     const len = this.track.length;
     const nx = Math.ceil(len) + 40;
-    let zs = [-TRACK_W / 2 + 0.05, -2.5, -4, -7, -10.9, -11.1, -16, -23, -32, -45, -60, -80];
-    // A river: its bed out to the far bank, then the bank (or a channel's wall) and on back.
-    const riv = this.biome.river;
-    if (riv) {
-      const W = riv.width, z = (b: number) => -TRACK_W / 2 - b;
-      zs = [z(0.05), z(W / 2), z(W), ...(this.biome.groundShape === 'channel' ? [z(W + 0.06), z(W + 4)] : [z(W + 1.2), z(W + 2.4), z(W + 3.5)]), z(W + 8), z(W + 15), -32, -45, -60, -80];
-    }
+    const zs = [-TRACK_W / 2 + 0.05, -2.5, -4, -7, -10.9, -11.1, -16, -23, -32, -45, -60, -80];
     // The harbour wall drops straight into the water.
     if (this.biome.groundShape === 'quay') zs.splice(8, 0, -24.4);
     // A metre apart, but finer around gaps so their ravines have crisp edges.
@@ -1800,12 +1739,6 @@ export class World {
         pos[k] = x; pos[k + 1] = this.groundY(x, zs[j]); pos[k + 2] = zs[j];
         const n = (Math.sin(x * 0.7 + j * 1.9) + Math.sin(x * 0.23 - j)) * 0.25 + 0.5;
         tmp.copy(c1).lerp(n > 0.5 ? c3 : c2, Math.abs(n - 0.5) * 1.6);
-        // A river's bank: bare rock (or a channel's concrete) by the water, grass further up.
-        if (riv) {
-          const back = -zs[j] - TRACK_W / 2;
-          const bank = this.biome.groundShape === 'channel' ? (back < riv.width + 3.9 ? 1 : 0) : 1 - Math.min(1, Math.max(0, (back - riv.width - 2.2) / 1.6));
-          tmp.lerp(new THREE.Color(this.biome.groundShape === 'channel' ? 0xb8b4ac : riv.bed).offsetHSL(0, 0, n * 0.06 - 0.03), bank);
-        }
         // Ravine walls in the biome's rock, darker further down, and its own floor at the bottom.
         const rv = this.ravineAt(x, zs[j]);
         if (rv) {
@@ -2634,11 +2567,8 @@ export class World {
     const tr = this.track;
     const end = Number.isFinite(tr.finishX) ? tr.finishX : tr.length;
     names.forEach((name, i) => {
-      const base = LANDMARKS[name];
-      if (!base) return;
-      // By a river, anything standing on the ground stands back on the far bank, out of the water.
-      const rv = this.biome.river;
-      const lm = rv && !base.on ? { ...base, z: Math.min(base.z, -(TRACK_W / 2 + rv.width + base.r * 0.7 + 2.5)) } : base;
+      const lm = LANDMARKS[name];
+      if (!lm) return;
       let x = tr.startX + (end - tr.startX) * (names.length === 1 ? 0.45 : 0.28 + i * 0.44);
       // Clear of the whole footprint, corners too (the ravines widen as they go back), so no
       // leg or wall hangs out over a ravine.
@@ -2664,16 +2594,6 @@ export class World {
   private buildProps() {
     const b = this.biome, r = this.rand;
     const end = this.track.length + 10;
-    // A natural river's far bank: rocks at the water's edge, some half in the water.
-    if (b.river && b.groundShape === 'river') {
-      const edge = -(TRACK_W / 2 + b.river.width);
-      const rock = b.back.some(([k]) => k === 'desertrock') ? 'desertrock' : 'boulder';
-      for (let x = -10; x < end; x += 1.6 + r() * 3) {
-        const z = edge + 0.4 - r() * 1.6;
-        if (this.clearings.some((c) => Math.abs(x - c.x) < c.r && Math.abs(z - c.z) < c.r)) continue;
-        this.placeProp(rock, x, z, 0.5 + r() * 0.7, r() * Math.PI * 2);
-      }
-    }
     // The hillside town: a terrace of painted houses along the street behind the course.
     if (b.id === 'dh-urban') {
       const houses = ['townhouse_a', 'townhouse_b', 'townhouse_c', 'townhouse_d'];
@@ -2731,12 +2651,9 @@ export class World {
 
   /** After dark, worlds without street lamps get lamps (towns) or burning torches (the wild). */
   private buildNightLights(end: number) {
-    const wild = ['desert', 'jungle', 'volcano', 'snow', 'farm', 'pirate', 'dh-mud', 'dh-rocky', 'dh-shore', 'kayak-creek', 'kayak-canyon', 'kayak-gorge'].includes(this.biome.id);
-    // By a river, the lights stand on the far bank, not in the water.
-    const rv = this.biome.river;
-    const bank = (z: number) => rv ? -(TRACK_W / 2 + rv.width + (this.biome.groundShape === 'channel' ? 0.8 : 1.6)) : z;
+    const wild = ['desert', 'jungle', 'volcano', 'snow', 'farm', 'pirate', 'dh-mud', 'dh-rocky', 'dh-shore'].includes(this.biome.id);
     if (!wild) {
-      for (let x = 9; x < end; x += 18) this.placeProp('lamp', x, bank(-2.6));
+      for (let x = 9; x < end; x += 18) this.placeProp('lamp', x, -2.6);
       return;
     }
     const wood = toon(0x6a4628), flame = new THREE.MeshBasicMaterial({ color: 0xffb030 }), core = new THREE.MeshBasicMaterial({ color: 0xfff0a0 });
@@ -2753,7 +2670,7 @@ export class World {
     f2.position.y = 2.48;
     torch.add(pole, bowl, f1, f2);
     for (let x = 9; x < end; x += 16) {
-      const z = bank(-2.4), y = this.groundY(x, z);
+      const z = -2.4, y = this.groundY(x, z);
       if (this.nearRavine(x, z, 0.5)) continue;
       const t = torch.clone();
       t.position.set(x, y, z);
@@ -2850,10 +2767,7 @@ export class World {
         g.add(post);
       }
       g.add(board);
-      // On a river the sign stands up on the far bank, bigger so it still reads from the water.
-      const river = this.biome.river;
-      if (river) g.scale.setScalar(1.6);
-      const z = river ? -(TRACK_W / 2 + river.width + (this.biome.groundShape === 'channel' ? 1.2 : 2.2)) : -2.0;
+      const z = -2.0;
       let sx = s.x + 2;
       while (this.nearRavine(sx, z, 1.2)) sx -= 1;
       g.position.set(sx, this.groundY(sx, z), z);
@@ -2896,14 +2810,12 @@ export class World {
 
   /** Draw only this share of the weather particles (fewer on slow devices). */
   setParticles(share: number) {
-    this.river?.setParticles(share);
     const p = this.particleKind;
     if (!this.particles || !p) return;
     this.particles.geometry.setDrawRange(0, Math.round(p.n * share) * this.particleStride);
   }
 
   update(dt: number, camX: number, camY: number) {
-    this.river?.update(dt, camX);
     for (const b of this.belts) b.tex.offset.x -= (b.speed * dt) / 3;
     if (this.beacons.length) {
       // Warning beacons flash.

@@ -10,27 +10,18 @@ const SPIN_360 = 0.2;
 const GRAB_ZONE = 0.5;
 /** A flip swipe down and to the side, between these slopes (about 30 to 60 degrees), is a 360 flip or hardflip. */
 const COMBO_MIN = 0.6, COMBO_MAX = 1.7;
-/** Kayak: dragging a thumb the full width of the screen spins the boat this far (radians): a quarter of the way is a whole turn. */
-const TURN_PER_WIDTH = Math.PI * 8;
 
 const GRAB_KEYS: Record<string, Swipe> = { KeyI: 'up', KeyK: 'down', KeyJ: 'left', KeyL: 'right' };
 const COMBO_KEYS: Record<string, 'left' | 'right'> = { KeyC: 'left', KeyV: 'right' };
 
-interface Touch { x: number; y: number; t: number; done: boolean; swiped: boolean; spin: boolean; turning?: boolean; moved?: boolean; lx?: number }
+interface Touch { x: number; y: number; t: number; done: boolean; swiped: boolean; spin: boolean; }
 
 // Tap anywhere to pump. Swipe on the right to flip; swipe on the left and hold to grab.
 // Swipe sideways along the bottom of the screen to spin; a longer swipe spins further.
 // Swipe down-left or down-right on the right for a 360 flip or hardflip.
 // Keyboard: space to pump, arrows to flip, C/V for a 360 flip/hardflip, hold I/J/K/L to grab, Z/X to spin
 // (press again for a 360), Q/E to tilt (manuals on the ground, flips in the air).
-// In a kayak it's simpler: tap to paddle, drag a thumb sideways to turn the boat (it follows
-// the thumb), and nothing else; Z/X turn it half round.
 export class Input {
-  /** Kayak controls: a tap paddles when the finger lifts, and a sideways drag turns the boat. */
-  kayak = false;
-  /** Kayak: turn the boat by this much (radians), as the thumb drags. */
-  onTurn: (d: number) => void = () => {};
-  onTurnEnd: () => void = () => {};
   onPump: () => void = () => {};
   onSwipe: (d: Swipe) => void = () => {};
   /** Diagonal flip swipe, down and to this side. */
@@ -49,22 +40,12 @@ export class Input {
       e.preventDefault();
       this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now(), done: false, swiped: false, spin: false });
       this.onAny();
-      // In a kayak the stroke waits for the finger to lift, so a drag to turn isn't a stroke too.
-      if (!this.kayak) this.onPump();
+      this.onPump();
     });
     el.addEventListener('pointermove', (e) => {
       const t = this.touches.get(e.pointerId);
       if (!t) return;
       const dx = e.clientX - t.x, dy = e.clientY - t.y;
-      if (this.kayak) {
-        if (Math.hypot(dx, dy) >= SWIPE_DIST) t.moved = true;
-        if (!t.turning && Math.abs(dx) >= SWIPE_DIST && Math.abs(dx) > Math.abs(dy)) { t.turning = true; t.lx = t.x; }
-        if (t.turning) {
-          this.onTurn(((e.clientX - (t.lx ?? t.x)) / window.innerWidth) * TURN_PER_WIDTH);
-          t.lx = e.clientX;
-        }
-        return;
-      }
       if (t.spin && Math.abs(dx) > window.innerWidth * SPIN_360) { t.spin = false; this.onSpinMore(); }
       if (t.done) return;
       if (performance.now() - t.t > SWIPE_TIME) { t.done = true; return; }
@@ -85,11 +66,6 @@ export class Input {
     const end = (e: PointerEvent) => {
       const t = this.touches.get(e.pointerId);
       this.touches.delete(e.pointerId);
-      if (t && this.kayak) {
-        if (t.turning) this.onTurnEnd();
-        else if (e.type === 'pointerup') this.onPump();
-        return;
-      }
       if (t?.swiped) this.onRelease();
     };
     el.addEventListener('pointerup', end);
@@ -102,9 +78,6 @@ export class Input {
         KeyW: 'up', KeyS: 'down', KeyA: 'left', KeyD: 'right',
       };
       if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); this.onAny(); this.onPump(); }
-      else if (this.kayak && (e.code === 'KeyZ' || e.code === 'KeyX')) {
-        this.onAny(); this.onTurn(e.code === 'KeyX' ? Math.PI : -Math.PI); this.onTurnEnd();
-      } else if (this.kayak && map[e.code]) { e.preventDefault(); }
       else if (e.code === 'KeyZ' || e.code === 'KeyX') {
         // Second press while spinning makes it a 360.
         this.onAny(); this.onSpinMore(); this.onSpin(e.code === 'KeyX' ? 'right' : 'left');

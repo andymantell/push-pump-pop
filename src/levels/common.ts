@@ -25,8 +25,6 @@ export interface TrackDef {
   roller?: { par: number; challenges: Challenge[] };
   /** The downhill bike career's (src/levels/mtb.ts, joined on in tracks.ts). */
   mtb?: { par: number; challenges: Challenge[] };
-  /** The kayak career's: only on its own rivers, written for it. */
-  kayak?: { par: number; challenges: Challenge[] };
   build: () => Track;
 }
 
@@ -74,33 +72,5 @@ export function pipe(radius: number, flatLen: number): () => Track {
     b.halfpipe(radius, flatLen, deck);
     const centre = deck + radius * 0.96 + flatLen / 2;
     return b.build(centre, Infinity);
-  };
-}
-
-/**
- * A standing wave bonus level for the kayak, surfed in place for PIPE_TIME seconds. The river
- * flows right to left: smooth water pours down the tongue into the trough and piles up into a
- * breaking wave, and you surf the wave's green face facing upstream, held there by the current.
- * Paddle to rock up and down the face, swipe up to pop off it, and the whole wave is a hole
- * for end moves.
- */
-export function wave(height: number, face: number): () => Track {
-  return () => {
-    const b = new TrackBuilder(0);
-    b.flat(30);
-    const x0 = b.x;
-    // The back of the wave, up to the crest where it breaks.
-    b.ease(4, height);
-    const crest = b.x;
-    // The green face down into the trough.
-    b.ease(face, -height - 0.35);
-    const trough = b.x;
-    b.flat(1.2);
-    // The tongue: the river pouring down from upstream.
-    b.ease(6, height + 1.1);
-    const x1 = b.x;
-    b.flat(30);
-    b.holes.push({ x0, x1, sticky: false, wave: { crest, trough: trough + 0.6 } });
-    return b.build(trough + 0.6, Infinity);
   };
 }

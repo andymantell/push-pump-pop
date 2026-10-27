@@ -7,7 +7,7 @@ import type { Rail } from './track';
 // (see SOUNDS.md). Each surface has its own wheel roar, grit, joints and landing thud.
 // iOS only lets a page make sound after a tap, so nothing starts until the first one.
 
-export type Ground = 'concrete' | 'wood' | 'tar' | 'snow' | 'sand' | 'stone' | 'basalt' | 'dirt' | 'biscuit' | 'water';
+export type Ground = 'concrete' | 'wood' | 'tar' | 'snow' | 'sand' | 'stone' | 'basalt' | 'dirt' | 'biscuit';
 type RailSound = 'metal' | 'coping' | 'log' | 'sugar';
 
 interface Band { type: BiquadFilterType; f: number; q: number; gain: number }
@@ -25,13 +25,6 @@ interface GroundSound {
 }
 
 const GROUNDS: Record<Ground, GroundSound> = {
-  // A kayak on a river: water rushing past the hull, a fizz of spray, and a splash to land in.
-  water: {
-    rumble: { type: 'lowpass', f: 320, q: 0.6, gain: 0.8, fSpeed: 22 },
-    hiss: { type: 'bandpass', f: 1300, q: 0.5, gain: 0.3, fSpeed: 35 },
-    grit: { type: 'bandpass', f: 3600, q: 1.5, gain: 0.05 },
-    land: { type: 'lowpass', f: 2600, q: 0.7, gain: 1.2, decay: 0.35, thump: 0.45 },
-  },
   // Smooth slabs: a clean roar and a tk-tk over each joint.
   concrete: {
     rumble: { type: 'lowpass', f: 420, q: 0.7, gain: 0.55, fSpeed: 16 },
@@ -104,7 +97,6 @@ const GROUNDS: Record<Ground, GroundSound> = {
 const BIOME_GROUND: Record<string, Ground> = {
   park: 'concrete', beach: 'wood', rooftops: 'tar', snow: 'snow', desert: 'concrete', jungle: 'stone', volcano: 'basalt', farm: 'dirt', candy: 'biscuit', docks: 'concrete', pirate: 'concrete', haunted: 'stone', funfair: 'wood', toxic: 'concrete', mine: 'stone', dino: 'dirt', moon: 'concrete', sky: 'stone',
   'dh-urban': 'stone', 'dh-mud': 'dirt', 'dh-rocky': 'stone', 'dh-shore': 'dirt',
-  'kayak-centre': 'water', 'kayak-creek': 'water', 'kayak-canyon': 'water', 'kayak-gorge': 'water',
 };
 
 /** Grinds: noise rung through these resonances, and the clank when you lock on. */
@@ -180,8 +172,6 @@ export class Sound {
   private fat = false;
   /** On a downhill bike: knobbly tyres, a ticking freewheel, a chain that slaps and shocks that soak up landings. */
   private bike = false;
-  /** In a kayak: paddle strokes, splashes and the river. */
-  private kayak = false;
   private tickT = 0;
   private rockT = 0;
   private cur: Trick | null = null;
@@ -363,12 +353,11 @@ export class Sound {
   }
 
   /** A new track: its surface, rails and ambience. */
-  setScene(b: Biome, snow: boolean, bound = snow, scooter = false, bike = false, kayak = false, skates = false) {
+  setScene(b: Biome, snow: boolean, bound = snow, scooter = false, bike = false, skates = false) {
     this.scooter = scooter;
     this.skates = skates;
     this.fat = scooter && b.id === 'farm';
     this.bike = bike;
-    this.kayak = kayak;
     this.ground = BIOME_GROUND[b.id] ?? 'concrete';
     this.railSound = b.id === 'jungle' || b.id === 'farm' || b.id === 'pirate' || b.id === 'dino' || b.id === 'sky' || (b.id.startsWith('dh-') && b.id !== 'dh-urban') ? 'log' : b.id === 'candy' ? 'sugar' : 'metal';
     this.snow = snow;
@@ -398,7 +387,7 @@ export class Sound {
   update(dt: number, r: Rider, active: boolean, ambLevel: number) {
     const ctx = this.ctx!;
     if (!this.ready()) return;
-    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow, this.bound, this.scooter, this.bike, this.kayak, this.skates); }
+    if (this.pendingScene) { const b = this.pendingScene; this.pendingScene = null; this.setScene(b, this.snow, this.bound, this.scooter, this.bike, this.skates); }
     const t = ctx.currentTime;
     const p = GROUNDS[this.ground];
     const speed = active ? r.speed : 0;
@@ -454,13 +443,6 @@ export class Sound {
     } else this.squelchT = 0.5;
     this.inMud = mud;
 
-    // Paddling along by itself when slow: a stroke every half second.
-    if (this.kayak) {
-      if (active && r.pushing && r.grounded) {
-        this.pushT += dt * 2;
-        if (this.pushT >= 1) { this.pushT -= 1; this.stroke(t, 0.6); }
-      } else this.pushT = 0.9;
-    } else
     // Pushing: a shoe scuffing the ground on each kick, as the skater's foot plants;
     // on inline skates, the wheels scraping out sideways on each stride.
     if (active && r.pushing && r.grounded && !this.bound) {
@@ -612,49 +594,8 @@ export class Sound {
     this.burst(t, { buf: this.pink, type: 'bandpass', f: 1400, q: 2, gain: 0.2, attack: 0.05, decay: 0.25, fEnd: 2600 });
   }
 
-  /** A paddle blade biting the water and pulling through: a wet chunk and a little swirl. */
-  private stroke(t: number, g: number) {
-    this.burst(t, { buf: this.brown, type: 'bandpass', f: 600, q: 1.1, gain: 0.55 * g, attack: 0.01, decay: 0.12, fEnd: 300 });
-    this.burst(t + 0.03, { buf: this.pink, type: 'bandpass', f: 2400, q: 1.2, gain: 0.12 * g, attack: 0.02, decay: 0.18, fEnd: 1200 });
-    for (let i = 0; i < 2; i++) {
-      const f = 500 + Math.random() * 500;
-      this.tone(t + 0.12 + Math.random() * 0.15, { f, fEnd: f * 1.7, gain: 0.03 * g, decay: 0.04, glide: 0.03 });
-    }
-  }
-
-  /** Bubbles going up: a run of little rising blips. */
-  private bubbles(t: number, n: number, gain: number) {
-    for (let i = 0; i < n; i++) {
-      const f = 300 + Math.random() * 600;
-      this.tone(t + Math.random() * 0.8, { f, fEnd: f * 2, gain, decay: 0.05, glide: 0.04 });
-    }
-  }
-
-  /** Over you go in a kayak: a splash, then underwater gurgling. */
-  capsize() {
-    if (!this.ready()) return;
-    const t = this.ctx!.currentTime;
-    this.burst(t, { type: 'lowpass', f: 3000, q: 0.7, gain: 0.7, attack: 0.01, decay: 0.4, fEnd: 400 });
-    this.burst(t + 0.15, { buf: this.brown, type: 'lowpass', f: 400, q: 0.7, gain: 0.5, attack: 0.1, decay: 1.2 });
-    this.bubbles(t + 0.2, 10, 0.05);
-  }
-
-  /** Rolled back up: water streaming off, and a cheery lift. */
-  rolled() {
-    if (!this.ready()) return;
-    const t = this.ctx!.currentTime;
-    this.burst(t, { buf: this.pink, type: 'bandpass', f: 1800, q: 0.6, gain: 0.35, attack: 0.02, decay: 0.5, fEnd: 900 });
-    this.tone(t + 0.05, { type: 'triangle', f: 520, fEnd: 880, gain: 0.07, attack: 0.02, decay: 0.2 });
-  }
-
   /** Tail snap: the board's tail hitting the ground, then the wheels leaving it. */
   private pop(t: number) {
-    if (this.kayak) {
-      // A boof: a big stroke slapping the water, and the bow lifting clear.
-      this.stroke(t, 1);
-      this.burst(t + 0.05, { type: 'lowpass', f: 1200, q: 0.7, gain: 0.3, decay: 0.15 });
-      return;
-    }
     if (this.bike) {
       // Both tyres leaving the ground, the chain rattling.
       const p = GROUNDS[this.ground];
@@ -697,11 +638,7 @@ export class Sound {
     this.duckUntil = t + 0.1 + s * 0.08;
     this.burst(t, { type: p.land.type, f: p.land.f, q: p.land.q, gain: p.land.gain * s * 0.8, decay: p.land.decay * (0.7 + s * 0.5) });
     this.tone(t, { f: 95, fEnd: 40, gain: p.land.thump * s * 0.7, decay: 0.15 + s * 0.1 });
-    if (this.kayak) {
-      // Splashdown: a wash of spray falling back, and drips after.
-      this.burst(t + 0.03, { buf: this.pink, type: 'highpass', f: 1500, q: 0.5, gain: 0.3 * s, attack: 0.04, decay: 0.5 + s * 0.4 });
-      this.bubbles(t + 0.15, Math.round(3 + s * 5), 0.03 * s);
-    } else if (this.bike) {
+    if (this.bike) {
       // Tyres thudding down and the suspension soaking it up: a deep squash and a hiss of oil,
       // then the chain slapping the stays.
       this.tone(t, { f: 70, fEnd: 38, gain: 0.5 * s, attack: 0.02, decay: 0.25 });
@@ -842,11 +779,6 @@ export class Sound {
   pump(good: boolean) {
     if (!this.ready()) return;
     const t = this.ctx!.currentTime;
-    if (this.kayak) {
-      this.stroke(t, 1);
-      if (good) this.tone(t + 0.03, { type: 'triangle', f: 520, fEnd: 780, gain: 0.05, attack: 0.02, decay: 0.12 });
-      return;
-    }
     // Knees driving the board down: a soft whump, with a lift on a good one.
     this.tone(t, { f: 70, fEnd: 50, gain: good ? 0.45 : 0.2, attack: 0.04, decay: 0.2 });
     if (good) this.tone(t + 0.03, { type: 'triangle', f: 520, fEnd: 780, gain: 0.06, attack: 0.02, decay: 0.12 });
@@ -855,12 +787,6 @@ export class Sound {
   bail() {
     if (!this.ready()) return;
     const t = this.ctx!.currentTime;
-    // Out of a kayak for a swim: splashing about.
-    if (this.kayak) {
-      for (let i = 0; i < 4; i++) this.stroke(t + i * 0.22 + Math.random() * 0.05, 0.7);
-      this.bubbles(t, 8, 0.04);
-      return;
-    }
     const p = GROUNDS[this.ground];
     // A thud, a slide along the ground, and the board clattering away.
     this.tone(t, { f: 90, fEnd: 35, gain: 0.8, decay: 0.25 });
@@ -1269,34 +1195,6 @@ export class Sound {
           const p = pan() * 0.6;
           for (let i = 0; i < 3; i++) this.tone(at + i * 0.7, { type: 'square', f: 440, fEnd: 330, gain: 0.006, attack: 0.05, decay: 0.55, glide: 0.5, lp: 1400, to: out, pan: p });
         });
-        break;
-      }
-      case 'kayak-centre': case 'kayak-creek': case 'kayak-canyon': case 'kayak-gorge': {
-        // The river itself, louder in the big water, swelling as the rapids come and go.
-        const big = b.id === 'kayak-canyon' ? 1.4 : b.id === 'kayak-gorge' ? 1.2 : 1;
-        bed(this.brown, { type: 'lowpass', f: 700, q: 0.6 }, 0.1 * big, 6, 0.35, 150);
-        bed(this.pink, { type: 'bandpass', f: 1800, q: 0.5 }, 0.03 * big, 4, 0.5, 400);
-        // Little splashes and gurgles round the rocks.
-        every(0.6, 2, (at) => { const f = 400 + Math.random() * 900; this.tone(at, { f, fEnd: f * 1.6, gain: 0.012, decay: 0.05, glide: 0.04, to: out, pan: pan() }); });
-        if (b.id === 'kayak-centre') {
-          // The course: pumps humming, a crowd by the slalom gates, a whistle now and then.
-          bed(this.pink, { type: 'bandpass', f: 120, q: 4 }, 0.03);
-          every(10, 22, (at) => this.burst(at, { buf: this.pink, type: 'bandpass', f: 1000, q: 0.6, gain: 0.04, attack: 0.3, decay: 1.4, to: out, pan: pan() }));
-          if (!night) every(4, 9, bird);
-        } else if (b.id === 'kayak-creek') {
-          // Woods: birdsong, a woodpecker.
-          if (!night) every(2, 6, bird);
-          every(14, 30, (at) => { const p = pan(); for (let i = 0; i < 12; i++) this.burst(at + i * 0.055, { type: 'bandpass', f: 1400, q: 3, gain: 0.025, decay: 0.03, to: out, pan: p }); });
-        } else if (b.id === 'kayak-canyon') {
-          // Echoing walls: a hawk calling high up, wind along the canyon.
-          bed(this.pink, { type: 'bandpass', f: 450, q: 0.5 }, 0.05, 9, 0.8, 200);
-          every(18, 36, (at) => this.tone(at, { type: 'triangle', f: 2400, fEnd: 1500, gain: 0.014, attack: 0.05, decay: 1.0, glide: 0.9, to: out, pan: pan() }));
-        } else {
-          // Jungle gorge: the roar of falls in the distance, parrots, frogs.
-          bed(this.brown, { type: 'bandpass', f: 250, q: 0.6 }, 0.08, 11, 0.4, 60);
-          every(5, 12, (at) => { const p = pan(); for (let i = 0; i < 3; i++) this.tone(at + i * 0.18, { type: 'sawtooth', f: 900, fEnd: 1300, gain: 0.008, attack: 0.02, decay: 0.12, glide: 0.1, lp: 2400, to: out, pan: p }); });
-          every(1.5, 4, (at) => this.tone(at, { type: 'square', f: 300 + Math.random() * 120, gain: 0.004, decay: 0.08, lp: 900, to: out, pan: pan() }));
-        }
         break;
       }
       case 'dh-urban': case 'dh-mud': case 'dh-rocky': case 'dh-shore': {

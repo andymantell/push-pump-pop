@@ -4,7 +4,6 @@ import { Skater } from './skater';
 import { ScooterRig } from './scooter';
 import { RollerRig } from './roller';
 import { MtbRig } from './mtb';
-import { KayakRig } from './kayak';
 import { Rider, Swipe } from './rider';
 import { TrackBuilder } from './track';
 import {
@@ -18,7 +17,7 @@ import { PATTERNS, DECK_ARTS, drawPattern, drawDeck } from './patterns';
 // does a little trick. Style choices show as pictures of the rider wearing them.
 
 /** Which ride the preview shows, or 'deck': the skateboard on its own, upside down to show its picture. */
-type View = 'skate' | 'scooter' | 'roller' | 'snow' | 'mountain' | 'deck' | 'mtb' | 'kayak' | 'playboat';
+type View = 'skate' | 'scooter' | 'roller' | 'snow' | 'mountain' | 'deck' | 'mtb';
 /** Where the camera looks: the whole rider, the head, or down at the board. */
 type Frame = 'body' | 'head' | 'legs' | 'feet' | 'board' | 'torso' | 'face';
 
@@ -119,8 +118,6 @@ const TABS: Tab[] = [
     c({ key: 'snowboardColour', label: 'Snowboard', values: COLOURS, colours: true, view: 'snow' }),
     c({ key: 'mountainboardColour', label: 'Mountain board', values: COLOURS, colours: true, view: 'mountain' }),
     c({ key: 'bikeColour', label: 'Downhill bike', values: COLOURS, colours: true, view: 'mtb' }),
-    c({ key: 'kayakColour', label: 'Kayak', values: COLOURS, colours: true, view: 'kayak' }),
-    c({ key: 'playboatColour', label: 'Playboat', values: COLOURS, colours: true, view: 'playboat' }),
   ] },
 ];
 
@@ -149,7 +146,6 @@ class Stage {
   readonly scooter: ScooterRig;
   readonly roller: RollerRig;
   readonly mtb: MtbRig;
-  readonly kayak: KayakRig;
   private rider: Rider;
   private track = new TrackBuilder(0).flat(3000).build(5, 2990);
   private pad: THREE.Mesh;
@@ -168,7 +164,6 @@ class Stage {
     this.scooter = new ScooterRig(cloneParts(assets.parts));
     this.roller = new RollerRig(cloneParts(assets.parts));
     this.mtb = new MtbRig(cloneParts(assets.parts));
-    this.kayak = new KayakRig(cloneParts(assets.parts));
     const padMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
     padMat.userData.outlineParameters = { visible: false };
     this.pad = new THREE.Mesh(new THREE.CircleGeometry(1.3, 48), padMat);
@@ -186,7 +181,7 @@ class Stage {
     this.scene.add(this.deckSpin);
     this.scene.add(this.turn);
     this.turn.add(this.offset, this.pad);
-    this.offset.add(this.skater.root, this.scooter.root, this.roller.root, this.mtb.root, this.kayak.root, this.skater.shadowMesh, this.scooter.shadowMesh, this.roller.shadowMesh, this.mtb.shadowMesh, this.kayak.shadowMesh);
+    this.offset.add(this.skater.root, this.scooter.root, this.roller.root, this.mtb.root, this.skater.shadowMesh, this.scooter.shadowMesh, this.roller.shadowMesh, this.mtb.shadowMesh);
     const noop = () => {};
     this.rider = new Rider(this.track, { trick: noop, land: noop, bail: noop, pump: noop, fall: noop } as never);
     this.setView('skate');
@@ -197,7 +192,6 @@ class Stage {
     this.scooter.wear(look, this.wardrobe);
     this.roller.wear(look, this.wardrobe);
     this.mtb.wear(look, this.wardrobe);
-    this.kayak.wear(look, this.wardrobe);
     dress(this.deck, ['deck__std'], this.wardrobe);
   }
 
@@ -212,18 +206,14 @@ class Stage {
     const skates = v === 'roller';
     this.roller.root.visible = skates;
     this.roller.shadowMesh.visible = skates;
-    this.skater.root.visible = !scoot && !bike && !skates && v !== 'kayak' && v !== 'playboat';
+    this.skater.root.visible = !scoot && !bike && !skates;
     this.skater.shadowMesh.visible = this.skater.root.visible;
     this.mtb.root.visible = bike;
     this.mtb.shadowMesh.visible = bike;
-    const boat = v === 'kayak' || v === 'playboat';
-    this.kayak.root.visible = boat;
-    this.kayak.shadowMesh.visible = false;
-    if (boat) this.kayak.setBoat(v === 'kayak' ? 'river' : 'play');
     this.scooter.root.visible = scoot;
     this.scooter.shadowMesh.visible = scoot;
     if (this.skater.root.visible) this.skater.setBoard(v === 'snow' ? 'snow' : v === 'mountain' ? 'mountain' : 'skate');
-    this.rider.opts = { friction: 1, maxSpeed: 17, snow: v === 'snow', mountain: v === 'mountain', scooter: scoot, roller: skates, mtb: bike, kayak: boat };
+    this.rider.opts = { friction: 1, maxSpeed: 17, snow: v === 'snow', mountain: v === 'mountain', scooter: scoot, roller: skates, mtb: bike };
     this.rider.respawn(20, 0);
   }
 
@@ -255,7 +245,7 @@ class Stage {
     if (r.grounded) r.v = 5.2;
     if (r.x > 2500) r.respawn(20, 0);
     r.update(dt);
-    const fig = this.view === 'scooter' ? this.scooter : this.view === 'roller' ? this.roller : this.view === 'mtb' ? this.mtb : this.view === 'kayak' || this.view === 'playboat' ? this.kayak : this.skater;
+    const fig = this.view === 'scooter' ? this.scooter : this.view === 'roller' ? this.roller : this.view === 'mtb' ? this.mtb : this.skater;
     fig.update(dt, r, (x) => this.track.height(x), (x) => this.track.slope(x));
     this.offset.position.x = -r.x;
   }

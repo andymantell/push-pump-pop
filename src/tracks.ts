@@ -25,29 +25,20 @@ import { DH_URBAN } from './levels/dh-urban';
 import { DH_MUD } from './levels/dh-mud';
 import { DH_ROCKY } from './levels/dh-rocky';
 import { DH_SHORE } from './levels/dh-shore';
-import { KAYAK_CENTRE, KAYAK_CENTRE_WAVE } from './levels/kayak-centre';
-import { KAYAK_CREEK, KAYAK_CREEK_WAVE } from './levels/kayak-creek';
-import { KAYAK_CANYON, KAYAK_CANYON_WAVE } from './levels/kayak-canyon';
-import { KAYAK_GORGE, KAYAK_GORGE_WAVE } from './levels/kayak-gorge';
 
 export { PIPE_TIME, STOP_AFTER_FINISH } from './levels/common';
 export type { TrackDef } from './levels/common';
 
-export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA, ...DINO, DINO_MEGA, ...MOON, MOON_PIPE, ...SKY, SKY_MEGA, ...DH_URBAN, ...DH_MUD, ...DH_ROCKY, ...DH_SHORE, ...KAYAK_CENTRE, KAYAK_CENTRE_WAVE, ...KAYAK_CREEK, KAYAK_CREEK_WAVE, ...KAYAK_CANYON, KAYAK_CANYON_WAVE, ...KAYAK_GORGE, KAYAK_GORGE_WAVE];
-
-/** The kayak's rivers: its own world, ridden by nothing else. */
-export const isRiver = (biome: string) => biome.startsWith('kayak-');
+export const TRACKS = [...PARK, ...BEACH, ...ROOFTOPS, ...SNOW, ...DESERT, ...JUNGLE, ...VOLCANO, ...FARM, ...CANDY, CANDY_PIPE, ...DOCKS, ...PIRATE, PIRATE_PIPE, ...HAUNTED, HAUNTED_PIPE, ...FUNFAIR, FUNFAIR_PIPE, ...TOXIC, TOXIC_MEGA, ...MINE, MINE_MEGA, ...DINO, DINO_MEGA, ...MOON, MOON_PIPE, ...SKY, SKY_MEGA, ...DH_URBAN, ...DH_MUD, ...DH_ROCKY, ...DH_SHORE];
 
 // Every track's scooter challenges. New tracks get their skateboard ones with scooter tricks
 // swapped in until they have their own (the scooter playtest lists them).
-for (const t of TRACKS) if (!isRiver(t.biome)) t.scooter = SCOOTER[t.id] ?? scooterFallback(t);
-export const SCOOTER_TODO = TRACKS.filter((t) => !SCOOTER[t.id] && !t.biome.startsWith('dh-') && !isRiver(t.biome)).map((t) => t.id);
+for (const t of TRACKS) t.scooter = SCOOTER[t.id] ?? scooterFallback(t);
+export const SCOOTER_TODO = TRACKS.filter((t) => !SCOOTER[t.id] && !t.biome.startsWith('dh-')).map((t) => t.id);
 // The inline skates' too.
-for (const t of TRACKS) if (!isRiver(t.biome) && !t.biome.startsWith('dh-')) t.roller = ROLLER[t.id] ?? rollerFallback(t);
-export const ROLLER_TODO = TRACKS.filter((t) => !ROLLER[t.id] && !t.biome.startsWith('dh-') && !isRiver(t.biome)).map((t) => t.id);
+for (const t of TRACKS) if (!t.biome.startsWith('dh-')) t.roller = ROLLER[t.id] ?? rollerFallback(t);
+export const ROLLER_TODO = TRACKS.filter((t) => !ROLLER[t.id] && !t.biome.startsWith('dh-')).map((t) => t.id);
 // And the downhill bike's, the same way.
 // The bike's own downhill courses are written for it: their challenges are the MTB ones.
-for (const t of TRACKS) if (!isRiver(t.biome)) t.mtb = MTB[t.id] ?? (t.biome.startsWith('dh-') ? { par: t.par ?? 0, challenges: t.challenges ?? [] } : mtbFallback(t));
-export const MTB_TODO = TRACKS.filter((t) => !MTB[t.id] && !t.biome.startsWith('dh-') && !isRiver(t.biome)).map((t) => t.id);
-// The rivers are written for the kayak: their challenges are its own.
-for (const t of TRACKS) if (isRiver(t.biome)) t.kayak = { par: t.par ?? 0, challenges: t.challenges ?? [] };
+for (const t of TRACKS) t.mtb = MTB[t.id] ?? (t.biome.startsWith('dh-') ? { par: t.par ?? 0, challenges: t.challenges ?? [] } : mtbFallback(t));
+export const MTB_TODO = TRACKS.filter((t) => !MTB[t.id] && !t.biome.startsWith('dh-')).map((t) => t.id);

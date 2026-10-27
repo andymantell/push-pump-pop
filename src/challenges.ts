@@ -6,7 +6,7 @@ import type { Track, Rail } from './track';
 // playtest alike, and says as soon as each challenge is done.
 
 /** A family of tricks a challenge can ask for instead of one name. 'any' is any air trick but an ollie. */
-export type Group = 'flip' | 'grab' | 'skates' | 'whip' | 'double' | 'hold' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'bike' | 'skinny' | 'kayak' | 'end' | 'any';
+export type Group = 'flip' | 'grab' | 'skates' | 'whip' | 'double' | 'hold' | 'spin' | 'bodyflip' | 'grind' | 'manual' | 'loop' | '180' | '360' | 'bike' | 'skinny' | 'any';
 export type Match = TrickName | Group;
 
 /**
@@ -64,19 +64,16 @@ const GROUPS: Record<Group, TrickName[]> = {
   // Downhill bike: the bike thrown about on the right; skinnies ridden along.
   bike: ['Whip', 'Tabletop', 'Turndown'],
   skinny: ['Skinny', 'Skinny Manual', 'Skinny Stoppie'],
-  // Kayak: the boat thrown about in the air off a wave or a drop, and end moves held in a hole.
-  kayak: ['Air Blunt', 'Pan-Am', 'Helix', 'McNasty'],
-  end: ['Cartwheel', 'Blunt'],
-  spin: ['FS 180', 'BS 180', 'FS 360', 'BS 360', 'Flatspin 180', 'Flatspin 360'],
-  '180': ['FS 180', 'BS 180', 'Flatspin 180'],
-  '360': ['FS 360', 'BS 360', 'Flatspin 360'],
-  bodyflip: ['Backflip', 'Frontflip', 'Back Loop', 'Front Loop'],
+  spin: ['FS 180', 'BS 180', 'FS 360', 'BS 360'],
+  '180': ['FS 180', 'BS 180'],
+  '360': ['FS 360', 'BS 360'],
+  bodyflip: ['Backflip', 'Frontflip'],
   grind: ['50-50', 'Boardslide', '5-0', 'Nosegrind', 'Feeble', 'Smith', 'Skinny', 'Skinny Manual', 'Skinny Stoppie', 'Frontside', 'Soul', 'Makio', 'Royale', 'Unity'],
-  manual: ['Manual', 'Nose Manual', 'Tail Press', 'Nose Press', 'Stoppie', 'Stern Stall', 'Bow Stall', 'Heel Roll', 'Toe Roll'],
+  manual: ['Manual', 'Nose Manual', 'Tail Press', 'Nose Press', 'Stoppie', 'Heel Roll', 'Toe Roll'],
   loop: ['Loop'],
   any: [],
 };
-GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.skates, ...GROUPS.whip, ...GROUPS.bike, ...GROUPS.kayak, ...GROUPS.end, ...GROUPS.hold, ...GROUPS.spin, ...GROUPS.bodyflip];
+GROUPS.any = [...GROUPS.flip, ...GROUPS.grab, ...GROUPS.skates, ...GROUPS.whip, ...GROUPS.bike, ...GROUPS.hold, ...GROUPS.spin, ...GROUPS.bodyflip];
 
 export function matches(m: Match, name: TrickName): boolean {
   return m in GROUPS ? GROUPS[m as Group].includes(name) : m === name;
@@ -91,13 +88,11 @@ const EASY_DOWNHILL = ['dh-urban', 'dh-mud'];
 
 /**
  * How many challenges must be done to complete a track: one in the first two biomes (by their
- * place in the game, `worldIndex`), then two. The downhill world and the rivers start again at one.
+ * place in the game, `worldIndex`), then two. The downhill world starts again at one.
  */
 export function requiredCount(worldIndex: number, kind: string = 'run', biome = ''): number {
   if (kind !== 'run') return 0;
   if (biome.startsWith('dh-')) return EASY_DOWNHILL.includes(biome) ? 1 : 2;
-  // The kayak's rivers start again at one too, for their first two biomes.
-  if (biome.startsWith('kayak-')) return biome === 'kayak-centre' || biome === 'kayak-creek' ? 1 : 2;
   return worldIndex <= 1 ? 1 : 2;
 }
 
@@ -109,7 +104,6 @@ export function icon(c: Challenge): string {
     if (members(m).every((n) => GROUPS.hold.includes(n))) return '&#129464;';
     if (members(m).every((n) => GROUPS.skates.includes(n))) return '&#128764;';
     if (members(m).every((n) => GROUPS.whip.includes(n) || GROUPS.bike.includes(n))) return '&#128260;';
-    if (members(m).every((n) => GROUPS.kayak.includes(n) || GROUPS.end.includes(n) || n === 'Splat' || n === 'Boof')) return '&#128758;';
     if (m === 'Bunny Hop') return '&#128756;';
     if (members(m).every((n) => GROUPS.spin.includes(n))) return '&#127744;';
     if (members(m).every((n) => GROUPS.bodyflip.includes(n))) return '&#129528;';
@@ -369,8 +363,7 @@ export class ChallengeRun {
       this.pending = [];
     }
     if (this.air) {
-      // In a half pipe, above the lip; on a standing wave or anywhere else, above the water below.
-      const h = this.pipe && !this.track.holes.some((w) => w.wave) ? r.y - this.track.maxY : r.y - this.track.height(r.x);
+      const h = this.pipe ? r.y - this.track.maxY : r.y - this.track.height(r.x);
       this.air.peak = Math.max(this.air.peak, h);
       // Caught a rail: that air was clean.
       if (r.grind) this.closeAir(true);

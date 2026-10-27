@@ -25,7 +25,7 @@ export type Bottom = (typeof BOTTOMS)[number];
 export const SHOES = ['low', 'high'] as const;
 export type Shoes = (typeof SHOES)[number];
 /** What's on the rider's head: their own hat, or the helmet a ride puts on them. */
-export type Headgear = 'own' | 'skate' | 'farm' | 'snow' | 'fullface' | 'water';
+export type Headgear = 'own' | 'skate' | 'farm' | 'snow' | 'fullface';
 
 export interface Look {
   skin: number;
@@ -76,9 +76,6 @@ export interface Look {
   mountainboardColour: number;
   /** The downhill bike's frame. */
   bikeColour: number;
-  /** The river kayak, and the playboat on standing waves. */
-  kayakColour: number;
-  playboatColour: number;
 }
 
 /** The kid as he was before the customiser: blue hoodie, jeans, red cap. */
@@ -93,7 +90,6 @@ export const DEFAULT_LOOK: Look = {
   scooterColour: 0x7a4fd8, barsColour: 0xc4cad4, scooterWheelColour: 0xffd23f,
   skateBootColour: 0x222428, skateCuffColour: 0xe8402a, skateFrameColour: 0x3c3e46, skateWheelColour: 0xffd640,
   snowboardColour: 0x2a7fd4, mountainboardColour: 0x3c9646, bikeColour: 0x18b6b0,
-  kayakColour: 0xf2552a, playboatColour: 0x2ab0e0,
 };
 
 // ---------------------------------------------------------------- palettes
@@ -307,7 +303,6 @@ const SLOTS: Record<string, (l: Look) => number> = {
   beanie_cuff: (l) => darker(l.helmetColour),
   fullface: (l) => l.helmetColour,
   fullface_stripe: (l) => darker(l.helmetColour, 0.6),
-  water_helmet: (l) => l.helmetColour,
   top: (l) => l.topColour,
   top_dark: (l) => l.trimColour,
   top_inner: (l) => (l.top === 'jacket' ? l.trimColour : 0xf4f4f0),
@@ -339,8 +334,6 @@ const SLOTS: Record<string, (l: Look) => number> = {
   mtb_deck: (l) => l.mountainboardColour,
   mtb_frame: (l) => l.bikeColour,
   mtb_frame_dark: (l) => darker(l.bikeColour),
-  kayak_hull: (l) => l.kayakColour,
-  playboat_hull: (l) => l.playboatColour,
 };
 
 const textures = new Map<string, THREE.CanvasTexture>();
@@ -404,6 +397,6 @@ export function randomLook(old: Look): Look {
     shoes: pick(SHOES), shoeColour: bright(), laceColour: bright(), soleColour: Math.random() < 0.6 ? 0xf4f4f0 : bright(),
     deck: pick(DECK_ARTS), deckColour: bright(), deckArtColour: bright(), wheelColour: bright(),
     scooterColour: bright(), barsColour: bright(), scooterWheelColour: bright(),
-    skateBootColour: Math.random() < 0.5 ? 0x222428 : bright(), skateCuffColour: bright(), skateFrameColour: bright(), skateWheelColour: bright(), snowboardColour: bright(), mountainboardColour: bright(), bikeColour: bright(), kayakColour: bright(), playboatColour: bright(),
+    skateBootColour: Math.random() < 0.5 ? 0x222428 : bright(), skateCuffColour: bright(), skateFrameColour: bright(), skateWheelColour: bright(), snowboardColour: bright(), mountainboardColour: bright(), bikeColour: bright(),
   };
 }

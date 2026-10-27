@@ -6,13 +6,12 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "npm run test:unit && npm run playtest:skate && npm run playtest:scooter && npm run playtest:roller && npm run playtest:mtb && npm run playtest:kayak",
+    "test": "npm run test:unit && npm run playtest:skate && npm run playtest:scooter && npm run playtest:roller && npm run playtest:mtb",
     "test:unit": "tsx scripts/quality-test.ts && tsx scripts/lives-test.ts && tsx scripts/look-test.ts && tsx scripts/progress-test.ts && tsx scripts/manual-test.ts",
     "playtest:skate": "tsx scripts/playtest.ts",
     "playtest:scooter": "tsx scripts/playtest.ts --ride=scooter",
     "playtest:roller": "tsx scripts/playtest.ts --ride=roller",
-    "playtest:mtb": "tsx scripts/playtest.ts --ride=mtb",
-    "playtest:kayak": "tsx scripts/playtest.ts --ride=kayak"
+    "playtest:mtb": "tsx scripts/playtest.ts --ride=mtb"
   },
   "repository": {
     "type": "git",

@@ -93,7 +93,7 @@ export function ride(trackId: string, pumpRate: number, ollie: boolean, seed: nu
       if (i < 0) loopFell = true;
     },
   });
-  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isMega ? 22 : biome.maxSpeed, mega: isMega, snow: def.biome === 'snow', mountain: def.biome === 'farm', mtb: def.biome.startsWith('dh-'), kayak: def.biome.startsWith('kayak-'), gravity: biome.gravity };
+  r.opts = { friction: isMega ? 0.6 : biome.friction, maxSpeed: isMega ? 22 : biome.maxSpeed, mega: isMega, snow: def.biome === 'snow', mountain: def.biome === 'farm', mtb: def.biome.startsWith('dh-'), gravity: biome.gravity };
   if (isMega) r.perch();
   const queue: { at: number; act: 'pump' | 'up' }[] = [];
   let lastPump = -1, lastLip = -1;
@@ -110,8 +110,7 @@ export function ride(trackId: string, pumpRate: number, ollie: boolean, seed: nu
       if (queue[i].at > t) continue;
       const { act } = queue.splice(i, 1)[0];
       if (act === 'pump') r.pump();
-      // (A kayak boofs with a stroke at the lip: it has no swipe to pop with.)
-      else { if (r.opts.kayak) r.pump(); else r.swipe('up'); ollied = true; }
+      else { r.swipe('up'); ollied = true; }
     }
     if (r.perched && !queue.length) press('pump');
     if (r.grounded && !r.falling && !r.perched && r.dropT < 0) {
