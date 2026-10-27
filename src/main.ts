@@ -28,6 +28,7 @@ import { Sound } from './audio';
 import { Quality, Setting, SETTINGS } from './quality';
 import { Wardrobe, loadLook, setColours } from './look';
 import { Customiser } from './customiser';
+import { Gamepad } from './gamepad';
 
 const $ = (id: string) => document.getElementById(id)!;
 const progress = new Progress(TRACKS, BIOME_ORDER, (() => { try { return localStorage; } catch { return null; } })(), WORLDS[MTB_WORLD]?.slice(0, 1) ?? []);
@@ -413,12 +414,15 @@ input.onGrab = (d) => { if (canRide()) rider.grabSwipe(d); };
 input.onRelease = () => { if (canRide()) rider.release(); };
 input.onSpin = (d) => { if (canRide()) rider.spinSwipe(d); };
 input.onSpinMore = () => { if (canRide()) rider.spinMore(); };
-// Lean from the keyboard or from tilting the device, whichever is tipped.
-let keyLean: Lean = 0, tiltLean: Lean = 0;
-const applyLean = () => rider.setLean(canRide() ? keyLean || tiltLean : 0);
+// Lean from the keyboard, a controller's left stick or tilting the device, whichever is tipped.
+let keyLean: Lean = 0, tiltLean: Lean = 0, padLean: Lean = 0;
+const applyLean = () => rider.setLean(canRide() ? keyLean || padLean || tiltLean : 0);
 input.onLean = (l) => { keyLean = l; applyLean(); };
 const tilt = new Tilt();
 tilt.onLean = (l) => { tiltLean = l; applyLean(); };
+const pad = new Gamepad(input);
+pad.onLean = (l) => { padLean = l; applyLean(); };
+pad.riding = () => state === 'playing';
 
 const panels = ['title', 'select', 'card', 'results', 'guide', 'move', 'pause'];
 function show(panel: string | null) {
@@ -446,7 +450,7 @@ function start(d: TrackDef = def) {
   // However the device is being held right now counts as level.
   tilt.calibrate();
   // If the iPad has lost motion access, tilt tricks silently stop working: say so.
-  window.setTimeout(() => { if (state === 'playing' && tilt.missing) toast('Tilt is off. Tap to turn it back on, then tap <b>Allow</b>'); }, 2000);
+  window.setTimeout(() => { if (state === 'playing' && tilt.missing && !pad.connected) toast('Tilt is off. Tap to turn it back on, then tap <b>Allow</b>'); }, 2000);
   $('trackname').textContent = d.name;
   $('grabzone').textContent = ride === 'skate' || ride === 'roller' ? 'GRAB' : 'HOLD';
   $('flipzone').textContent = ride === 'scooter' ? 'WHIP' : ride === 'mtb' || ride === 'roller' ? 'TRICK' : 'FLIP';
@@ -682,6 +686,10 @@ window.addEventListener('keydown', (e) => {
   else if ((e.code === 'Enter' || e.code === 'Space') && state === 'finished') { e.preventDefault(); start(def); }
   else if ((e.code === 'Enter' || e.code === 'Space') && !$('card').classList.contains('hidden') && cardDef) { e.preventDefault(); start(cardDef); }
 });
+
+// Controller: Menu pauses and resumes like Escape, View watches the replay like R.
+pad.onMenu = () => { if (state === 'playing') pause(); else if (state === 'paused') backToRiding(); };
+pad.onView = () => { if (state === 'playing' && chipClip || state === 'finished') { replays.flush(); watchReplay(chipClip ?? replays.clips[0]); } };
 
 watchForUpdates(() => state === 'playing' || state === 'paused' || replayFrom === 'playing', () => openSelect());
 registerOffline();
