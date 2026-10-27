@@ -451,7 +451,7 @@ function start(d: TrackDef = def) {
   // A kayak is steered, not tricked: tap, tilt, and drag sideways to turn.
   input.kayak = ride === 'kayak';
   if (ride === 'kayak') { $('grabzone').textContent = ''; $('flipzone').textContent = ''; }
-  $('spinzone').textContent = ride === 'kayak' ? 'DRAG TO CARTWHEEL' : 'SPIN';
+  $('spinzone').textContent = ride === 'kayak' ? 'DRAG TO SPIN' : 'SPIN';
   show(null);
   state = 'playing';
 }

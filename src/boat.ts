@@ -6,16 +6,18 @@ import type { TrickName } from './rider';
 //
 // - Tilt the device and the bow (or stern) lifts to match: the angle follows the tilt all the
 //   time, a little tilt a little lift, on the water and in the air.
-// - Drag a thumb sideways and the boat wheels end over end round the paddler, on its edge, the
-//   way a cartwheel goes: half a turn swaps the ends. A hole, a wave or the air lets it go right
-//   round; flat water only lets an end dip and come back.
+// - Drag a thumb sideways and the boat spins round the paddler, with the paddler's body as the
+//   axle (head to bum): half a turn swaps the ends. Level, that's a flat spin; with the bow
+//   tilted up, the ends swing up and over, the way a blunt or a cartwheel goes.
 //
-// What it's called:
-// - In a hole or on a wave: one end swapped is a blunt; two or more, a cartwheel.
-// - In the air: half a wheel is an air blunt (a Pan-Am with the bow thrown right up), a whole
-//   one a loop (back or front, by which way it went), one and a half a McNasty.
+// What it's called (on flat water a spin just turns the boat, and scores nothing):
+// - In a hole or on a wave: tilted up, one end swapped is a blunt, two or more a cartwheel;
+//   level, a flatspin (180 or 360).
+// - In the air: half a turn is an air blunt (a Pan-Am with the bow tilted up), a whole one a
+//   helix, one and a half or more a McNasty.
 //
-// Pitch (the tilt's lift) and wheel are both + bow up, in radians; the wheel isn't wrapped.
+// Pitch (the tilt's lift) is + bow up; the spin (`wheel`) is round the paddler's spine. Both in
+// radians; the spin isn't wrapped.
 
 export interface BoatMove { name: TrickName; points: number; duration: number }
 
@@ -29,34 +31,32 @@ const near = (a: number, unit: number) => Math.round(a / unit) * unit;
 const MAX_PITCH = 1.35;
 /** How quickly the boat follows the tilt (per second): quick, but never a snap. */
 const PITCH_FOLLOW = 7;
-/** Wheeling, in radians a second: quick in a hole or the air; on flat water just a dip. */
-const WHEEL_RATE = 20;
-/** On flat water a drag only dips an end this far before the water pushes it back. */
-const FLAT_DIP = 0.5;
-/** How fast the boat settles once your thumb's off it. */
+/** Spinning, in radians a second. */
+const WHEEL_RATE = 26;
+/** Tilted up at least this far during a spin, it's a blunt or a cartwheel rather than a flatspin. */
+const END_LIFT = 0.6;
+/** How fast the boat settles once your thumb's off it (half as fast on flat water). */
 const SETTLE = 6;
-/** Landing this far off level (lift or wheel) still works. */
+/** Landing this far off level (lift) or off the line of the river (spin) still works. */
 const LAND_PITCH = 1.0, LAND_WHEEL = 0.7;
 
-const POINTS = { cartwheelEnd: 300, blunt: 700, airBlunt: 800, panam: 1100, loop: 1200, mcnasty: 1800 };
+const POINTS = { cartwheelEnd: 300, blunt: 700, flatspin180: 400, flatspin360: 900, airBlunt: 800, panam: 1100, helix: 1400, mcnasty: 1800 };
 
 export class Boat {
   /** The bow lifted (or the stern, negative) by the tilt. */
   pitch = 0;
-  /** End over end round the paddler, from your thumb. A multiple of π is flat on the water. */
+  /** Spun round the paddler's spine by your thumb. A multiple of π points along the river. */
   wheel = 0;
-  /** Turned round on the surface (only when it comes off a move facing backwards onto flat water). */
-  yaw = 0;
   /** A thumb is down and dragging the boat round. */
   dragging = false;
-  /** Wheel asked for by the drag that the boat hasn't made yet. */
+  /** Spin asked for by the drag that the boat hasn't made yet. */
   private wheelLeft = 0;
-  /** A move on the water in progress: where it started, and how far it's gone. */
+  /** A move on the water in progress: where it started, the most lift, how long. */
   private move: { t: number; wheel0: number; maxP: number } | null = null;
-  /** The air in progress: the wheel at take-off, the most lift, how long. */
+  /** The air in progress: the spin at take-off, the most lift, how long. */
   private air: { wheel0: number; maxP: number; t: number } | null = null;
 
-  /** Drag the boat round by this much (radians, + bow up and over). */
+  /** Drag the boat round by this much (radians). */
   turn(d: number) {
     this.wheelLeft += d;
     this.dragging = true;
@@ -74,57 +74,39 @@ export class Boat {
   /** The boat's thrown about out of your hands (capsized, swimming): straighten it out. */
   reset() {
     this.wheel = near(this.wheel, TAU);
-    this.yaw = 0;
     this.wheelLeft = 0;
     this.move = null;
     this.air = null;
   }
 
-  /** Tipped, wheeling or being dragged round: the boat is doing something. */
+  /** Tipped, spinning or being dragged round: the boat is doing something. */
   get busy(): boolean {
     return Math.abs(this.pitch) > 0.35 || Math.abs(this.wheel - near(this.wheel, Math.PI)) > 0.35 || this.dragging || Math.abs(this.wheelLeft) > 0.05;
   }
 
-  /**
-   * How far the boat is rolled about its length for the wheel. It wheels on its edge, so past
-   * vertical it comes down the right way up, pointing the other way, with the paddler on top.
-   */
-  get wheelRoll(): number { return this.wheel; }
-
   /** Step the boat; `tilt` is how far the device is tipped, -1 to 1. Returns any move finished on the water. */
   step(dt: number, tilt: number, water: Water): BoatMove[] {
     // The lift follows the tilt.
-    const k = 1 - Math.exp(-dt * PITCH_FOLLOW);
-    this.pitch += (tilt * MAX_PITCH - this.pitch) * k;
+    this.pitch += (tilt * MAX_PITCH - this.pitch) * (1 - Math.exp(-dt * PITCH_FOLLOW));
 
-    // The wheel follows the thumb.
-    const home = water === 'flat' ? near(this.wheel, TAU) : near(this.wheel, Math.PI);
-    if (water === 'flat') {
-      // Flat water won't let it go over: an end dips and the water pushes it back.
-      this.wheelLeft = Math.max(home - FLAT_DIP - this.wheel, Math.min(home + FLAT_DIP - this.wheel, this.wheelLeft));
-    }
+    // The spin follows the thumb. Let go and it settles pointing along the river: on flat water
+    // the current swings it back round to face downstream.
     const d = Math.max(-WHEEL_RATE * dt, Math.min(WHEEL_RATE * dt, this.wheelLeft));
     this.wheel += d;
     this.wheelLeft -= d;
-    if (water === 'flat') this.wheelLeft *= Math.exp(-dt * SETTLE);
     if (!this.dragging && Math.abs(this.wheelLeft) < 0.02) {
       this.wheelLeft = 0;
-      this.wheel += (home - this.wheel) * (1 - Math.exp(-dt * SETTLE));
+      const home = water === 'flat' ? near(this.wheel, TAU) : near(this.wheel, Math.PI);
+      this.wheel += (home - this.wheel) * (1 - Math.exp(-dt * (water === 'flat' ? SETTLE / 2 : SETTLE)));
     }
-    // Back onto flat water facing upstream (a move left it backwards): the paddler spins it round.
-    if (water === 'flat' && !this.dragging && Math.abs(this.wheel - near(this.wheel, TAU)) > 2.5) {
-      this.wheel -= Math.PI * Math.sign(this.wheel - near(this.wheel, TAU));
-      this.yaw += Math.PI;
-    }
-    this.yaw += (near(this.yaw, TAU) - this.yaw) * (1 - Math.exp(-dt * SETTLE));
 
     if (water === 'air') {
       const a = this.air;
       if (a) { a.t += dt; a.maxP = Math.max(a.maxP, Math.abs(this.pitch)); }
       return [];
     }
-    if (water === 'flat') return this.endMove();
-    // In a hole or on a wave: a move starts once the boat wheels, and ends when it's settled.
+    if (water === 'flat') { this.move = null; return []; }
+    // In a hole or on a wave: a move starts once the boat spins, and ends when it's settled.
     const going = this.dragging || Math.abs(this.wheelLeft) > 0.05 || Math.abs(this.wheel - near(this.wheel, Math.PI)) > 0.35;
     if (!this.move && going) this.move = { t: 0, wheel0: near(this.wheel, Math.PI), maxP: 0 };
     const m = this.move;
@@ -140,14 +122,15 @@ export class Boat {
     this.move = null;
     if (!m) return [];
     const ends = Math.round(Math.abs(near(this.wheel, Math.PI) - m.wheel0) / Math.PI);
+    if (!ends) return [];
+    if (m.maxP < END_LIFT) return [ends >= 2 ? { name: 'Flatspin 360', points: POINTS.flatspin360, duration: m.t } : { name: 'Flatspin 180', points: POINTS.flatspin180, duration: m.t }];
     if (ends >= 2) return [{ name: 'Cartwheel', points: POINTS.cartwheelEnd * ends, duration: m.t }];
-    if (ends === 1) return [{ name: 'Blunt', points: POINTS.blunt, duration: m.t }];
-    return [];
+    return [{ name: 'Blunt', points: POINTS.blunt, duration: m.t }];
   }
 
   /**
-   * Back on the water. Stood up on an end, or landing on its edge mid-wheel: over you go (ok
-   * false). Otherwise the boat lands flat and you get whatever the air was.
+   * Back on the water. Stood up on an end, or landing across the current mid-spin: over you go
+   * (ok false). Otherwise the boat lands and you get whatever the air was.
    */
   land(): { ok: boolean; moves: BoatMove[] } {
     const a = this.air;
@@ -158,9 +141,9 @@ export class Boat {
     this.wheel = a.wheel0 + halfs * Math.PI;
     this.wheelLeft = 0;
     const H = Math.abs(halfs), t = a.t;
-    if (H >= 3) return { ok: true, moves: [{ name: 'McNasty', points: POINTS.mcnasty + (H - 3) * POINTS.loop / 2, duration: t }] };
-    if (H === 2) return { ok: true, moves: [{ name: halfs > 0 ? 'Back Loop' : 'Front Loop', points: POINTS.loop, duration: t }] };
-    if (H === 1) return { ok: true, moves: [a.maxP >= 0.9 ? { name: 'Pan-Am', points: POINTS.panam, duration: t } : { name: 'Air Blunt', points: POINTS.airBlunt, duration: t }] };
+    if (H >= 3) return { ok: true, moves: [{ name: 'McNasty', points: POINTS.mcnasty + (H - 3) * POINTS.helix / 2, duration: t }] };
+    if (H === 2) return { ok: true, moves: [{ name: 'Helix', points: POINTS.helix, duration: t }] };
+    if (H === 1) return { ok: true, moves: [a.maxP >= END_LIFT ? { name: 'Pan-Am', points: POINTS.panam, duration: t } : { name: 'Air Blunt', points: POINTS.airBlunt, duration: t }] };
     return { ok: true, moves: [] };
   }
 }

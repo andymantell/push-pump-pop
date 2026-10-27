@@ -6,7 +6,7 @@ import { TrackDef, layout, wave } from './common';
 
 export const KAYAK_GORGE: TrackDef[] = [
   {
-    id: 'kayak-gorge-1', biome: 'kayak-gorge', name: 'Jungle Put In', difficulty: 3, par: 5500,
+    id: 'kayak-gorge-1', biome: 'kayak-gorge', name: 'Jungle Put In', difficulty: 3, par: 5000,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Boof 3 falls', kind: 'trick', match: 'Boof', count: 3 },
@@ -52,7 +52,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.2 seconds', kind: 'air', seconds: 1.2 },
-      { text: 'Loop off a fall', kind: 'trick', match: 'bodyflip' },
+      { text: 'Helix off a fall', kind: 'trick', match: 'Helix' },
     ],
     // One huge waterfall in front of the big two-tier fall.
     build: layout(38, 5, (b) => {
@@ -62,7 +62,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-5', biome: 'kayak-gorge', name: 'Temple Falls', difficulty: 4, par: 12000,
+    id: 'kayak-gorge-5', biome: 'kayak-gorge', name: 'Temple Falls', difficulty: 4, par: 11500,
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Land a Pan-Am', kind: 'trick', match: 'Pan-Am' },
@@ -104,7 +104,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-gorge-8', biome: 'kayak-gorge', name: 'Golden Plunge', difficulty: 5, par: 11500,
+    id: 'kayak-gorge-8', biome: 'kayak-gorge', name: 'Golden Plunge', difficulty: 5, par: 9500,
     challenges: [
       { text: 'Air for 1.3 seconds', kind: 'air', seconds: 1.3 },
       { text: 'Boof the big drop', kind: 'trick', match: 'Boof', from: 'bigdrop' },
@@ -122,7 +122,7 @@ export const KAYAK_GORGE: TrackDef[] = [
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Do 3 end moves', kind: 'trick', match: 'end', count: 3 },
-      { text: 'Loop off a fall', kind: 'trick', match: 'bodyflip' },
+      { text: 'Helix off a fall', kind: 'trick', match: 'Helix' },
     ],
     // Falls, chutes and holes, one after another, as the light goes.
     build: layout(44, 5, (b) => {

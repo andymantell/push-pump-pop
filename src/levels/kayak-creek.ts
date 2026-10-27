@@ -32,7 +32,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     build: layout(34, 6, (b) => {
       b.flat(8).descend(10, 0.06).whoops(5, 11, 0.75, 0.06).descend(6, 0.04);
       b.flat(3).dropoff(1.2, 20).descend(6, 0.05).whoops(5, 11, 0.8, 0.06).descend(6, 0.04).splat().descend(8, 0.05);
-      b.sign('DRAG HALF ROUND IN THE AIR: AIR BLUNT').flat(3).dropoff(1.4, 22).descend(8, 0.05).whoops(4, 11, 0.8, 0.06).descend(14, 0.04);
+      b.sign('SPIN HALF ROUND IN THE AIR: AIR BLUNT').flat(3).dropoff(1.4, 22).descend(8, 0.05).whoops(4, 11, 0.8, 0.06).descend(14, 0.04);
     }),
   },
   {
@@ -83,7 +83,7 @@ export const KAYAK_CREEK: TrackDef[] = [
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Boof 3 ledges', kind: 'trick', match: 'Boof', from: 'dropoff', count: 3 },
-      { text: 'Land a loop', kind: 'trick', match: 'bodyflip' },
+      { text: 'Land a Helix', kind: 'trick', match: 'Helix' },
     ],
     // A staircase of ledges in the fog, each with a sticky hole at its foot unless you boof it.
     build: layout(40, 6, (b) => {
@@ -99,13 +99,13 @@ export const KAYAK_CREEK: TrackDef[] = [
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.2 seconds', kind: 'air', seconds: 1.2 },
-      { text: 'Loop off a ledge', kind: 'trick', match: 'bodyflip' },
+      { text: 'Helix off a ledge', kind: 'trick', match: 'Helix' },
     ],
     // Long white slides that fire you off big ledges.
     build: layout(42, 6, (b) => {
       b.flat(8).descend(10, 0.06).whoops(3, 11, 0.8, 0.06).descend(14, 0.12).descend(4, 0.04);
       b.flat(3).dropoff(1.6, 24).descend(4, 0.04).hole().descend(8, 0.05).splat().descend(6, 0.05);
-      b.sign('SLIDE, BOOF, DRAG TO LOOP').descend(16, 0.13).descend(4, 0.04).flat(4).dropoff(2.3, 30).descend(8, 0.04);
+      b.sign('SLIDE, BOOF, SPIN A HELIX').descend(16, 0.13).descend(4, 0.04).flat(4).dropoff(2.3, 30).descend(8, 0.04);
       b.whoops(3, 11, 0.8, 0.06).descend(4, 0.04).hole(9, 0.4, true).descend(16, 0.04);
     }),
   },
@@ -151,7 +151,7 @@ export const KAYAK_CREEK: TrackDef[] = [
       b.flat(8).sign('THE BIG DROP!').descend(10, 0.06).whoops(4, 11, 0.85, 0.06).descend(4, 0.04);
       b.flat(3).dropoff(1.4, 22).descend(3, 0.03).hole(9, 0.4, true).descend(8, 0.05).splat().descend(6, 0.05);
       b.descend(14, 0.13).descend(4, 0.04).flat(3).dropoff(1.7, 24).descend(4, 0.04).hole().descend(8, 0.05);
-      b.whoops(3, 11, 0.85, 0.06).descend(4, 0.04).sign('BOOF AND LOOP IT').flat(5).spot('bigdrop').dropoff(3.0, 36).descend(8, 0.04);
+      b.whoops(3, 11, 0.85, 0.06).descend(4, 0.04).sign('BOOF AND SPIN IT').flat(5).spot('bigdrop').dropoff(3.0, 36).descend(8, 0.04);
       b.whoops(3, 11, 0.85, 0.06).descend(4, 0.04).splat().descend(16, 0.04);
     }),
   },

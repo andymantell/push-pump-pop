@@ -49,7 +49,7 @@ const GRINDS = new Set<string>(members('grind'));
 const SKATES_ONLY = new Set<string>([...members('skates'), 'Mute', 'Japan', 'Safety', 'Stalefish']);
 /** The tricks in a group this ride can do. */
 /** The moves a kayak can make, for picking from a goal's group (a loop goal also names a backflip). */
-const BOAT_MOVES = new Set<string>(['Boof', 'Air Blunt', 'Pan-Am', 'Back Loop', 'Front Loop', 'McNasty', 'Cartwheel', 'Blunt', 'Splat', 'Bow Stall', 'Stern Stall']);
+const BOAT_MOVES = new Set<string>(['Boof', 'Air Blunt', 'Pan-Am', 'Helix', 'McNasty', 'Cartwheel', 'Blunt', 'Flatspin 180', 'Flatspin 360', 'Splat', 'Bow Stall', 'Stern Stall']);
 const doable = (names: TrickName[]) => (BOAT ? names.filter((n) => BOAT_MOVES.has(n)) : names.filter((n) => !BOAT_MOVES.has(n) && (ROLL || !SKATES_ONLY.has(n))));
 /** The swipe on a rail that changes to each grind. */
 const STYLE_SWIPE: Record<string, Swipe | string> = SCOOT ? { Boardslide: 'left', Feeble: 'right', Smith: 'down' }
@@ -229,11 +229,10 @@ function trickActs(name: TrickName, hold: number): [string, number][] {
     case 'Pan-Am': return [['tilt:0.8', 0], ['turn:-3.14', 0.05], ['tilt:0', 0.3]];
     case 'McNasty': return [['turn:-9.42', 0]];
     // A kayak pitches only while tipped: hold the tilt past halfway round, and it carries on over.
-    case 'Back Loop': return [['turn:-6.28', 0]];
-    case 'Front Loop': return [['turn:6.28', 0]];
+    case 'Helix': return [['turn:-6.28', 0]];
     // (A 'spin' goal on another ride can pick a kayak's flatspin: there it's a spin swipe.)
-    case 'Flatspin 180': return [['spin:right', 0]];
-    case 'Flatspin 360': return [['spin360:right', 0]];
+    case 'Flatspin 180': return BOAT ? [['turn:3.14', 0]] : [['spin:right', 0]];
+    case 'Flatspin 360': return BOAT ? [['turn:6.28', 0]] : [['spin360:right', 0]];
     // Inline skates: airs on the right, grabs held on the left.
     case 'Flatspin': return [['flick:left', 0]];
     case 'Misty Flip': return [['flick:right', 0]];
@@ -258,10 +257,10 @@ function trickTime(name: TrickName, hold: number): number {
   if (name === 'Tailwhip' || name === 'Heelwhip') return 0.45;
   if (name.endsWith('360')) return 0.75;
   if (name === 'Backflip' || name === 'Frontflip') return 0.72;
-  if (name === 'Back Loop' || name === 'Front Loop') return 0.45;
-  if (name === 'Air Blunt') return 0.3;
-  if (name === 'Pan-Am') return 0.42;
-  if (name === 'McNasty') return 0.6;
+  if (name === 'Helix') return 0.4;
+  if (name === 'Air Blunt') return 0.28;
+  if (name === 'Pan-Am') return 0.4;
+  if (name === 'McNasty') return 0.55;
   if (name === 'Ollie') return 0;
   if (name === '360 Flip' || name === 'Hardflip') return 0.55;
   return 0.42;
@@ -374,6 +373,8 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
   /** The end move a goal asks for, if any. */
   const endGoal = G && 'match' in G && typeof G.match === 'string' && members(G.match as TrickName).every((n) => members('end').includes(n)) ? members(G.match as TrickName) : null;
   const splatGoal = !!G && 'match' in G && G.match === 'Splat';
+  /** A flatspin a goal asks for in a hole. */
+  const spinGoal = BOAT && !!G && 'match' in G && G.match === 'spin';
   /** A kayak's moves on the water, as a player watching the river ahead would make them. */
   function boatMoves(lead: number) {
     // Upside down: three quick strokes to roll back up.
@@ -393,19 +394,22 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     // stroke to rock up the face.)
     const crest = onWave ? track.holes.find((h) => h.wave)!.wave!.crest : 0;
     const climbing = r.v < -2.5 && r.x - crest > 1 && r.x - crest + r.v * REACTION < 2;
-    if (onWave && Math.abs(r.boat.wheel - Math.round(r.boat.wheel / Math.PI) * Math.PI) < 0.3 && !r.boat.dragging && t - lipPlanned > (climbing ? 1.2 : 3) && !(endGoal && t - endAt > 2)) { press('pump'); lipPlanned = t; }
+    if (onWave && Math.abs(r.boat.wheel - Math.round(r.boat.wheel / Math.PI) * Math.PI) < 0.3 && !r.boat.dragging && t - lipPlanned > (climbing ? 1.0 : 3) && !(endGoal && t - endAt > 2)) { press('pump'); lipPlanned = t; }
     // On a standing wave you're always in the hole: throw one every so often, in the trough.
     const surfing = isPipe && t - endAt > (endGoal ? 2.5 : 8) && Math.abs(track.slope(r.x)) < (onWave ? 0.5 : 0.3) && track.holeAt(r.x);
     const hole = surfing || track.holes.find((h) => h.x0 > r.x && h.x0 - r.x < lead + 0.6);
     if (surfing) { holePlanned = null; endAt = t; }
-    if (hole && hole !== holePlanned && !pumpOnly && (endGoal || (surfing && rand() < 0.8) || (!careful && rand() < 0.6))) {
+    if (hole && hole !== holePlanned && !pumpOnly && (endGoal || spinGoal || (surfing && rand() < 0.8) || (!careful && rand() < 0.6))) {
       holePlanned = hole;
-      // In the hole: wheel it end over end, once round for a blunt, on and on for a cartwheel.
-      const name = endGoal ? pickFrom(endGoal) : pickFrom(['Cartwheel', 'Blunt'] as TrickName[]);
+      // In the hole: spin it level for a flatspin; tilt it up and spin it half round for a
+      // blunt, on and on for a cartwheel.
+      const name = endGoal ? pickFrom(endGoal) : spinGoal ? 'Flatspin 180' : pickFrom(['Cartwheel', 'Blunt', 'Flatspin 180'] as TrickName[]);
       const minTime = G && 'minTime' in G ? G.minTime ?? 0 : 0;
       const s = rand() < 0.5 ? 1 : -1;
-      const ends = name === 'Cartwheel' ? Math.max(2, Math.ceil((minTime + 0.15) * 20 / Math.PI)) : 1;
-      press(`turn:${(s * ends * Math.PI).toFixed(3)}`, 0.12);
+      const ends = name === 'Cartwheel' ? Math.max(2, Math.ceil((minTime + 0.15) * 26 / Math.PI)) : 1;
+      const d = 0.12;
+      if (name === 'Flatspin 180') press(`turn:${(s * Math.PI).toFixed(3)}`, d);
+      else { press('tilt:0.8', d); press(`turn:${(s * ends * Math.PI).toFixed(3)}`, d + 0.12); press('tilt:0', d + 0.12 + ends * Math.PI / 26 + 0.2); }
     }
   }
 
@@ -433,7 +437,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
     const g = G!;
     if (careful) return true;
     if (!airNames) {
-      const pool = BOAT ? (['Air Blunt', 'Pan-Am', 'Back Loop', 'Front Loop'] as TrickName[])
+      const pool = BOAT ? (['Air Blunt', 'Pan-Am', 'Helix'] as TrickName[])
         : BIKE ? (['Whip', 'Tabletop', 'Turndown', 'Superman', 'No Footer', 'Can Can', 'No Hander', 'FS 180', 'BS 180'] as TrickName[])
         : SCOOT ? (['Tailwhip', 'Barspin', 'Heelwhip', 'Superman', 'No Footer', 'Can Can', 'X-Up', 'FS 180', 'BS 180'] as TrickName[])
         // Off-road skates on the farm: grabs only.
@@ -634,7 +638,7 @@ function play(trackId: string, seed: number, pumpOnly = false, legs = false, goa
         } else if (BOAT) {
           // Kayak: steer the boat through whichever move there's air for.
           const room = flight().time - REACTION - JITTER;
-          const fits = (['Air Blunt', 'Pan-Am', 'Back Loop', 'Front Loop', 'McNasty'] as TrickName[]).filter((n) => trickTime(n, 0.3) < room);
+          const fits = (['Air Blunt', 'Pan-Am', 'Helix', 'McNasty'] as TrickName[]).filter((n) => trickTime(n, 0.3) < room);
           if (fits.length && pick < 0.8) for (const [a, d] of trickActs(pickFrom(fits), 0.3)) press(a, d);
         } else if (r.vy > 5 && pick < 0.5) {
           // A big air: grab with the other thumb, and let go well before landing.
@@ -866,7 +870,7 @@ if (!only && (shards === 1 || tricksDir)) {
   console.log(`\ntricks landed: ${[...seen].map(([n, c]) => `${n} ${c}`).join(', ')}`);
   const ROLLER_TRICKS = ['Heel Roll', 'Toe Roll', 'Tail Press', 'Nose Press', 'Frontside', 'Soul', 'Royale', 'Makio', 'Unity', 'Flatspin', 'Misty Flip', 'Rocket Air', 'Mute', 'Japan', 'Safety', 'Stalefish'];
   const all = BOAT ? [] : [...(ROLL ? [] : ['Manual']), 'Backflip', 'Frontflip', 'FS 180', 'BS 180', 'FS 360', 'BS 360'];
-  const missing = BOAT ? ['Boof', 'Air Blunt', 'Pan-Am', 'McNasty', 'Back Loop', 'Front Loop', 'Cartwheel', 'Blunt', 'Stern Stall', 'Bow Stall', 'Splat'].filter((n) => !seen.get(n)) : [...all, ...(BIKE
+  const missing = BOAT ? ['Boof', 'Air Blunt', 'Pan-Am', 'Helix', 'McNasty', 'Cartwheel', 'Blunt', 'Flatspin 180', 'Stern Stall', 'Bow Stall', 'Splat'].filter((n) => !seen.get(n)) : [...all, ...(BIKE
     ? ['Stoppie', 'Whip', 'Tabletop', 'Turndown', 'Superman', 'No Footer', 'Can Can', 'No Hander', 'Skinny']
     : ROLL ? ROLLER_TRICKS : ['Nose Manual', 'Tail Press', 'Nose Press', '50-50', 'Boardslide']), ...(BIKE || ROLL ? [] : SCOOT
     ? ['Tailwhip', 'Heelwhip', 'Barspin', 'Double Whip', 'Tailwhip Barspin', 'Superman', 'No Footer', 'Can Can', 'X-Up', 'Feeble', 'Smith']

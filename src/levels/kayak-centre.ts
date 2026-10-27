@@ -66,9 +66,9 @@ export const KAYAK_CENTRE: TrackDef[] = [
     // Holes below the weirs: swipe and hold on the left as you go through to throw end moves.
     build: layout(34, 5, (b) => {
       b.flat(8).descend(12, 0.04).whoops(3, 12, 0.6, 0.04).descend(6, 0.03);
-      b.sign('HOLE: DRAG ROUND AND ROUND TO CARTWHEEL').flat(3).hole().descend(14, 0.04);
+      b.sign('HOLE: TILT UP AND SPIN TO CARTWHEEL').flat(3).hole().descend(14, 0.04);
       b.whoops(3, 12, 0.7, 0.05).descend(6, 0.03).flat(4).dropoff(0.8, 21).descend(4, 0.03).hole().descend(12, 0.04);
-      b.whoops(3, 12, 0.7, 0.05).sign('HOLE: DRAG ONCE TO BLUNT').descend(6, 0.03).hole().descend(10, 0.04);
+      b.whoops(3, 12, 0.7, 0.05).sign('HOLE: TILT UP, SPIN HALF ROUND: BLUNT').descend(6, 0.03).hole().descend(10, 0.04);
       b.splat().descend(8, 0.03).whoops(3, 12, 0.7, 0.05).descend(14, 0.03);
     }),
   },
@@ -83,7 +83,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     build: layout(36, 5, (b) => {
       b.flat(8).descend(12, 0.05).whoops(3, 12, 0.7, 0.05).descend(6, 0.03).splat().descend(10, 0.04);
       b.flat(4).dropoff(1.0, 20).descend(8, 0.04).whoops(3, 12, 0.75, 0.05).descend(6, 0.03);
-      b.sign('AIR: TILT BOW UP, DRAG HALF ROUND: PAN-AM').flat(4).dropoff(1.3, 22).descend(8, 0.04).splat().descend(10, 0.04);
+      b.sign('AIR: TILT BOW UP, SPIN HALF ROUND: PAN-AM').flat(4).dropoff(1.3, 22).descend(8, 0.04).splat().descend(10, 0.04);
       b.whoops(4, 12, 0.75, 0.05).descend(6, 0.03).hole().descend(10, 0.04).splat().descend(14, 0.03);
     }),
   },
@@ -107,14 +107,14 @@ export const KAYAK_CENTRE: TrackDef[] = [
     challenges: [
       { text: 'Finish the run', kind: 'finish' },
       { text: 'Air trick off a weir', kind: 'trick', match: 'kayak', from: 'dropoff' },
-      { text: 'Land a loop', kind: 'trick', match: 'bodyflip' },
+      { text: 'Land a Helix', kind: 'trick', match: 'Helix' },
     ],
     // Weir after weir: boof each one and throw the boat about in the air.
     build: layout(40, 5, (b) => {
       b.flat(8).descend(12, 0.05).whoops(3, 12, 0.7, 0.05).descend(6, 0.03);
-      b.sign('BOOF, DRAG HALF ROUND: AIR BLUNT').flat(4).dropoff(1.2, 22).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
+      b.sign('BOOF, SPIN HALF ROUND: AIR BLUNT').flat(4).dropoff(1.2, 22).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
       b.flat(4).dropoff(1.3, 22).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
-      b.sign('BOOF, DRAG ALL THE WAY ROUND: LOOP').flat(4).dropoff(1.5, 24).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
+      b.sign('BOOF, SPIN ALL THE WAY ROUND: HELIX').flat(4).dropoff(1.5, 24).descend(8, 0.04).whoops(2, 12, 0.7, 0.05);
       b.flat(4).dropoff(1.4, 24).descend(8, 0.04).hole().descend(14, 0.03);
     }),
   },
@@ -123,20 +123,20 @@ export const KAYAK_CENTRE: TrackDef[] = [
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Air for 1.1 seconds', kind: 'air', seconds: 1.1 },
-      { text: 'Loop off the big weir', kind: 'trick', match: 'bodyflip' },
+      { text: 'Helix off the big weir', kind: 'trick', match: 'Helix' },
     ],
     // Down to the biggest weir on the course: boof it and tilt to loop the boat.
     build: layout(42, 5, (b) => {
       b.flat(8).descend(12, 0.05).whoops(4, 12, 0.75, 0.05).descend(6, 0.03);
       b.flat(4).dropoff(1.2, 22).descend(8, 0.04).hole().descend(10, 0.04).whoops(3, 12, 0.8, 0.06).descend(6, 0.03);
-      b.sign('BIG WEIR: BOOF AND DRAG TO LOOP').flat(5).dropoff(2.2, 30).descend(10, 0.04);
+      b.sign('BIG WEIR: BOOF AND SPIN A HELIX').flat(5).dropoff(2.2, 30).descend(10, 0.04);
       b.whoops(3, 12, 0.8, 0.06).descend(4, 0.03).hole(9, 0.4, true).descend(10, 0.04).splat().descend(14, 0.03);
     }),
   },
   {
     id: 'kayak-centre-9', biome: 'kayak-centre', name: 'Spin Pools', difficulty: 4, par: 15500,
     challenges: [
-      { text: 'Blunt in a hole', kind: 'trick', match: 'Blunt' },
+      { text: 'Flatspin in a hole', kind: 'trick', match: 'spin' },
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },
       { text: 'Land 5 different tricks', kind: 'variety', count: 5 },
     ],
@@ -144,7 +144,7 @@ export const KAYAK_CENTRE: TrackDef[] = [
     build: layout(42, 5, (b) => {
       b.flat(8).descend(10, 0.05).whoops(3, 12, 0.75, 0.05).descend(4, 0.03);
       b.descend(20, 0.0, 6).descend(6, 0.04);
-      b.flat(4).dropoff(1.3, 22).descend(6, 0.04).sign('HOLE: DRAG HALF ROUND TO BLUNT').hole().descend(8, 0.04).whoops(3, 12, 0.8, 0.06);
+      b.flat(4).dropoff(1.3, 22).descend(6, 0.04).sign('HOLE: DRAG TO FLATSPIN').hole().descend(8, 0.04).whoops(3, 12, 0.8, 0.06);
       b.descend(20, 0.0, 6).descend(6, 0.04).flat(4).dropoff(1.5, 24).descend(8, 0.04).splat().descend(8, 0.04);
       b.whoops(3, 12, 0.8, 0.06).descend(4, 0.03).hole().descend(10, 0.04).descend(18, 0.0, 6).descend(10, 0.03);
     }),

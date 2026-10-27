@@ -68,10 +68,10 @@ Pick **KAYAK** for a white water kayak (`src/kayak.ts`: a half slice river runne
 | --- | --- | --- |
 | Paddle stroke (Splat at a marked rock) | Tap | Space |
 | Boof (only on a weir lip or a wave crest) | A stroke on the lip | Space |
-| Wheel the boat end over end round the paddler (blunts, cartwheels, air blunts, loops, McNasty) | Drag a thumb sideways | Z / X |
+| Spin the boat round the paddler's body (flatspins; with the bow tilted up, blunts and cartwheels; air blunts, helixes, McNasty) | Drag a thumb sideways | Z / X |
 | Lift the bow or stern, as far as you tip (stalls, Pan-Am) | Tilt | Hold Q / E |
 
-Kayak tricks have no buttons: you steer the boat's attitude and `src/boat.ts` recognises the move from what it did (Blunt, Cartwheel in a hole; Air Blunt, Pan-Am, loops and McNasty in the air). Flat water only lets an end dip.
+Kayak tricks have no buttons: you steer the boat's attitude and `src/boat.ts` recognises the move from what it did (Flatspin, Blunt, Cartwheel in a hole; Air Blunt, Pan-Am, Helix and McNasty in the air). On flat water a spin just turns the boat.
 
 A bad landing capsizes you: tap fast to Eskimo roll back up, or you swim and lose a life. Sticky holes hold a slow boat until you tap your way out.
 

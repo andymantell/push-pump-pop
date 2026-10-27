@@ -41,6 +41,8 @@ const HALF_SLICE: HullShape = { len: 2.6, beam: 0.64, widest: 0.55, bowDeck: 0.2
 /** A playboat: short, flat and wide, with thin low ends at both bow and stern. */
 const PLAYBOAT: HullShape = { len: 1.85, beam: 0.66, widest: 0.5, bowDeck: 0.08, midDeck: 0.24, sternDeck: 0.06, bowRocker: 0.1, sternRocker: 0.06, draft: 0.1 };
 
+const _e = new THREE.Euler(), _qb = new THREE.Quaternion(), _qs = new THREE.Quaternion();
+const _c = new THREE.Vector3(), _v = new THREE.Vector3(), _Y = new THREE.Vector3(0, 1, 0);
 const smooth = (a: number, b: number, t: number) => {
   const u = Math.max(0, Math.min(1, (t - a) / (b - a)));
   return u * u * (3 - 2 * u);
@@ -214,7 +216,6 @@ export class KayakRig {
   private splatT = -1;
   /** The boat's turn from tricks, eased back to upright after. */
   private pitch = 0;
-  private yaw = 0;
   private roll = 0;
   private bailT = 0;
   private bob = 0;
@@ -360,15 +361,20 @@ export class KayakRig {
     // over as it lifts); a splat about the stern; otherwise, and always for the wheel, the paddler.
     const onEnd = air ? 0 : smooth(0.1, 0.6, Math.abs(lift));
     const pivotX = splat > 0.01 ? -0.9 : lift > 0 ? -1.0 * onEnd : 0.95 * onEnd;
-    // The boat as you steer it: lifted by the tilt, wheeled round by your thumb.
-    const yaw = r.boat.yaw + this.surfYaw;
-    const pitch = this.pitch + lift + r.boat.wheel;
+    // The boat as you steer it: lifted by the tilt, and spun by your thumb round the paddler's
+    // spine (head to bum), which stays put while the ends swing round it.
+    const pitch = this.pitch + lift;
     this.bob += dt;
     const bob = !air && !r.bailing ? 0.02 * Math.sin(this.bob * 3.2) : 0;
     this.root.position.set(r.x, r.y + bob, r.z);
     this.root.rotation.set(0, 0, r.angle, 'ZYX');
-    this.trick.position.set(pivotX, 0, 0);
-    this.trick.rotation.set(this.roll + r.boat.wheelRoll, yaw, pitch, 'YZX');
+    _e.set(this.roll, this.surfYaw, pitch, 'YZX');
+    _qb.setFromEuler(_e);
+    _qs.setFromAxisAngle(_Y, r.boat.wheel);
+    _c.set(-0.14 - pivotX, 0, 0);
+    _v.copy(_c).applyQuaternion(_qs).sub(_c).applyQuaternion(_qb);
+    this.trick.position.set(pivotX, 0, 0).sub(_v);
+    this.trick.quaternion.copy(_qb).multiply(_qs);
     for (const b of Object.values(this.boats)) b.position.set(-pivotX, 0, 0);
     p.pelvis.position.x = -0.14 - pivotX;
 

@@ -134,7 +134,7 @@ export const KAYAK_CANYON: TrackDef[] = [
     }),
   },
   {
-    id: 'kayak-canyon-10', biome: 'kayak-canyon', name: 'Night Run', difficulty: 5, par: 13500,
+    id: 'kayak-canyon-10', biome: 'kayak-canyon', name: 'Night Run', difficulty: 5, par: 11500,
     challenges: [
       { text: 'Finish without a swim', kind: 'noLives' },
       { text: 'Land a 3-trick combo', kind: 'combo', tricks: 3 },

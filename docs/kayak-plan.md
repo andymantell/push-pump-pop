@@ -45,13 +45,16 @@ names the move when what the boat did matches one.
   Anywhere else it just paddles.
 - **Tilt (position control):** the bow or stern lifts as far as the device is tipped, all the
   time (Andy: it mustn't snap to a big angle). On flat water past 40%: **Stern Stall** / **Bow Stall**.
-- **Sideways thumb drag:** wheels the boat end over end round the paddler, on its edge (Andy: not a
-  flat spin round the vertical). A third of the screen width is a full turn, at up to 20 rad/s.
-  Flat water only lets an end dip and come back; facing backwards on flat water, it spins round.
-- **In a hole or on a wave:** one end swapped = **Blunt**; two or more = **Cartwheel**.
-- **In the air:** half round = **Air Blunt** (**Pan-Am** with the bow tilted up), full = **Back /
-  Front Loop**, one and a half = **McNasty**. Flatspin, Helix, Airscrew, Space Godzilla are gone.
-- Land near level (not on an end or mid-wheel), or you capsize.
+- **Sideways thumb drag:** spins the boat round the paddler's spine, head to bum, like an axle
+  (Andy, 2026-10-27; round 2's end-over-end wheel was the wrong axis). Level, that's a flat spin;
+  with the bow tilted up the ends swing up and over. A quarter of the screen width is a full
+  turn, up to 26 rad/s. On flat water it just turns the boat (no score) and the current swings
+  it back downstream.
+- **In a hole or on a wave:** spin level = **Flatspin 180 / 360**; tilted up (lift 0.6+), one end
+  = **Blunt**, two or more = **Cartwheel**.
+- **In the air:** half round = **Air Blunt** (**Pan-Am** with the bow tilted up), full = **Helix**,
+  one and a half or more = **McNasty**. Loops, Airscrew and Space Godzilla are gone.
+- Land near level and pointing along the river (not on an end or mid-spin), or you capsize.
 - No rails or grinds.
 
 ## Capsize and holes

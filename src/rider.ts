@@ -895,8 +895,7 @@ export class Rider {
   }
 
   /**
-   * Kayak: a thumb dragged sideways wheels the boat end over end by this much (radians), the
-   * way the thumb goes: to the right is clockwise on screen.
+   * Kayak: a thumb dragged sideways spins the boat round the paddler by this much (radians).
    */
   turn(d: number) {
     if (!this.opts.kayak || this.bailing || this.roll || this.perched || this.dropT >= 0) return;
