@@ -11,11 +11,17 @@ export type Match = TrickName | Group;
 
 /**
  * Whether an air that took off at `x` counts as off this spot. Most spots are a sharp lip to
- * pop at; a gully's far edge is a gentle curve, so an ollie anywhere up its top wall or just
- * past the top counts.
+ * pop at; a gully's far edge is a gentle curve, so an ollie anywhere up the top of its far wall
+ * or just past the top counts. Riding up it fast, an ollie well before the top still flies you
+ * out over it, so with the track to check that you're on that same rising wall, up to 12 m early.
  */
-export function offSpot(s: { x: number; tag: string }, x: number): boolean {
-  return s.tag === 'lip' || s.tag === 'lastlip' ? x > s.x - 5 && x < s.x + 3 : x > s.x - 2.5 && x < s.x + 1;
+export function offSpot(s: { x: number; tag: string }, x: number, track?: { slope(x: number): number }): boolean {
+  if (s.tag !== 'lip' && s.tag !== 'lastlip') return x > s.x - 2.5 && x < s.x + 1;
+  if (x >= s.x + 3 || x <= s.x - 12) return false;
+  if (x > s.x - 5) return true;
+  if (!track) return false;
+  for (let px = x; px < s.x - 1; px += 0.25) if (track.slope(px) <= 0.05) return false;
+  return true;
 }
 
 /** Which gaps an air has to clear: any one, every gap on the track, or these (by index). */
@@ -355,7 +361,7 @@ export class ChallengeRun {
     this.x = r.x;
     const flying = !r.grounded && !r.grind && !r.loop && !r.falling && !r.loopFall;
     if (flying && !this.air) {
-      const near = this.track.spots.map((s, i) => ({ s, i })).filter(({ s }) => offSpot(s, r.x));
+      const near = this.track.spots.map((s, i) => ({ s, i })).filter(({ s }) => offSpot(s, r.x, this.track));
       this.air = {
         x0: r.x, spots: new Set(near.map(({ s }) => s.tag)), kicker: near.find(({ s }) => s.tag === 'kicker')?.i ?? -1,
         fromRail: this.now - this.grindEnd < 0.2, tricks: this.pending.filter((p) => this.now - p.at < 0.35), peak: 0, t0: this.now,
