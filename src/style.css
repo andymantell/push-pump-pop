@@ -281,6 +281,19 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; touch-action
 #chal span.got { background: rgba(60, 170, 90, 0.75); }
 #chal span.got b { color: #fff; }
 #chal span.pop { animation: hit 0.6s ease-out; }
+/* Tap a challenge icon mid-run to see its goal for a few seconds. */
+#chal span { pointer-events: auto; cursor: pointer; touch-action: none; position: relative; }
+#chal span::after { content: ''; position: absolute; inset: -6px -3px; } /* a bigger target for small thumbs */
+#chal span.picked { outline: 2px solid #ffe066; }
+#chal-goal {
+  margin-top: 6px; max-width: min(320px, calc(100vw - 32px));
+  background: rgba(10, 20, 35, 0.75); border-radius: 10px; padding: 6px 10px;
+  font-size: 15px; font-weight: 800; line-height: 1.25; text-shadow: none;
+  opacity: 0; transition: opacity 0.6s ease-out; pointer-events: none;
+}
+#chal-goal.show { opacity: 1; transition: opacity 0.15s ease-out; }
+#chal-goal .ic { margin-right: 6px; }
+#chal-goal .got { color: #7dff9a; }
 .popup.challenge { color: #7dff9a; font-size: 34px; }
 #r-best b.unlocked { color: #7dff9a; }
 #r-best .todo { color: #ffe066; }

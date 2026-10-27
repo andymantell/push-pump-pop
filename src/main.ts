@@ -194,9 +194,11 @@ function newChallenges() {
     sound.challenge();
     drawChallenges(i);
   };
+  hideGoal();
   drawChallenges();
 }
 let chalHud = '';
+let goalShown = -1, goalTimer = 0;
 function drawChallenges(popped = -1) {
   const html = chal.list.map((c, i) => {
     const got = chal.done[i];
@@ -206,7 +208,35 @@ function drawChallenges(popped = -1) {
   if (html === chalHud && popped < 0) return;
   chalHud = html;
   $('chal').innerHTML = html;
+  if (goalShown >= 0) $('chal').children[goalShown]?.classList.add('picked');
 }
+// Tap a challenge icon mid-run to see its goal for a few seconds. The icons sit above the canvas,
+// so the tap never reaches the pump and trick input.
+function showGoal(i: number) {
+  const c = chal.list[i];
+  if (!c) return;
+  const el = $('chal-goal');
+  el.innerHTML = `<span class="ic">${icon(c)}</span>${c.text}${chal.done[i] ? ' <span class="got">&#10003; Done!</span>' : ''}`;
+  el.classList.add('show');
+  goalShown = i;
+  [...$('chal').children].forEach((s, j) => s.classList.toggle('picked', j === i));
+  clearTimeout(goalTimer);
+  goalTimer = window.setTimeout(hideGoal, 3000);
+}
+function hideGoal() {
+  clearTimeout(goalTimer);
+  goalShown = -1;
+  $('chal-goal').classList.remove('show');
+  for (const s of $('chal').children) s.classList.remove('picked');
+}
+$('chal').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const span = (e.target as HTMLElement).closest('#chal > span');
+  if (!span) return;
+  const i = [...$('chal').children].indexOf(span);
+  if (i === goalShown) hideGoal(); else showGoal(i);
+});
 /** The challenge list for the card and results: icon, text, tick, and needed / NEW! badges. */
 function challengeList(d: TrackDef, done: boolean[], fresh: boolean[] = []) {
   const need = progress.required(d);
