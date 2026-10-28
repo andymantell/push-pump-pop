@@ -423,6 +423,7 @@ tilt.onLean = (l) => { tiltLean = l; applyLean(); };
 const pad = new Gamepad(input);
 pad.onLean = (l) => { padLean = l; applyLean(); };
 pad.riding = () => state === 'playing';
+pad.canSpinOn = () => canRide() && !rider.grounded && !rider.grind && !rider.spin && !rider.bailing;
 
 const panels = ['title', 'select', 'card', 'results', 'guide', 'move', 'pause'];
 function show(panel: string | null) {

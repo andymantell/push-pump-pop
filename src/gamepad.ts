@@ -20,7 +20,7 @@ type Dir = 'up' | 'down' | 'left' | 'right';
 // Riding: A pumps, the left stick leans like tilting the iPad (left or back for a manual or backflip,
 // right or forwards for a nose manual or frontflip). Hold X and push the right stick to grab
 // (let go of either to drop it); hold B and flick the right stick to flip, diagonals down for a
-// 360 flip or hardflip. LB / RB spin (again for a 360). Menu pauses.
+// 360 flip or hardflip. LB / RB spin, and holding keeps spinning (360, 540...). Menu pauses.
 // Menus: d-pad or left stick moves between buttons, A presses, B goes back.
 export class Gamepad {
   onLean: (l: Lean) => void = () => {};
@@ -30,6 +30,8 @@ export class Gamepad {
   onView: () => void = () => {};
   /** Is a run being ridden (sticks and buttons do tricks rather than move round menus)? */
   riding: () => boolean = () => false;
+  /** In the air with the last spin finished, so a held spin button can carry on round. */
+  canSpinOn: () => boolean = () => false;
   /** Has a controller been used? */
   connected = false;
   private prev: boolean[] = [];
@@ -73,6 +75,8 @@ export class Gamepad {
     const inp = this.input;
     if (pressed(A)) { inp.onAny(); inp.onPump(); }
     if (pressed(LB) || pressed(RB)) { inp.onAny(); inp.onSpinMore(); inp.onSpin(pressed(RB) ? 'right' : 'left'); }
+    // Still holding it when that 180 comes round: another one the same way, which adds up to a 360, 540...
+    else if ((down[LB] !== down[RB]) && this.canSpinOn()) inp.onSpin(down[RB] ? 'right' : 'left');
 
     // Left stick: whichever way it's pushed most. Back (down) lifts the nose like left does.
     const lean = Math.abs(lx) >= Math.abs(ly) ? -lx : ly;
