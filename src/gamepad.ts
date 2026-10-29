@@ -2,9 +2,13 @@ import type { Input } from './input';
 import { Swipe, Lean } from './rider';
 
 // Standard Gamepad API layout (Xbox names).
-const A = 0, B = 1, X = 2, LB = 4, RB = 5, VIEW = 8, MENU = 9, UP = 12, DOWN = 13, LEFT = 14, RIGHT = 15;
+const A = 0, B = 1, X = 2, LB = 4, RB = 5, LT = 6, RT = 7, VIEW = 8, MENU = 9, UP = 12, DOWN = 13, LEFT = 14, RIGHT = 15;
 /** Stick push to count as a direction, and back within this to count as centred again. */
 const PUSH = 0.6, CENTRE = 0.35;
+/** Right stick pushed this far is a flick (a trick); held between CENTRE and here for GENTLE_MS it's a manual. */
+const FLICK = 0.85, GENTLE_MS = 150;
+/** After pulling a trigger, this long to point the right stick at a grab before it picks the trigger's own. */
+const PICK_MS = 150;
 /** Left stick lean: on past this, off again within LEAN_OFF (like tilt's 14 and 8 degrees). */
 const LEAN_ON = 0.5, LEAN_OFF = 0.3;
 /** A right-stick flip down and to the side, between these slopes, is a 360 flip or hardflip (as in input.ts). */
@@ -16,11 +20,11 @@ const BACK = '#rp-close, .rd-done, #resume, #guideback, #cardback, #moveback, #b
 
 type Dir = 'up' | 'down' | 'left' | 'right';
 
-// An Xbox (or any standard) controller.
-// Riding: A pumps, the left stick leans like tilting the iPad (left or back for a manual or backflip,
-// right or forwards for a nose manual or frontflip). Hold X and push the right stick to grab
-// (let go of either to drop it); hold B and flick the right stick to flip, diagonals down for a
-// 360 flip or hardflip. LB / RB spin, and holding keeps spinning (360, 540...). Menu pauses.
+// An Xbox (or any standard) controller, laid out like Skate 3.
+// Riding: A or X pumps. Flick the right stick for tricks (diagonals down for a 360 flip or
+// hardflip); push it gently up or down for a nose manual or manual. Hold LT or RT to grab, with the
+// right stick choosing which grab. Left stick sideways spins in the air (hold to keep spinning),
+// back or forwards for a backflip or frontflip. LB / RB spin too. Menu pauses.
 // Menus: d-pad or left stick moves between buttons, A presses, B goes back.
 export class Gamepad {
   onLean: (l: Lean) => void = () => {};
@@ -30,13 +34,15 @@ export class Gamepad {
   onView: () => void = () => {};
   /** Is a run being ridden (sticks and buttons do tricks rather than move round menus)? */
   riding: () => boolean = () => false;
-  /** In the air with the last spin finished, so a held spin button can carry on round. */
+  /** In the air with the last spin finished, so a spin can start or a held one carry on round. */
   canSpinOn: () => boolean = () => false;
   /** Has a controller been used? */
   connected = false;
   private prev: boolean[] = [];
   private lean: Lean = 0;
   private stickFired = false;
+  private gentleAt = 0;
+  private pendingGrab: { at: number; dir: Swipe } | null = null;
   private grabbing = false;
   private focus: HTMLElement | null = null;
   private held: Dir | null = null;
@@ -73,36 +79,56 @@ export class Gamepad {
 
   private ride(pressed: (i: number) => boolean, down: boolean[], lx: number, ly: number, rx: number, ry: number) {
     const inp = this.input;
-    if (pressed(A)) { inp.onAny(); inp.onPump(); }
+    // A or X pump, like the two push buttons in Skate.
+    if (pressed(A) || pressed(X)) { inp.onAny(); inp.onPump(); }
+
+    // Spins: push the left stick sideways in the air (or LB / RB) and hold it to keep going round.
+    const side: 'left' | 'right' | null = Math.abs(lx) > PUSH && Math.abs(lx) > Math.abs(ly) ? (lx > 0 ? 'right' : 'left')
+      : down[LB] !== down[RB] ? (down[RB] ? 'right' : 'left') : null;
     if (pressed(LB) || pressed(RB)) { inp.onAny(); inp.onSpinMore(); inp.onSpin(pressed(RB) ? 'right' : 'left'); }
-    // Still holding it when that 180 comes round: another one the same way, which adds up to a 360, 540...
-    else if ((down[LB] !== down[RB]) && this.canSpinOn()) inp.onSpin(down[RB] ? 'right' : 'left');
+    else if (side && this.canSpinOn()) { inp.onAny(); inp.onSpin(side); }
 
-    // Left stick: whichever way it's pushed most. Back (down) lifts the nose like left does.
-    const lean = Math.abs(lx) >= Math.abs(ly) ? -lx : ly;
-    const on = Math.abs(lean) > (this.lean ? LEAN_OFF : LEAN_ON);
-    this.setLean(on ? (lean > 0 ? 1 : -1) : 0);
-
-    // Right stick: one trick per push, then back to the middle for the next.
+    // Grabs: hold a trigger. The right stick picks which one, and with it in the middle
+    // RT is an Indy and LT a Melon. Let go of the trigger to let go of the board.
+    // The stick gets a moment after the trigger to pick, as in Skate you grab and then point.
+    const lt = down[LT], rt = down[RT];
+    const now = performance.now();
+    if (this.grabbing && !lt && !rt) this.release();
     const mag = Math.hypot(rx, ry);
-    if (mag < CENTRE) { this.stickFired = false; this.release(); }
-    if (this.grabbing && !down[X]) this.release();
-    if (this.stickFired || mag < PUSH) return;
-    const dir = toDir(rx, ry);
-    if (down[X]) {
-      this.stickFired = true;
+    if (!this.grabbing && (pressed(LT) || pressed(RT))) {
       this.grabbing = true;
+      this.pendingGrab = { at: now, dir: pressed(RT) ? 'up' : 'down' };
+    }
+    if (this.pendingGrab && (mag > PUSH || now - this.pendingGrab.at > PICK_MS)) {
+      const dir = mag > PUSH ? toDir(rx, ry) : this.pendingGrab.dir;
+      this.pendingGrab = null;
+      this.stickFired = mag > CENTRE;
       inp.onAny(); inp.onGrab(dir);
-    } else if (down[B]) {
+    }
+
+    // Right stick flicks: one trick per flick, then back to the middle for the next.
+    // A gentle push held up or down (not a flick) balances a nose manual or manual.
+    if (mag < CENTRE) { this.stickFired = false; this.gentleAt = 0; }
+    let gentle: Lean = 0;
+    if (!this.grabbing && !this.stickFired && mag >= FLICK) {
       this.stickFired = true;
       inp.onAny();
       const slope = Math.abs(ry) / Math.max(1e-3, Math.abs(rx));
       if (ry > 0 && slope > COMBO_MIN && slope < COMBO_MAX) inp.onCombo(rx < 0 ? 'left' : 'right');
-      else inp.onSwipe(dir);
+      else inp.onSwipe(toDir(rx, ry));
+    } else if (!this.grabbing && !this.stickFired && mag >= CENTRE && Math.abs(ry) > Math.abs(rx)) {
+      if (!this.gentleAt) this.gentleAt = now;
+      if (now - this.gentleAt > GENTLE_MS) gentle = ry > 0 ? 1 : -1;
     }
+
+    // Lean: the left stick back or forwards (backflip, frontflip, and balance), or a gentle right stick.
+    const tip = Math.abs(ly) > Math.abs(lx) ? ly : 0;
+    const on = Math.abs(tip) > (this.lean ? LEAN_OFF : LEAN_ON);
+    this.setLean(gentle || (on ? (tip > 0 ? 1 : -1) : 0));
   }
 
   private release() {
+    this.pendingGrab = null;
     if (!this.grabbing) return;
     this.grabbing = false;
     this.input.onRelease();
