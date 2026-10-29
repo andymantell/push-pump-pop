@@ -9,6 +9,10 @@ const PUSH = 0.6, CENTRE = 0.35;
 const FLICK = 0.85, GENTLE_MS = 150;
 /** After pulling a trigger, this long to point the right stick at a grab before it picks the trigger's own. */
 const PICK_MS = 150;
+/** Left stick: a side this share of the other still counts, so diagonals spin and flip at once. */
+const DIAGONAL = 0.5;
+/** Holding a spin this long makes it a 360. */
+const SPIN_360_MS = 200;
 /** Left stick lean: on past this, off again within LEAN_OFF (like tilt's 14 and 8 degrees). */
 const LEAN_ON = 0.5, LEAN_OFF = 0.3;
 /** A right-stick flip down and to the side, between these slopes, is a 360 flip or hardflip (as in input.ts). */
@@ -42,6 +46,7 @@ export class Gamepad {
   private lean: Lean = 0;
   private stickFired = false;
   private gentleAt = 0;
+  private spinAt = 0;
   private pendingGrab: { at: number; dir: Swipe } | null = null;
   private grabbing = false;
   private focus: HTMLElement | null = null;
@@ -82,17 +87,22 @@ export class Gamepad {
     // A or X pump, like the two push buttons in Skate.
     if (pressed(A) || pressed(X)) { inp.onAny(); inp.onPump(); }
 
-    // Spins: push the left stick sideways in the air (or LB / RB) and hold it to keep going round.
-    const side: 'left' | 'right' | null = Math.abs(lx) > PUSH && Math.abs(lx) > Math.abs(ly) ? (lx > 0 ? 'right' : 'left')
+    // Spins: push the left stick sideways in the air (or LB / RB) and hold it to keep going round:
+    // a held spin turns straight into a 360, then adds 180s. Diagonally back or forwards
+    // spins and flips together (a backflip and a 360 is a Cash Roll).
+    const now = performance.now();
+    const side: 'left' | 'right' | null = Math.abs(lx) > PUSH && Math.abs(lx) > Math.abs(ly) * DIAGONAL ? (lx > 0 ? 'right' : 'left')
       : down[LB] !== down[RB] ? (down[RB] ? 'right' : 'left') : null;
+    if (!side) this.spinAt = 0;
+    else if (!this.spinAt) this.spinAt = now;
     if (pressed(LB) || pressed(RB)) { inp.onAny(); inp.onSpinMore(); inp.onSpin(pressed(RB) ? 'right' : 'left'); }
     else if (side && this.canSpinOn()) { inp.onAny(); inp.onSpin(side); }
+    if (side && now - this.spinAt > SPIN_360_MS) inp.onSpinMore();
 
     // Grabs: hold a trigger. The right stick picks which one, and with it in the middle
     // RT is an Indy and LT a Melon. Let go of the trigger to let go of the board.
     // The stick gets a moment after the trigger to pick, as in Skate you grab and then point.
     const lt = down[LT], rt = down[RT];
-    const now = performance.now();
     if (this.grabbing && !lt && !rt) this.release();
     const mag = Math.hypot(rx, ry);
     if (!this.grabbing && (pressed(LT) || pressed(RT))) {
@@ -122,7 +132,7 @@ export class Gamepad {
     }
 
     // Lean: the left stick back or forwards (backflip, frontflip, and balance), or a gentle right stick.
-    const tip = Math.abs(ly) > Math.abs(lx) ? ly : 0;
+    const tip = Math.abs(ly) > Math.abs(lx) * DIAGONAL ? ly : 0;
     const on = Math.abs(tip) > (this.lean ? LEAN_OFF : LEAN_ON);
     this.setLean(gentle || (on ? (tip > 0 ? 1 : -1) : 0));
   }
