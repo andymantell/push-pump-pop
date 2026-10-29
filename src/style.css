@@ -315,6 +315,13 @@ button.padfocus { outline: 4px solid #ffe066 !important; outline-offset: 3px; }
 #movecode.hidden { display: none; }
 #movemsg { min-height: 1.3em; font-weight: 900; color: #ffe066; }
 .guide.hidden { display: none; }
+#guidetabs { flex-wrap: wrap; }
+.guide svg.pad { display: block; width: 100%; max-width: 400px; margin: 0 auto 10px; }
+.guide svg.pad text { font: 900 13px system-ui, sans-serif; text-anchor: middle; }
+.guide svg.pad .pk { fill: #fff; font-size: 12px; }
+.guide svg.pad .pl { fill: #ffe066; }
+.guide .btn { display: inline-block; min-width: 24px; padding: 0 6px; border-radius: 12px; text-align: center; color: #fff; font-size: 15px; line-height: 24px; }
+.guide .btn.a { background: #2fb36b; } .guide .btn.b { background: #d8352b; } .guide .btn.x { background: #1f7ae0; } .guide .btn.bump { background: #5b6675; }
 
 /* Rock garden balance on the bike: keep the marker in the green middle. */
 #balance {

@@ -632,12 +632,13 @@ function updateWatch() {
 
 $('play').addEventListener('click', () => openSelect());
 /** The trick guide opens on the ride you're on, and can show the other one. */
-function showGuide(id: RideId) {
+function showGuide(id: RideId | 'pad') {
   document.querySelectorAll<HTMLElement>('#guide .guide').forEach((g) => g.classList.toggle('hidden', g.dataset.ride !== id));
   document.querySelectorAll<HTMLElement>('#guidetabs button').forEach((b) => b.classList.toggle('on', b.dataset.ride === id));
 }
-document.querySelectorAll<HTMLElement>('#guidetabs button').forEach((b) => b.addEventListener('click', () => showGuide(b.dataset.ride as RideId)));
-$('guidebtn').addEventListener('click', () => { showGuide(ride); show('guide'); });
+document.querySelectorAll<HTMLElement>('#guidetabs button').forEach((b) => b.addEventListener('click', () => showGuide(b.dataset.ride as RideId | 'pad')));
+// With a controller plugged in, the guide opens on how to use it.
+$('guidebtn').addEventListener('click', () => { showGuide(pad.connected ? 'pad' : ride); show('guide'); });
 $('guideback').addEventListener('click', () => show('title'));
 setupMove();
 const soundBtn = $('soundbtn');
